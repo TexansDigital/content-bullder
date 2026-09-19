@@ -1,16 +1,50 @@
-# Content Builder — Vertical Video / Stories Widget
+# Content Builder — vertical video feed
 
-Working repo for a Texans-owned vertical video + Stories experience that can be
-embedded in the mobile app and on web, fed by our own social output
-(Instagram / TikTok / YouTube Shorts) and our own master video files.
+A source-agnostic vertical video feed for the Texans, embeddable on houstontexans.com and in
+the app. Pull from any platform, curate, publish.
 
-**Status: research complete, awaiting Phase 0 inputs. No implementation yet.**
+## Run it
 
-Spine of the design: **Cloudinary** as master store + transcode + AI 9:16/4:5 reframe +
-captions + CDN; **Asana** for editorial; a small service we build for ingestion, ranking and
-the feed API; the app rendering layer rented from Storyteller via **FanReach**.
+```sh
+node server.mjs
+```
 
-Start here: [`docs/research/00-executive-summary.md`](docs/research/00-executive-summary.md)
+No install, no build step, Node 18+. Then:
+
+| | |
+| --- | --- |
+| `http://localhost:4400/` | **Studio** — pull from sources, curate, publish |
+| `http://localhost:4400/feed` | **The feed** — this is what goes in the iframe |
+| `http://localhost:4400/api/feed` | Published items as JSON |
+
+State lives in `content/store.json`. `STORE=/path/file.json node server.mjs` moves it;
+swapping in Postgres means replacing `load()`/`save()` in `server.mjs`.
+
+## How it's put together
+
+```
+src/content.js        the one item shape everything speaks
+src/adapters/         youtube · cloudinary · rss · manual
+src/cloudinary.js     delivery URLs, including so_/eo_ + g_auto clipping
+server.mjs            static + feed API + store
+app/studio.html       editorial UI
+app/feed.html         the embeddable feed
+```
+
+**Adding a platform is a new file in `src/adapters/`.** Nothing else changes — the feed, the
+studio and the embed only ever see a `ContentItem`, never the source that produced it.
+
+| Adapter | Gives us | Limit |
+| --- | --- | --- |
+| `youtube` | Metadata for a whole channel, via the uploads playlist | Never the file; plays in YouTube's iframe |
+| `cloudinary` | Our own assets, at any aspect ratio | **The only clippable source** |
+| `rss` | Article metadata, no credentials or quota | Metadata only |
+| `manual` | Anything no API will hand over — TikTok, Reels, a file | Someone pastes it |
+
+## Research
+
+The tool came out of the research in [`docs/research/`](docs/research/). Findings marked
+**[verified]** were measured; **[reported]** came from vendor or platform docs.
 
 | Doc | What's in it |
 | --- | --- |

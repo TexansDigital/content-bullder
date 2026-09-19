@@ -1,0 +1,310 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Feed Studio</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;700&display=swap">
+<style>
+:root{--steel:#021118;--s2:#0a1d27;--s3:#13303d;--red:#eb0028;--red2:#ff123a;--blue:#0080c6;
+ --w:#fff;--body:rgba(255,255,255,.84);--mute:rgba(255,255,255,.52);--line:rgba(255,255,255,.14);
+ --line2:rgba(255,255,255,.3);--ok:#1fae5a;--warn:#f5a623;
+ --mono:"Azeret Mono",ui-monospace,Menlo,monospace;
+ --sans:"Helvetica Neue",Helvetica,Arial,sans-serif}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--steel);color:var(--w);font:14px/1.5 var(--sans);overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+.app{display:grid;grid-template-rows:auto 1fr;height:100%}
+
+header{display:flex;align-items:center;gap:14px;padding:11px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:15px;font-weight:900;text-transform:uppercase;letter-spacing:.02em;margin:0}
+header h1 i{color:var(--red);font-style:normal}
+.pill{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+ border:1px solid var(--line2);padding:4px 8px;color:var(--mute)}
+header .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+.cols{display:grid;grid-template-columns:262px minmax(0,1fr) 330px;min-height:0}
+@media(max-width:1100px){.cols{grid-template-columns:1fr;overflow-y:auto}}
+.pane{min-height:0;overflow-y:auto;border-right:1px solid var(--line)}
+.pane:last-child{border-right:0}
+.pane h2{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+ color:var(--mute);margin:0;padding:13px 16px 9px;position:sticky;top:0;background:var(--steel);
+ border-bottom:1px solid var(--line);z-index:2}
+.pad{padding:14px 16px}
+
+label{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;
+ text-transform:uppercase;color:var(--mute);margin:0 0 4px}
+input,select,textarea{width:100%;background:var(--s2);border:1px solid var(--line);
+ padding:8px 9px;border-radius:0;font-size:13px}
+textarea{resize:vertical;min-height:58px;font-family:var(--mono);font-size:11.5px;line-height:1.6}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red)}
+.field{margin-bottom:11px}
+
+button{background:var(--red);border:0;padding:9px 14px;cursor:pointer;font-weight:700;
+ font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+button:hover{background:var(--red2)}button:active{transform:translateY(1px)}
+button:disabled{opacity:.4;cursor:default;transform:none}
+button.ghost{background:transparent;border:1px solid var(--line2)}
+button.ghost:hover{background:transparent;border-color:var(--red)}
+button.sm{padding:5px 9px;font-size:10px}
+button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
+.row{display:flex;gap:7px;flex-wrap:wrap}
+
+.card{display:grid;grid-template-columns:52px minmax(0,1fr);gap:11px;padding:10px 16px;
+ border-bottom:1px solid var(--line);cursor:pointer;align-items:start}
+.card:hover{background:rgba(255,255,255,.04)}
+.card[aria-selected="true"]{background:rgba(235,0,40,.14);box-shadow:inset 3px 0 0 var(--red)}
+.card .th{aspect-ratio:4/5;background:var(--s3);overflow:hidden;position:relative}
+.card .th img{width:100%;height:100%;object-fit:cover;display:block}
+.card .th span{position:absolute;inset:auto 0 0;font-family:var(--mono);font-size:8px;
+ text-align:center;background:rgba(2,17,24,.85);padding:1px}
+.card h3{font-size:12.5px;line-height:1.3;margin:0 0 4px;font-weight:600}
+.card .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.tag{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
+ padding:2px 5px;background:var(--s3);color:var(--body)}
+.tag.src{background:var(--blue);color:#fff}
+.tag.err{background:var(--red);color:#fff}
+.tag.warn{background:var(--warn);color:#2a1a00}
+.tag.ok{background:var(--ok);color:#00170a}
+.empty{padding:30px 16px;color:var(--mute);font-size:13px;text-align:center}
+
+.tabs{display:flex;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--steel);z-index:3}
+.tabs button{flex:1;background:none;border:0;border-bottom:3px solid transparent;color:var(--mute);
+ padding:12px 6px;font-size:11px}
+.tabs button[aria-selected="true"]{color:var(--w);border-bottom-color:var(--red)}
+.tabs button:hover{color:var(--w);background:none}
+.count{font-family:var(--mono);font-size:9px;opacity:.7;margin-left:4px}
+
+.warnlist{margin:9px 0 0;padding:0;list-style:none}
+.warnlist li{font-size:11.5px;color:var(--body);padding:4px 0 4px 13px;position:relative}
+.warnlist li::before{content:"";position:absolute;left:0;top:10px;width:5px;height:5px;background:var(--warn)}
+.warnlist li.e::before{background:var(--red)}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--s3);
+ border:1px solid var(--line2);padding:10px 16px;font-size:13px;z-index:50;
+ transition:opacity .2s,transform .2s}
+#toast[hidden]{display:none}
+a{color:var(--blue)}
+hr{border:0;border-top:1px solid var(--line);margin:16px 0}
+</style></head><body>
+<div class="app">
+<header>
+  <h1>Feed Studio <i>//</i> Texans</h1>
+  <span class="pill" id="store-state">loading</span>
+  <div class="sp">
+    <a class="pill" href="/feed" target="_blank" rel="noopener">Preview feed ↗</a>
+    <a class="pill" href="/api/feed" target="_blank" rel="noopener">API ↗</a>
+  </div>
+</header>
+
+<div class="cols">
+  <!-- ── sources ── -->
+  <section class="pane">
+    <h2>Sources</h2>
+    <div class="pad">
+      <div class="field">
+        <label for="adapter">Adapter</label>
+        <select id="adapter"></select>
+      </div>
+      <p class="mono" id="adapter-note" style="margin:-4px 0 12px;letter-spacing:.04em;
+         text-transform:none;font-size:11px;line-height:1.5"></p>
+      <div id="adapter-fields"></div>
+      <button id="pull" style="width:100%">Pull</button>
+      <p id="pull-out" style="font-size:12px;color:var(--mute);margin:10px 0 0"></p>
+      <hr>
+      <p class="mono" style="letter-spacing:.04em;text-transform:none;font-size:11.5px;line-height:1.6">
+        Every source normalizes to the same item. The feed never learns where anything came
+        from &mdash; adding a platform is a new adapter, not a change here.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── queue ── -->
+  <section class="pane">
+    <div class="tabs" role="tablist">
+      <button role="tab" data-status="inbox" aria-selected="true">Inbox<span class="count" id="c-inbox"></span></button>
+      <button role="tab" data-status="published" aria-selected="false">Published<span class="count" id="c-published"></span></button>
+      <button role="tab" data-status="archived" aria-selected="false">Archived<span class="count" id="c-archived"></span></button>
+    </div>
+    <div id="list"></div>
+  </section>
+
+  <!-- ── editor ── -->
+  <section class="pane">
+    <h2>Item</h2>
+    <div id="editor"><p class="empty">Select an item.</p></div>
+  </section>
+</div>
+</div>
+<div id="toast" hidden></div>
+
+<script type="module">
+const $ = (s) => document.querySelector(s);
+const api = async (path, opts) => {
+  const r = await fetch(path, { headers: { 'content-type': 'application/json' }, ...opts });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.statusText);
+  return r.json();
+};
+let STATE = { items: [], collections: [], counts: {} };
+let status = 'inbox', selected = null;
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(t._t); t._t = setTimeout(() => (t.hidden = true), 2600);
+}
+
+/* ---------- sources ---------- */
+async function initAdapters() {
+  const { adapters } = await api('/api/adapters');
+  const sel = $('#adapter');
+  sel.innerHTML = adapters.map((a) => `<option value="${a.key}">${a.label}</option>`).join('');
+  const render = () => {
+    const a = adapters.find((x) => x.key === sel.value);
+    $('#adapter-note').textContent = a.notes || '';
+    const extra = { youtube: [['max', 'Max videos', '100']],
+                    cloudinary: [['assets', 'Delivery URLs or public IDs, one per line', '', 'textarea']],
+                    rss: [['collection', 'Collection', 'series']],
+                    manual: [] }[a.key] || [];
+    $('#adapter-fields').innerHTML = [...a.needs.map((n) => [n, n, '']), ...extra]
+      .filter((f, i, all) => all.findIndex((x) => x[0] === f[0]) === i)
+      .map(([name, label, val, kind]) => `
+        <div class="field"><label for="f-${name}">${label}</label>
+        ${kind === 'textarea'
+          ? `<textarea id="f-${name}" name="${name}" placeholder="one per line"></textarea>`
+          : `<input id="f-${name}" name="${name}" value="${val}"
+               ${/key|secret|token/i.test(name) ? 'type="password" autocomplete="off"' : ''}>`}
+        </div>`).join('');
+  };
+  sel.onchange = render; render();
+
+  $('#pull').onclick = async () => {
+    const btn = $('#pull'); btn.disabled = true; btn.textContent = 'Pulling…';
+    const config = {};
+    $('#adapter-fields').querySelectorAll('[name]').forEach((el) => {
+      if (el.value.trim()) config[el.name] = el.value.trim();
+    });
+    try {
+      const r = await api('/api/pull', { method: 'POST',
+        body: JSON.stringify({ adapter: sel.value, config }) });
+      $('#pull-out').textContent = `${r.added} new, ${r.skipped} already here.`;
+      await refresh(); toast(`Pulled ${r.added} new items`);
+    } catch (e) {
+      $('#pull-out').innerHTML = `<span style="color:var(--red)">${e.message}</span>`;
+    } finally { btn.disabled = false; btn.textContent = 'Pull'; }
+  };
+}
+
+/* ---------- list ---------- */
+function renderList() {
+  const rows = STATE.items.filter((i) => i.status === status);
+  const el = $('#list');
+  if (!rows.length) {
+    el.innerHTML = `<p class="empty">Nothing ${status}.${
+      status === 'inbox' ? ' Pull from a source to start.' : ''}</p>`;
+    return;
+  }
+  el.innerHTML = rows.map((i) => {
+    const v = i.validation || { ok: true, errors: [], warnings: [] };
+    const badges = [
+      `<span class="tag src">${i.source}</span>`,
+      `<span class="tag">${i.collection}</span>`,
+      i.duration ? `<span class="tag">${i.duration}</span>` : '',
+      i.flags.vertical ? '' : '<span class="tag warn">not vertical</span>',
+      i.flags.duplicate ? '<span class="tag warn">dupe</span>' : '',
+      v.errors.length ? `<span class="tag err">${v.errors.length} blocking</span>`
+        : v.warnings.length ? `<span class="tag warn">${v.warnings.length}</span>`
+        : '<span class="tag ok">ready</span>',
+    ].filter(Boolean).join('');
+    return `<article class="card" data-id="${i.id}" aria-selected="${selected === i.id}">
+      <div class="th">${i.poster[0]
+        ? `<img src="${i.poster[0]}" alt="" loading="lazy" onerror="this.remove()">`
+        : `<span>no art</span>`}</div>
+      <div><h3>${esc(i.headline)}</h3><div class="meta">${badges}</div></div>
+    </article>`;
+  }).join('');
+  el.querySelectorAll('.card').forEach((c) =>
+    (c.onclick = () => { selected = c.dataset.id; renderList(); renderEditor(); }));
+}
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ---------- editor ---------- */
+function renderEditor() {
+  const i = STATE.items.find((x) => x.id === selected);
+  const el = $('#editor');
+  if (!i) { el.innerHTML = '<p class="empty">Select an item.</p>'; return; }
+  const v = i.validation || { ok: true, errors: [], warnings: [] };
+  el.innerHTML = `<div class="pad">
+    <div class="field"><label for="e-h">Headline</label>
+      <input id="e-h" value="${esc(i.headline)}"></div>
+    <div class="field"><label for="e-c">Collection</label>
+      <select id="e-c">${STATE.collections.map((c) =>
+        `<option value="${c.key}" ${c.key === i.collection ? 'selected' : ''}>${c.name}</option>`).join('')}</select></div>
+    <div class="field"><label for="e-cap">Caption</label>
+      <input id="e-cap" value="${esc(i.caption || '')}"></div>
+    <div class="row" style="margin-bottom:11px">
+      <div class="field" style="flex:1;margin:0"><label for="e-al">Action label</label>
+        <input id="e-al" value="${esc(i.action?.label || '')}"></div>
+      <div class="field" style="flex:2;margin:0"><label for="e-au">Action URL</label>
+        <input id="e-au" value="${esc(i.action?.url || '')}"></div>
+    </div>
+    <div class="field"><label for="e-sp">Sponsor (blank for none)</label>
+      <input id="e-sp" value="${esc(i.sponsor?.name || '')}"></div>
+    <div class="field"><label for="e-si">Sort index</label>
+      <input id="e-si" type="number" value="${i.sortIndex}"></div>
+
+    ${(v.errors.length || v.warnings.length) ? `<ul class="warnlist">
+      ${v.errors.map((e) => `<li class="e">${esc(e)}</li>`).join('')}
+      ${v.warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
+
+    <hr>
+    <div class="row">
+      <button id="e-save">Save</button>
+      ${i.status !== 'published'
+        ? `<button id="e-pub" class="ghost" ${v.ok ? '' : 'disabled title="fix blocking issues first"'}>Publish</button>`
+        : `<button id="e-unpub" class="ghost">Unpublish</button>`}
+      <button id="e-arch" class="ghost">Archive</button>
+    </div>
+    <hr>
+    <p class="mono" style="letter-spacing:.04em;text-transform:none;font-size:11px;line-height:1.7">
+      <b style="color:var(--w)">${esc(i.id)}</b><br>
+      source ${esc(i.source)} · ${esc(i.media.kind)}${i.clip
+        ? ` · clip ${i.clip.start}–${i.clip.end}s` : ''}<br>
+      ${Object.entries(i.links).map(([k, u]) =>
+        `<a href="${esc(u)}" target="_blank" rel="noopener">${k} ↗</a>`).join(' · ') || ''}
+    </p></div>`;
+
+  const changes = () => ({
+    headline: $('#e-h').value, collection: $('#e-c').value,
+    caption: $('#e-cap').value || null,
+    action: $('#e-au').value ? { label: $('#e-al').value || 'Watch', url: $('#e-au').value } : null,
+    sponsor: $('#e-sp').value ? { name: $('#e-sp').value, label: 'Presented by' } : null,
+    sortIndex: Number($('#e-si').value) || 0,
+  });
+  const patch = async (extra, msg) => {
+    await api('/api/items', { method: 'PATCH',
+      body: JSON.stringify({ id: i.id, changes: { ...changes(), ...extra } }) });
+    await refresh(); toast(msg);
+  };
+  $('#e-save').onclick = () => patch({}, 'Saved');
+  $('#e-pub')?.addEventListener('click', () => patch({ status: 'published' }, 'Published'));
+  $('#e-unpub')?.addEventListener('click', () => patch({ status: 'inbox' }, 'Moved to inbox'));
+  $('#e-arch').onclick = () => patch({ status: 'archived' }, 'Archived');
+}
+
+/* ---------- boot ---------- */
+async function refresh() {
+  STATE = await api('/api/items');
+  for (const s of ['inbox', 'published', 'archived'])
+    $(`#c-${s}`).textContent = STATE.counts[s] ? ` ${STATE.counts[s]}` : '';
+  $('#store-state').textContent = STATE.updatedAt
+    ? `saved ${new Date(STATE.updatedAt).toLocaleTimeString()}` : 'empty';
+  renderList(); renderEditor();
+}
+document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => {
+  status = b.dataset.status;
+  document.querySelectorAll('.tabs button').forEach((x) =>
+    x.setAttribute('aria-selected', x === b));
+  renderList();
+}));
+await initAdapters();
+await refresh();
+</script></body></html>
