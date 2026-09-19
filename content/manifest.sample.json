@@ -1,7 +1,12 @@
 {
-  "$comment": "Editorial fills this in. Paste a Cloudinary delivery URL or a bare public ID into `media` — both work. Everything else is optional; the feed degrades gracefully.",
-  "cloud": "REPLACE_WITH_CLOUD_NAME",
-  "namedTransformations": false,
+  "$comment": "Editorial fills this in. Paste a Cloudinary delivery URL or a bare public ID into `media` — both work, and the origin is inferred from a pasted URL. Everything except `media` and `collection` is optional; the feed degrades rather than breaks.",
+
+  "baseUrl": "https://static.clubs.nfl.com",
+  "$baseUrl_note": "The NFL runs a private-CDN Cloudinary, so there is no cloud name in the path. For a shared res.cloudinary.com account use \"cloud\": \"<name>\" instead.",
+
+  "namedTransformations": true,
+  "$namedTransformations_note": "true when the account has Strict Transformations enabled and tx_feed_* have been registered in the console. Run tools/cloudinary-probe.html to find out which.",
+
   "collections": [
     { "key": "gameday",   "name": "Gameday" },
     { "key": "players",   "name": "Players" },
@@ -9,24 +14,25 @@
     { "key": "community", "name": "Community & Foundation" },
     { "key": "flag",      "name": "Girls Flag & Youth Football" }
   ],
+
   "clips": [
     {
-      "id": "2026-w03-gameday-walkout",
-      "media": "https://res.cloudinary.com/CLOUD/video/upload/v1/texans/feed/w03-walkout.mp4",
-      "collection": "gameday",
-      "headline": "Walkout",
-      "caption": "Tunnel to turf, week three.",
-      "publishedAt": "2026-09-21T17:05:00Z",
-      "action": { "label": "Get tickets", "url": "https://www.houstontexans.com/tickets" },
-      "sources": {
-        "youtube": "m6gOqjDBXxo",
-        "instagram": null,
-        "tiktok": null
+      "id": "2026-coordinators-presser",
+      "media": "texans/REPLACE_WITH_VIDEO_PUBLIC_ID",
+      "mediaType": "video",
+      "collection": "series",
+      "headline": "Coordinators",
+      "caption": "Full Q&A with the coordinators.",
+      "publishedAt": "2026-08-22T18:04:00Z",
+      "action": {
+        "label": "Watch the full Q&A",
+        "url": "https://www.houstontexans.com/video/houston-texans-coordinators-address-the-media-full-q-a"
       },
+      "sources": { "youtube": null, "instagram": null, "tiktok": null },
       "focalPoint": null,
       "sponsor": null,
       "audioSource": "owned",
-      "captions": true
+      "captions": false
     }
   ]
 }

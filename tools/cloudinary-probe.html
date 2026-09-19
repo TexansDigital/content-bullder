@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cloudinary capability probe — Texans feed</title>
+<style>
+:root{
+  --steel:#021118;--steel2:#0a1d27;--steel3:#13303d;--red:#eb0028;--blue:#0080c6;
+  --white:#fff;--body:rgba(255,255,255,.82);--mute:rgba(255,255,255,.55);
+  --line:rgba(255,255,255,.14);--ok:#1fae5a;--warn:#f5a623;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:"Helvetica Neue",Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--steel);color:var(--white);font:15px/1.55 var(--sans);
+  padding:28px 20px 60px}
+.wrap{max-width:1000px;margin:0 auto}
+h1{font-size:23px;text-transform:uppercase;letter-spacing:-.01em;margin:0 0 6px;font-weight:900}
+h1 span{color:var(--red)}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.07em;margin:32px 0 10px;
+  padding-bottom:8px;border-bottom:1px solid var(--line);font-weight:900}
+p.lede{color:var(--body);max-width:68ch;margin:0 0 22px}
+label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--mute);margin:0 0 5px;font-weight:700}
+input{width:100%;background:var(--steel2);border:1px solid var(--line);color:var(--white);
+  font:13px/1.4 var(--mono);padding:10px 12px;border-radius:0}
+input:focus{outline:none;border-color:var(--red)}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));
+  gap:14px;margin-bottom:16px}
+button{background:var(--red);color:#fff;border:0;font:900 12px/1 var(--sans);
+  text-transform:uppercase;letter-spacing:.07em;padding:13px 20px;cursor:pointer}
+button:hover{background:#ff123a}button:active{transform:translateY(1px)}
+button:disabled{opacity:.45;cursor:default}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--white)}
+button.ghost:hover{border-color:var(--red);background:transparent}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:6px}
+th,td{text-align:left;padding:9px 10px 9px 0;border-bottom:1px solid var(--line);
+  vertical-align:top}
+th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--mute);font-weight:900}
+td.u{font-family:var(--mono);font-size:11px;color:var(--mute);word-break:break-all;max-width:420px}
+.tag{display:inline-block;font:900 10px/1 var(--sans);text-transform:uppercase;
+  letter-spacing:.07em;padding:5px 8px;white-space:nowrap}
+.t-ok{background:var(--ok);color:#00170a}.t-no{background:var(--red);color:#fff}
+.t-run{background:var(--steel3);color:var(--mute)}
+#verdict{margin-top:26px;border-left:3px solid var(--red);background:rgba(255,255,255,.05);
+  padding:16px 18px}
+#verdict h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--red);font-weight:900}
+#verdict ul{margin:0;padding-left:18px;color:var(--body)}
+#verdict li{margin-bottom:7px}
+#verdict li b{color:var(--white)}
+textarea{width:100%;height:190px;background:var(--steel2);border:1px solid var(--line);
+  color:var(--body);font:11.5px/1.6 var(--mono);padding:12px;margin-top:10px;resize:vertical}
+.tblwrap{overflow-x:auto}
+small{color:var(--mute)}
+</style></head><body><div class="wrap">
+
+<h1>Cloudinary probe <span>//</span> Texans feed</h1>
+<p class="lede">Opens straight from your machine, so it hits <code>static.clubs.nfl.com</code>
+directly. Answers three things I can&rsquo;t test from my side: whether raw transformation URLs
+are blocked by Strict Transformations, whether the named transformations have been registered,
+and <strong>whether video assets exist on that host at all</strong>. Nothing is uploaded and
+no credentials are used &mdash; these are plain GETs for public URLs.</p>
+
+<div class="row">
+  <div>
+    <label for="base">Delivery origin</label>
+    <input id="base" value="https://static.clubs.nfl.com">
+  </div>
+  <div>
+    <label for="img">A public ID for an <b>image</b></label>
+    <input id="img" value="texans/bodufcw8x4wotk4q7ses">
+  </div>
+  <div>
+    <label for="vid">A public ID for a <b>video</b> <small>(leave as-is to test whether the image id resolves under /video/)</small></label>
+    <input id="vid" value="texans/bodufcw8x4wotk4q7ses">
+  </div>
+</div>
+
+<div class="btns">
+  <button id="run">Run probe</button>
+  <button id="copy" class="ghost" disabled>Copy report</button>
+</div>
+
+<h2>Results</h2>
+<div class="tblwrap">
+<table><thead><tr><th style="width:96px">Result</th><th style="width:210px">Test</th><th>URL</th></tr></thead>
+<tbody id="rows"></tbody></table>
+</div>
+
+<div id="verdict" hidden><h3>What this means</h3><ul id="vlist"></ul></div>
+<textarea id="report" hidden readonly></textarea>
+
+<script>
+const RAW={
+  player:"f_auto,q_auto,c_fill,g_auto,ar_9:16",
+  poster:"so_1.5,f_auto,q_auto,c_fill,g_auto,ar_9:16,w_720",
+  tile:"so_1.5,f_auto,q_auto,c_fill,g_auto,ar_4:5,w_400"
+};
+const TIMEOUT=12000;
+
+function loadImage(url){
+  return new Promise(res=>{
+    const i=new Image(); let done=false;
+    const fin=v=>{if(!done){done=true;res(v);}};
+    i.onload=()=>fin(true); i.onerror=()=>fin(false);
+    setTimeout(()=>fin(false),TIMEOUT);
+    i.src=url;
+  });
+}
+function probeVideo(url){
+  return new Promise(res=>{
+    const v=document.createElement("video"); let done=false;
+    const fin=x=>{if(!done){done=true;v.removeAttribute("src");v.load?.();res(x);}};
+    v.preload="metadata"; v.muted=true;
+    v.addEventListener("loadedmetadata",()=>fin(true));
+    v.addEventListener("error",()=>fin(false));
+    setTimeout(()=>fin(false),TIMEOUT);
+    v.src=url;
+  });
+}
+
+function tests(base,img,vid){
+  base=base.replace(/\/+$/,"");
+  const I=(t,e="jpg")=>`${base}/image/upload/${t?t+"/":""}${img}.${e}`;
+  const V=(t,e)=>`${base}/video/upload/${t?t+"/":""}${vid}.${e}`;
+  return [
+    {k:"img-orig",  n:"Image, no transform",       url:I(""),               kind:"img"},
+    {k:"img-w200",  n:"Image, raw w_200",          url:I("w_200"),          kind:"img"},
+    {k:"img-tile",  n:"Image, raw 4:5 + g_auto",   url:I(RAW.tile),         kind:"img"},
+    {k:"img-named", n:"Image, named t_tx_feed_tile",url:I("t_tx_feed_tile"), kind:"img"},
+    {k:"vid-orig",  n:"Video, no transform (mp4)", url:V("","mp4"),         kind:"vid"},
+    {k:"vid-9x16",  n:"Video, raw 9:16 + g_auto",  url:V(RAW.player,"mp4"), kind:"vid"},
+    {k:"vid-post",  n:"Video poster frame (jpg)",  url:V(RAW.poster,"jpg"), kind:"img"},
+    {k:"vid-named", n:"Video, named t_tx_feed_player",url:V("t_tx_feed_player","mp4"),kind:"vid"}
+  ];
+}
+
+const rowsEl=document.getElementById("rows");
+document.getElementById("run").onclick=async()=>{
+  const base=document.getElementById("base").value.trim();
+  const img=document.getElementById("img").value.trim();
+  const vid=document.getElementById("vid").value.trim();
+  const list=tests(base,img,vid);
+  rowsEl.innerHTML="";
+  const cells={};
+  list.forEach(t=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td><span class="tag t-run">testing</span></td><td>${t.n}</td>
+                  <td class="u"><a href="${t.url}" target="_blank" rel="noopener"
+                  style="color:inherit">${t.url}</a></td>`;
+    rowsEl.appendChild(tr); cells[t.k]=tr.querySelector(".tag");
+  });
+  document.getElementById("run").disabled=true;
+  const out={};
+  await Promise.all(list.map(async t=>{
+    const ok=t.kind==="img"?await loadImage(t.url):await probeVideo(t.url);
+    out[t.k]=ok;
+    cells[t.k].className="tag "+(ok?"t-ok":"t-no");
+    cells[t.k].textContent=ok?"works":"blocked";
+  }));
+  document.getElementById("run").disabled=false;
+  verdict(out,list,base);
+};
+
+function verdict(o,list,base){
+  const v=[];
+  if(!o["img-orig"]) v.push("<b>The image itself didn&rsquo;t load.</b> Check the origin and public ID before reading anything else below.");
+  else{
+    if(o["img-w200"]&&o["img-tile"])
+      v.push("<b>Raw transformations work.</b> Strict Transformations is off, or this domain is allowlisted. We can build URLs freely &mdash; no console work needed.");
+    else if(!o["img-w200"]&&!o["img-tile"])
+      v.push("<b>Raw transformations are blocked.</b> Strict Transformations is on. The four named transformations must be registered in the console before the feed can derive anything.");
+    else if(o["img-w200"]&&!o["img-tile"])
+      v.push("<b>Simple transforms work but <code>g_auto</code> doesn&rsquo;t.</b> Likely the AI crop add-on isn&rsquo;t on this plan. We fall back to a per-clip focal point &mdash; slightly more editorial effort, same output.");
+    v.push(o["img-named"]
+      ? "<b>Named transformations are already registered.</b> Set <code>namedTransformations: true</code> in the manifest and we&rsquo;re done."
+      : "Named transformations are <b>not</b> registered yet. That&rsquo;s expected if nobody has added them &mdash; it&rsquo;s a one-time console action.");
+  }
+  if(o["vid-orig"]||o["vid-9x16"]||o["vid-post"])
+    v.push("<b>Video assets live on this host.</b> The whole one-master-two-aspects design works as written.");
+  else
+    v.push("<b>No video found on this host.</b> Most likely this Cloudinary is the <i>image</i> DAM and club video lives in the FORGE video platform instead. That&rsquo;s the single most important thing to confirm &mdash; it decides where masters go.");
+  document.getElementById("vlist").innerHTML=v.map(x=>`<li>${x}</li>`).join("");
+  document.getElementById("verdict").hidden=false;
+
+  const rep=["Cloudinary probe — "+new Date().toISOString(),"origin: "+base,""]
+    .concat(list.map(t=>(o[t.k]?"WORKS   ":"BLOCKED ")+t.n+"\n          "+t.url))
+    .concat(["","VERDICT:"], v.map(x=>"- "+x.replace(/<[^>]+>/g,"")));
+  const ta=document.getElementById("report");
+  ta.value=rep.join("\n"); ta.hidden=false;
+  const c=document.getElementById("copy"); c.disabled=false;
+  c.onclick=()=>{ta.select();document.execCommand("copy");c.textContent="Copied";
+    setTimeout(()=>c.textContent="Copy report",1600);};
+}
+</script>
+</div></body></html>

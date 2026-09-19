@@ -397,23 +397,26 @@ const RAW_T={
 const NAMED_T={player:"t_tx_feed_player",poster:"t_tx_feed_poster",tile:"t_tx_feed_tile"};
 function cldPublicId(v){
   if(!v)return null; const s=String(v).trim();
-  if(!s.includes("res.cloudinary.com"))return s.replace(/^\/+|\.[a-z0-9]+$/gi,"");
-  const a=s.split("/upload/")[1]; if(!a)return null;
+  if(!/^https?:\/\//i.test(s))return s.replace(/^\/+/,"").replace(/\.[a-z0-9]+$/i,"");
+  const a=s.split(/\/(?:image|video|raw)\/upload\//)[1]; if(!a)return null;
   return a.split("/").filter(x=>!/^(v\d+|[a-z]{1,3}_[^/]*|t_[^/]*|sp_auto)$/i.test(x))
           .join("/").replace(/\.[a-z0-9]+$/i,"");
 }
 function cldUrl(kind,id,ext){
   const t=(CDN.named?NAMED_T:RAW_T)[kind];
   const sp=kind==="player"&&ext==="m3u8"?"/sp_auto":"";
-  return `https://res.cloudinary.com/${CDN.cloud}/video/upload/${t}${sp}/${id}.${ext}`;
+  const type=CDN.mediaType==="image"?"image":"video";
+  return `${CDN.origin}/${type}/upload/${t}${sp}/${id}.${ext}`;
 }
 function media(c){
   if(!REAL||!c.pid)return '<canvas></canvas>';
+  CDN.mediaType=c.mediaType;
   return `<video class="vid" playsinline muted loop preload="none"
     poster="${cldUrl("poster",c.pid,"jpg")}" src="${cldUrl("player",c.pid,"mp4")}"></video>`;
 }
 function tileArt(c){
   if(!REAL||!c.pid)return '<canvas></canvas>';
+  CDN.mediaType=c.mediaType;
   return `<img src="${cldUrl("tile",c.pid,"jpg")}" alt="" loading="lazy">`;
 }
 async function loadManifest(){
@@ -421,14 +424,17 @@ async function loadManifest(){
     try{
       const r=await fetch(u); if(!r.ok)continue;
       const m=await r.json();
-      if(!m.cloud||/^REPLACE/.test(m.cloud))continue;
-      CDN={cloud:m.cloud,named:!!m.namedTransformations};
+      const origin=m.baseUrl?String(m.baseUrl).replace(/\/+$/,"")
+        :(m.cloud&&!/^REPLACE/.test(m.cloud)?`https://res.cloudinary.com/${m.cloud}`:null);
+      if(!origin)continue;
+      CDN={origin,named:!!m.namedTransformations};
       if(Array.isArray(m.collections)&&m.collections.length)
         COLLS.splice(1,COLLS.length-1,...m.collections.map(x=>({k:x.key,n:x.name})));
       if(Array.isArray(m.clips)&&m.clips.length){
         CLIPS.length=0;
         m.clips.forEach((x,i)=>CLIPS.push({
-          id:x.id||`clip-${i}`, pid:cldPublicId(x.media), coll:x.collection||"gameday",
+          id:x.id||`clip-${i}`, pid:/REPLACE/.test(String(x.media||""))?null:cldPublicId(x.media),
+          mediaType:x.mediaType||"video", coll:x.collection||"gameday",
           headline:x.headline, caption:x.caption, action:x.action,
           dur:x.duration||"", h:180+((i*47)%190), seed:(i+1)*17, spon:!!x.sponsor
         }));

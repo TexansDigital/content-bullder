@@ -22,7 +22,11 @@ Start here: [`docs/research/00-executive-summary.md`](docs/research/00-executive
 | [05 — What's still needed](docs/research/05-open-questions.md) | Outstanding asks |
 | [06 — Decisions](docs/research/06-decisions.md) | Stakeholder answers, dated — **overrides 01–05** |
 | [07 — No-credentials path](docs/research/07-no-credentials-path.md) | What we ship if Cloudinary / Meta / TikTok access never lands |
-| [08 — Cloudinary, URL only](docs/research/08-cloudinary-url-only.md) | **Current plan** — delivery URLs need no credentials and recover the full design |
+| [08 — Cloudinary, URL only](docs/research/08-cloudinary-url-only.md) | Delivery URLs need no credentials and recover the full design |
+| [09 — NFL Cloudinary findings](docs/research/09-nfl-cloudinary-findings.md) | **Read this** — it's a private CDN, and it may be images-only |
+
+Run [`tools/cloudinary-probe.html`](tools/cloudinary-probe.html) locally to settle the open
+Cloudinary questions in one pass.
 
 ## Research method / confidence
 
