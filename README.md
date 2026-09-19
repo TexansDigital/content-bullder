@@ -4,7 +4,11 @@ Working repo for a Texans-owned vertical video + Stories experience that can be
 embedded in the mobile app and on web, fed by our own social output
 (Instagram / TikTok / YouTube Shorts) and our own master video files.
 
-**Status: research phase. No implementation yet.**
+**Status: research complete, awaiting Phase 0 inputs. No implementation yet.**
+
+Spine of the design: **Cloudinary** as master store + transcode + AI 9:16/4:5 reframe +
+captions + CDN; **Asana** for editorial; a small service we build for ingestion, ranking and
+the feed API; the app rendering layer rented from Storyteller via **FanReach**.
 
 Start here: [`docs/research/00-executive-summary.md`](docs/research/00-executive-summary.md)
 
@@ -13,9 +17,10 @@ Start here: [`docs/research/00-executive-summary.md`](docs/research/00-executive
 | [00 — Executive summary](docs/research/00-executive-summary.md) | Findings, recommendation, decisions needed |
 | [01 — Storyteller teardown](docs/research/01-storyteller-teardown.md) | What Storyteller actually is, verified from their shipped SDK |
 | [02 — Social ingestion constraints](docs/research/02-social-ingestion-constraints.md) | What IG / TikTok / YouTube will and won't let us do |
-| [03 — Distribution surfaces](docs/research/03-distribution-surfaces.md) | App (YinzCam), web (Deltatre FORGE), home-screen widgets |
-| [04 — Build vs buy + architecture](docs/research/04-build-vs-buy-and-architecture.md) | Options, costs, proposed system design |
-| [05 — Open questions](docs/research/05-open-questions.md) | What we need from stakeholders before building |
+| [03 — Distribution surfaces](docs/research/03-distribution-surfaces.md) | App (FanReach), web (Deltatre FORGE), home-screen widgets |
+| [04 — Architecture](docs/research/04-build-vs-buy-and-architecture.md) | Cloudinary-centred system design and phasing |
+| [05 — What's still needed](docs/research/05-open-questions.md) | Outstanding asks |
+| [06 — Decisions](docs/research/06-decisions.md) | Stakeholder answers, dated — **overrides 01–05** |
 
 ## Research method / confidence
 

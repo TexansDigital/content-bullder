@@ -1,75 +1,61 @@
 # 03 — Where this can actually be embedded
 
-The brief says "embedded as an app widget or on web." Both of those are constrained by
-platforms we do not control. Worth settling before any code gets written.
+> Revised 2026-09-19 per [doc 06, D1 & D4](06-decisions.md).
 
-## 1. The Texans mobile app — we don't own the binary
+## 1. The Texans mobile app — FanReach
 
-The app is `com.yinzcam.nfl.texans`, built and maintained by **YinzCam**, who build for
-~200 sports properties including most NFL clubs. Anything that ships inside the app ships
-through YinzCam's release process, on YinzCam's timeline.
+The app runs on **[FanReach](https://www.fanreach.io/)**, a sports app platform serving NFL,
+NHL, NBA, CHL and venue clients. **FanReach already has a Storyteller SDK**, which removes
+the largest integration unknown.
 
-Three ways in, roughly in order of effort:
+Three ways in:
 
-| Path | What it is | Effort |
-| --- | --- | --- |
-| **A. Native SDK module** | YinzCam drops a Storyteller (or our) native view into a screen / rail | Lowest — **YinzCam already maintains the official Storyteller Android sample integration under their own GitHub org** |
-| **B. Webview module** | Our web feed rendered in an in-app webview, with a JS bridge for deep links and auth | Medium. Works, but autoplay/gesture handling in a webview is noticeably worse than native |
-| **C. Data feed only** | We publish a JSON feed; YinzCam renders it with their own native components | Lowest for us, least control over the experience |
+| Path | What it is | Effort | Experience |
+| --- | --- | --- | --- |
+| **A. Native Storyteller module** | FanReach drops their existing Storyteller integration into a screen/rail; we feed it content | Low — the integration exists | Best. Native gestures, native video, no webview tax |
+| **B. Webview module** | Our web feed in an in-app webview with a JS bridge for deep links + fan identity | Low-medium, and **we control the release cadence** | Good, not native. Autoplay and swipe-gesture handling in a webview are the weak points |
+| **C. Data feed only** | We publish JSON; FanReach renders it natively themselves | Lowest for us | Least control |
 
-**Path A is the strong default**, precisely because the Storyteller/YinzCam integration
-already exists. It also means a "build our own" decision costs us that head start —
-factor that into doc 04.
+**Recommendation: build B, keep A as the upgrade.** Reason: path B is one codebase that also
+serves the website, and it ships on *our* schedule rather than FanReach's release train. If
+the webview feel isn't good enough on real devices, we swap to A — and because we'd already
+be publishing into Storyteller (doc 04), path A becomes a configuration change on FanReach's
+side, not a rebuild.
 
-Also worth knowing: the NFL has been moving toward a **single league-operated app platform
-for all 32 clubs** [reported]. If that lands during this project's life, it resets the
-integration path. Ask about timing before committing to a deep native integration.
+The one thing that makes B genuinely good rather than merely acceptable is the **JS bridge**:
+we need FanReach to expose (a) deep links out of the feed into other app screens, (b) the fan
+identity token so likes/follows persist, (c) the native share sheet, and (d) safe-area insets
+so the 9:16 player goes truly full-bleed. Ask FanReach for these four things up front — a
+webview without them feels like a bolted-on browser tab, which is exactly the failure mode.
 
-## 2. houstontexans.com — Deltatre FORGE
+## 2. houstontexans.com
 
-Club sites and NFL.com run on **Deltatre's FORGE** platform, multi-tenant across all 32
-clubs [reported — confirm with our web team]. That means:
+Club sites and NFL.com run on Deltatre's FORGE multi-tenant platform [reported — **confirm
+with our web team**]. That likely means no arbitrary `<script>` tags; we'd need a supported
+embed module, an iframe, or league approval for a custom component.
 
-- We probably **cannot** just paste a `<script>` tag into a page.
-- We need either a FORGE-supported embed/widget module, an iframe, or a league-approved
-  custom component.
-- There may be a league review gate for new third-party JS on a club site.
+This is why the core deliverable should be a **self-contained, iframe-embeddable feed**. That
+one artifact works on FORGE, inside a FanReach webview, on a standalone microsite, and behind
+a push notification or email link. If the FORGE answer turns out to be permissive, great —
+we upgrade to a proper web component later.
 
-**Action: confirm with whoever owns houstontexans.com what our actual embed options are.**
-This single answer determines whether the web build is "ship a web component" (easy) or
-"negotiate a platform module" (slow).
+## 3. "App widget" — clarifying
 
-The good news: an **iframe-embeddable, self-contained feed** is the lowest-common-denominator
-build that works on FORGE, in a YinzCam webview, on a microsite, and in an email-linked
-landing page. If the answer is ambiguous, build the iframe-able version first.
+If this meant *a module inside the Texans app*, that's §1 and it's straightforward.
 
-## 3. "App widget" — what do we mean?
+If it meant *an iOS/Android home-screen widget*: **video is not possible.** iOS WidgetKit
+renders a static SwiftUI timeline under strict refresh and memory budgets — no video surface.
+Android App Widgets (RemoteViews) are similarly limited. The ceiling is a poster frame of the
+latest clip plus a deep link that opens the full feed in the app. That's a genuinely good
+retention surface, just not "stories on your home screen." Scope it as phase 3.
 
-Two very different things, and one of them is a dead end:
+## 4. Surface plan
 
-### If it means "a module/rail inside the Texans app" → fine
-That's section 1 above. This is what I'm assuming.
-
-### If it means "an iOS/Android home-screen widget" → **video is not possible**
-iOS **WidgetKit cannot play video.** Widgets render a static SwiftUI timeline under strict
-refresh budgets and memory limits; video and real animation are explicitly out. Android App
-Widgets are similarly constrained (RemoteViews — no video surface).
-
-The most we could do on a home screen is: a poster frame of the latest clip + title, with a
-deep link that opens the full feed in the app (`openClipByExternalId` style). That's a
-genuinely nice retention feature, it's just **not** "stories on your home screen." Android
-also allows a short looping GIF-ish treatment; iOS effectively doesn't.
-
-If home-screen widgets are actually wanted, scope them as a *phase 2 deep-link surface*, not
-as the player.
-
-## 4. Recommended surface plan
-
-1. **Core deliverable:** a self-contained, iframe-embeddable, themeable 9:16 feed + 4:5 tile
-   rail. One codebase, works everywhere.
-2. **Web:** embed via whatever FORGE allows; iframe if nothing better.
-3. **App:** native module via YinzCam (Path A) if we go the Storyteller route; webview of
-   #1 (Path B) if we build our own and need to move before YinzCam's next release train.
-4. **Home screen:** poster + deep link only, phase 2.
-5. **Bonus surface:** the same feed as a standalone shareable URL per clip — gives us
-   SEO-indexable pages and something to put in a push notification or an email.
+1. **Core:** one self-contained, themeable, iframe-embeddable feed — 9:16 full-screen player
+   + 4:5 tile rail. Built on the Houston Texans design system.
+2. **Web:** embed on houstontexans.com via whatever FORGE allows; iframe as the floor.
+3. **App:** FanReach webview of #1, with the four bridge capabilities above. Upgrade to the
+   native Storyteller module if/when the experience demands it.
+4. **Share:** a standalone public URL per clip — gives us SEO-indexable pages, something to
+   put in a push, and a real share target.
+5. **Home screen:** poster + deep link, phase 3.

@@ -1,71 +1,85 @@
 # 00 — Executive summary
 
-## The headline
+> Updated 2026-09-19 with stakeholder answers. See [doc 06 — Decisions](06-decisions.md).
 
-**The brief as written — "pull in our Instagram / TikTok / YouTube Shorts and show them in
-our own 9:16 feed" — cannot be built.** TikTok and YouTube never hand over the video file
-and contractually require their own embed players. Instagram hands over an expiring signed
-URL under caching restrictions. And even where we can get the pixels, **the audio licensing
-usually doesn't travel** — a TikTok trending sound is licensed for TikTok, not for
-houstontexans.com.
+## Where this landed
 
-**But the product we want is absolutely buildable — by inverting the pipeline.** We own this
-content. Use the social APIs for *discovery, metadata and performance signal*; use our own
-**master 9:16 files** from the DAM as the media. Same end result for the fan, on solid legal
-and technical ground, and better — because we can rank the in-app feed by what actually
-performed on social.
+Two of the three original blockers are gone, and the remaining one turned out to be the
+interesting one.
 
-## What Storyteller is, and whether to buy it
+**Rights: cleared.** We can run platform audio on our owned properties (D2). The audio-rights
+gate is descoped. NFL *game-footage* rights remain a separate, still-open league question.
 
-Verified by tearing down their shipped npm SDK rather than reading their marketing:
+**App integration: short path.** The Texans app runs on **FanReach**, not YinzCam as first
+assumed — and **FanReach already has a Storyteller SDK** (D1). We can also embed a webpage.
+Both doors are open.
 
-Six drop-in components (Stories row/grid, Clips row/grid, full-screen Clips player, embedded
-Clips player), a content model with polls and trivia-quiz page types, followable categories
-and collections, scheduling, deep links, captions, a deep light/dark theming token tree,
-Google IMA / VAST ad insertion, ~45 tracked analytics events, and auto-generated Google Web
-Stories for SEO. Web Stories are rendered on Google's `amp-story-player`; Clips play over
-HLS. Backend is `api.usestoryteller.com`, keyed by `x-storyteller-api-key`.
+**The real problem is content supply.** There is no master file store (D3). Clips are cut and
+uploaded straight into each platform's native CMS, and two of those three platforms — TikTok
+and YouTube — will never return the video file through an API. You cannot build a permanent
+branded feed on content you don't retain.
 
-**Two findings that matter most:**
+**So the first thing this ships isn't a player. It's the master store that should already
+exist.** And we already pay for the right tool.
 
-1. **YinzCam — who builds our app — already maintains the official Storyteller Android
-   sample integration.** The app-side risk is largely gone.
-2. **There's an Integrations API for pushing media *into* Storyteller.** That's the seam:
-   we can own ingestion and let them own the experience, without lock-in.
+## Cloudinary is the unlock
 
-**And one caution:** their "import from your socials" marketing claim is the least verifiable
-part of the pitch and is exactly the thing we're asking for. Make them demo it live against a
-TikTok account before believing it.
+NFL Cloudinary does, in one system we already have, everything this project needs below the
+player:
 
-## Recommendation
+- the **missing master store** (DAM, folders, tags, metadata, resumable large-file upload)
+- **adaptive-bitrate HLS**, generated automatically (`sp_auto`)
+- **AI content-aware reframing** — `c_fill,g_auto,ar_9:16` for the player and
+  `c_fill,g_auto,ar_4:5` for the tile, from **one master**, subject-tracked
+- **auto-captions** from AI transcription
+- **poster frames** and global CDN delivery
 
-**Build the ingestion layer. Rent the experience. Keep the seam swappable.**
+That reframing capability is the direct answer to "4x5 or 9x16": editorial never chooses and
+never exports twice. One master in; aspect ratio becomes a URL parameter at render time.
 
-We build social discovery, master-file matching, the rights gate, the editorial worklist and
-performance-informed ordering — the parts specific to us that nobody sells well. We push the
-cleared result into Storyteller via their Integrations API (or, later, our own player). Every
-item carries *our* `externalId`, so the rendering layer stays replaceable.
+Cloudinary removes Mux / Cloudflare Stream / Bunny from the design entirely, and most of the
+projected infrastructure cost with them.
 
-Start on **Phase 0** — ingestion, normalization, rights gate, editorial worklist — which
-delivers value immediately and survives whatever we decide on buy-vs-build.
+## The highest-leverage change is a workflow change
 
-## The three things I most need from you
+**Upload the master to Cloudinary before it goes to the platforms.** One extra step for
+whoever cuts the clip; it permanently solves the supply problem, and the feed, the archive,
+reframing, captions and all future reuse fall out of it for free. Everything else in this
+plan is compensating for not having done that.
 
-1. **Rights answers** (music licensing + NFL game footage in a persistent club-owned feed).
-   These decide what fraction of our social output is even eligible. Everything else is
-   detail by comparison.
-2. **Where the master 9:16 files live** (DAM/MAM). If it's Brightcove, there's an
-   off-the-shelf Storyteller collector and the path gets much shorter.
-3. **Which surfaces we're actually shipping to** — and specifically, whether "app widget"
-   means a module inside the Texans app or a home-screen widget. (Home-screen widgets
-   cannot play video on iOS. Poster frame + deep link is the ceiling there.)
+For what's already posted: Instagram media can be pulled via Graph API and pushed into
+Cloudinary automatically. TikTok and YouTube need a **one-time owner export** from their
+native CMSes — the APIs won't do it, but we own the accounts, and it only has to happen once.
 
-Full list in [doc 05](05-open-questions.md).
+## The plan
+
+| Phase | What ships |
+| --- | --- |
+| **0 — Supply** | Cloudinary schema, the master-first workflow change, Instagram backfill worker, TikTok/YouTube one-time export |
+| **1 — Harvest + feed** | Metadata workers (IG/TikTok/YT), normalized content model, performance-based ranking, JSON feed API, Asana editorial cards |
+| **2 — Experience** | The 9:16 player + 4:5 rail, iframe-embeddable, on the Texans design system → ships to houstontexans.com *and* the FanReach webview from one codebase |
+| **3 — Depth** | Storyteller push → FanReach native module; polls, quizzes, followable collections; sponsor attribution + VAST; SEO web-story pages; home-screen poster widget |
+
+Architecture detail in [doc 04](04-build-vs-buy-and-architecture.md).
+
+## What's needed next
+
+**To start Phase 0:** Cloudinary credentials (and confirmation that AI video crop, `sp_auto`
+and auto-captions are enabled on the plan), social API access for the three platforms, and a
+decision on who owns the master-first workflow change.
+
+**To make the UX genuinely good:** 15–25 *real* clips to design against, the content taxonomy,
+whether fan SSO exists, and a FanReach contact who can confirm four webview bridge
+capabilities. Full list in [doc 05](05-open-questions.md).
+
+Brand assets are already covered — the Houston Texans design system (tokens, licensed type,
+logos, motion, components) is available to this project.
 
 ## Reading order
 
-1. [01 — Storyteller teardown](01-storyteller-teardown.md) — what we'd be buying
-2. [02 — Social ingestion constraints](02-social-ingestion-constraints.md) — **the doc that changes the project**
-3. [03 — Distribution surfaces](03-distribution-surfaces.md) — app, web, widgets
-4. [04 — Build vs buy + architecture](04-build-vs-buy-and-architecture.md) — the plan
-5. [05 — Open questions](05-open-questions.md) — what I need
+1. [06 — Decisions](06-decisions.md) — what's been settled
+2. [04 — Architecture](04-build-vs-buy-and-architecture.md) — the plan
+3. [02 — Social ingestion constraints](02-social-ingestion-constraints.md) — why the pipeline is inverted
+4. [03 — Distribution surfaces](03-distribution-surfaces.md) — FanReach, web, widgets
+5. [01 — Storyteller teardown](01-storyteller-teardown.md) — what we'd be renting
+6. [05 — What's still needed](05-open-questions.md)

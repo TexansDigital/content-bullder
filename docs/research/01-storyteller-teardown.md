@@ -122,6 +122,9 @@ Storyteller markets "import your content directly from Social Media, so you can 
 best of your social to your app and website" [reported]. Nothing in the shipped SDK exposes
 how that works — it's a CMS-side feature, so it's not inspectable from the client.
 
+Note also that **our app vendor FanReach already has a Storyteller SDK** (doc 06 D1), so
+some of this may already be available to us — check there before buying anything.
+
 **Treat this as the single most important thing to interrogate on a sales call**, because
 [doc 02](02-social-ingestion-constraints.md) shows that a genuinely automatic
 TikTok/YouTube video import is not legally or technically possible. Whatever their importer

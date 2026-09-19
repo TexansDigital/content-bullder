@@ -1,120 +1,151 @@
-# 04 — Build vs buy, and the proposed architecture
+# 04 — Architecture
 
-## 1. The three options
+> Rewritten 2026-09-19 per [doc 06, D2 / D3 / D4](06-decisions.md). Cloudinary replaces the
+> Mux / Cloudflare Stream / Bunny comparison entirely.
 
-### Option A — Buy Storyteller, use it end to end
-Their CMS, their players, their ads, their analytics. We upload content into their CMS.
+## 1. The real problem to solve
 
-**For:** live in weeks not quarters. Proven at NFL clubs. YinzCam integration already
-exists. Gets us Stories *and* Clips, polls, quizzes, captions, VAST ads, SEO web stories,
-deep links, light/dark theming — all of "Storyteller's other features" — for free.
+The original blocker was rights. That's now cleared (D2). What's left is a **content supply
+problem**, and it's the thing that will actually determine whether this product is good:
 
-**Against:** recurring enterprise cost. Our content lives in their CMS. Their social importer
-is the weakest, least verifiable part of the pitch (see doc 01 §6) and social ingestion is
-the actual thing we asked for. Editorial ends up double-handling content.
+> **There is no master file store.** Video is cut and uploaded straight into each platform's
+> native CMS. Once it's posted, the only copies live inside TikTok, Instagram and YouTube —
+> and two of those three will never give the file back.
 
-### Option B — Build everything ourselves
-Our ingestion, our CMS, our player, our analytics.
+You cannot build a persistent, permanent, branded vertical feed on top of content you don't
+retain. So the first thing this project ships isn't a player — it's **the master store that
+should already exist.**
 
-**For:** total control, no per-MAU cost, content stays in our stack, we can do exactly the
-social-driven ordering and rights gating we want.
+Good news: we already pay for the right tool.
 
-**Against:** the *player* is where the effort goes and it's the least differentiated part.
-A good vertical feed is genuinely hard — directional preloading (5 ahead, 1 behind), HLS
-ABR tuning, MP4 poster pre-warm so first-frame isn't a black box, IntersectionObserver
-play/pause, scroll-snap, iOS autoplay/muting rules, captions, share sheets. Then polls,
-quizzes, ads, analytics, and a CMS on top. That's a real product, not a sprint.
+## 2. Cloudinary is the spine
 
-### Option C (recommended) — Build the ingestion layer, rent the experience
-We build the part nobody sells well and that is specific to us:
+NFL Cloudinary gives us, in one system we already have:
 
-- social discovery across IG / TikTok / YouTube
-- matching a social post back to our own **master 9:16 file** in the DAM
-- the **rights gate** (audio licensing + NFL footage classification)
-- editorial worklist and publishing rules
-- performance-informed ordering (rank the in-app feed by what actually performed on social)
+| Need | Cloudinary capability |
+| --- | --- |
+| The missing master store | DAM with folders, tags, structured metadata, search |
+| Large files | Chunked / resumable upload (`upload_large`); enterprise limits are negotiated, not fixed |
+| Playback | Automatic **adaptive bitrate HLS** via `sp_auto` — builds the ladder, transcodes, segments, writes the `.m3u8` |
+| **9:16 and 4:5 from one master** | AI content-aware crop: `c_fill,g_auto,ar_9:16` and `c_fill,g_auto,ar_4:5` — tracks the subject, so a 16:9 press-conference master reframes to vertical without decapitating anyone |
+| Poster frames | Frame extraction at an arbitrary timestamp, same URL grammar |
+| Captions | AI auto-transcription → subtitle/caption tracks |
+| Delivery | Global CDN, already contracted |
 
-...and push the cleared, transcoded result into a rendering layer via
-**Storyteller's Integrations API** (documented purpose: send images/videos to Storyteller to
-appear as Stories or Clips in our apps/sites).
+**That AI reframe is the direct answer to "4x5 or 9x16."** We do not make editorial choose an
+aspect ratio, and we do not ask them to export twice. One master goes in; the feed requests
+`ar_9:16` for the player and `ar_4:5` for the tile, as URL parameters. Aspect ratio becomes a
+rendering concern, not a production burden.
 
-**Why this is the right call:** the rendering layer becomes a swappable dependency. If
-Storyteller's pricing, roadmap or the NFL's app consolidation changes, we swap the sink and
-keep the pipeline — which is where all our actual institutional value lives. It also lets us
-start delivering (an editorial worklist and a clean content feed) before the buy decision is
-even made.
-
-## 2. Proposed architecture
+## 3. Architecture
 
 ```
- ┌─────────────── SOURCES ────────────────┐
- │ Instagram Graph API   (metadata)       │
- │ TikTok Display API    (metadata)       │──┐
- │ YouTube Data API v3   (metadata)       │  │
- │ DAM / MAM             (MASTER VIDEO)   │──┼──> INGEST WORKERS
- └────────────────────────────────────────┘  │    - scheduled pollers per platform
-                                             │    - normalize to one ContentItem shape
-                                             │    - match social post <-> master asset
-                                             ▼
-                                    ┌──────────────────┐
-                                    │   RIGHTS GATE    │  <- blocks by default
-                                    │ audio license?   │
-                                    │ NFL footage?     │
-                                    │ talent/NIL?      │
-                                    └────────┬─────────┘
-                                             ▼
-                                    ┌──────────────────┐
-                                    │ EDITORIAL QUEUE  │  operator approves,
-                                    │  (thin web UI)   │  sets collection + CTA
-                                    └────────┬─────────┘
-                                             ▼
-                                    ┌──────────────────┐
-                                    │    TRANSCODE     │  9:16 HLS ladder + 4:5 poster
-                                    │  Mux / CF Stream │  + captions
-                                    └────────┬─────────┘
-                                             ▼
-                        ┌────────────────────┴───────────────────┐
-                        ▼                                        ▼
-            Storyteller Integrations API              Our own feed API (JSON)
-            (rented experience)                       (fallback / future)
-                        │                                        │
-        ┌───────────────┼──────────────┐          ┌──────────────┼─────────────┐
-        ▼               ▼              ▼          ▼              ▼             ▼
-   YinzCam app    houstontexans    web stories   iframe      home-screen   share URLs
-   native module  (FORGE embed)    (SEO)         embed       deep link
+  ┌──────────────────── SUPPLY ─────────────────────┐
+  │                                                  │
+  │  GOING FORWARD (the workflow fix):               │
+  │    master 9:16 ──> CLOUDINARY ──> platforms      │   upload to Cloudinary FIRST,
+  │                        │                         │   distribute outward second
+  │                        ▼                         │
+  │  BACKFILL (what already exists):                 │
+  │    Instagram Graph API ──> media_url ──┐         │
+  │    TikTok CMS  (owner download)  ──────┼──> CLOUDINARY
+  │    YouTube Studio (owner download) ────┘         │
+  │                                                  │
+  └──────────────────────────────────────────────────┘
+                              │
+      ┌───────────────────────┴───────────────────────┐
+      │                                                │
+      ▼                                                ▼
+ ┌─────────────────────┐                    ┌─────────────────────┐
+ │  METADATA HARVEST   │                    │   CLOUDINARY        │
+ │  IG / TikTok / YT   │                    │   master + HLS      │
+ │  APIs               │                    │   + ar_9:16 / 4:5   │
+ │  caption, permalink │                    │   + poster          │
+ │  posted-at, METRICS │                    │   + captions        │
+ └──────────┬──────────┘                    └──────────┬──────────┘
+            │                                          │
+            └───────────────┬──────────────────────────┘
+                            ▼
+                 ┌─────────────────────┐
+                 │   CONTENT SERVICE   │   one ContentItem per clip:
+                 │   normalize + join  │   our externalId, Cloudinary publicId,
+                 │   rank by social    │   collection, CTA, social permalinks,
+                 │   performance       │   audioSource, performance score
+                 └──────────┬──────────┘
+                            ▼
+                 ┌─────────────────────┐
+                 │  EDITORIAL (Asana)  │   card per item, approve / assign
+                 │  approve + curate   │   collection, set CTA. Asana holds the
+                 │                     │   CARD; Cloudinary holds the FILE.
+                 └──────────┬──────────┘
+                            ▼
+        ┌───────────────────┴────────────────────┐
+        ▼                                        ▼
+  Storyteller Integrations API            Our own feed API (JSON)
+  (rented experience)                     (drives our web player)
+        │                                        │
+   FanReach native                    iframe embed ──> houstontexans.com
+   Storyteller module                              └─> FanReach webview
+                                                   └─> share URLs / SEO pages
 ```
 
-**Key design rule:** keep our own `externalId` on every item. Storyteller's API supports
-`openStoryByExternalId` / `openClipByExternalId` and `story/stories/externalId` lookups, so
-we can key everything on *our* IDs and never get locked in.
+## 4. The two supply paths, concretely
 
-## 3. Costs to model
+**Going forward — fix it at the source.** The highest-leverage change in this whole project
+is a workflow change, not code: **upload the master to Cloudinary before it goes to the
+platforms.** One extra step for the person cutting the clip, and it permanently solves the
+problem. Every downstream capability — the feed, the archive, reframing, captions, future
+reuse — falls out of it for free. Everything else here is compensating for not having done
+this.
 
-**Video pipeline** (rough 2026 list prices [reported], confirm before budgeting):
+**Backfill — what's already posted.**
+- **Instagram:** Graph API gives us `media_url` for our own Business account. Fetch once,
+  push straight into Cloudinary, never depend on the expiring URL again. Automatable.
+- **TikTok:** the API will not return video. But **we own the account**, and TikTok lets the
+  account owner download their own uploads. Semi-manual, or a one-time bulk export.
+- **YouTube:** same — no API download, but YouTube Studio lets the channel owner download
+  originals. One-time bulk export.
 
-| | Encode | Delivery | Storage |
-| --- | --- | --- | --- |
-| **Mux** | ~$0.07/min | ~$0.025/min delivered | — (10k min free tier) |
-| **Cloudflare Stream** | included | ~$1 / 1,000 min delivered | ~$5 / 1,000 min stored |
-| **Bunny Stream** | included | ~$0.01/GB (cheapest bandwidth) | low |
+So: **metadata is automated across all three; media backfill is automated for Instagram and
+a one-time human task for TikTok and YouTube.** After that, the workflow fix means it never
+happens again.
 
-Short-form is delivery-heavy and storage-light, so **delivered minutes** is the number to
-model. A clip is ~0.5 min; 1M clip-views/mo ≈ 500k delivered minutes ≈ $500/mo on Cloudflare
-Stream, less on Bunny, more on Mux. Cheap relative to the SaaS line.
+## 5. Why Asana for editorial
 
-**Storyteller:** published tiers top out around $999/mo (~1M mobile MAU / 2M web pageviews);
-NFL-club scale is a bespoke enterprise quote [reported].
+It's already in the stack, the content team already lives there, and this session has Asana
+access — so the editorial queue can be real Asana tasks rather than yet another tool nobody
+logs into. Asana holds the **card** (approve, pick collection, write the CTA, flag a sponsor);
+Cloudinary holds the **file**. That split sidesteps Asana's attachment size ceiling entirely,
+which is the exact concern raised.
 
-**Build-your-own-player:** the real cost is engineering time, ongoing. Budget it as a
-permanent partial headcount, not a project.
+If Asana turns out to be too heavy for a 20-second decision, the fallback is a thin approval
+view in our own web app. Start with Asana; it costs nothing to try.
 
-## 4. Suggested phasing
+## 6. What we still rent vs. build
 
-- **Phase 0 (now, no dependencies):** ingestion + normalization + rights gate + editorial
-  worklist. Delivers value on day one ("here's everything we posted this week, cleared or
-  flagged") regardless of the buy decision. This is what I'd start building.
-- **Phase 1:** transcode pipeline + our own JSON feed API + an iframe-embeddable web feed
-  (9:16 player, 4:5 tile rail, themed to our palette).
-- **Phase 2:** app integration via YinzCam — Storyteller native module, or webview of Phase 1.
-- **Phase 3:** the Storyteller-shaped extras — polls/quizzes, followable collections, VAST
-  ads, SEO web story pages, home-screen deep-link widget.
+| Layer | Decision |
+| --- | --- |
+| Master store, transcode, reframe, captions, CDN | **Cloudinary** (already paid for) |
+| Editorial workflow | **Asana** (already paid for) |
+| Ingestion, normalization, ranking, feed API | **Build.** This is ours; it's small and it's the differentiated part |
+| Web player (9:16 + 4:5 rail) | **Build.** One codebase, Texans design system, iframe-embeddable |
+| App rendering | **Rent** — FanReach's existing Storyteller module, fed via Storyteller's Integrations API. Or our webview. Both stay open |
+| Polls, quizzes, VAST ads, SEO web stories | **Rent** — Storyteller, phase 3 |
+
+Every item carries **our own `externalId`**. Storyteller's API supports
+`openClipByExternalId` / `story/stories/externalId` lookups, so the rendering layer stays
+swappable and we never lose the ability to walk away.
+
+## 7. Phasing
+
+- **Phase 0 — supply.** Cloudinary folder/tag/metadata schema, the "master first" workflow
+  change, Instagram backfill worker, TikTok/YouTube one-time export. *Ships the thing that
+  makes everything else possible.*
+- **Phase 1 — harvest + feed.** Metadata workers for all three platforms, ContentItem model,
+  performance-based ranking, JSON feed API, Asana editorial cards.
+- **Phase 2 — experience.** The web feed: 9:16 player with directional preloading, 4:5 tile
+  rail, captions, share, deep links. Texans design system. Iframe-embeddable → ships to
+  houstontexans.com and the FanReach webview simultaneously.
+- **Phase 3 — depth.** Storyteller Integrations push → FanReach native module; polls and
+  quizzes; followable collections; sponsor attribution + VAST; SEO web-story pages;
+  home-screen poster widget.

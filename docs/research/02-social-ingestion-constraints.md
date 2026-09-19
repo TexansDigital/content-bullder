@@ -42,32 +42,42 @@ service, keep it current, and **remove content within 24 hours of the owner requ
 (links rot) and puts us on the wrong side of a terms review. This is the most common way
 these projects die quietly six months in.
 
-### Blocker 3 — Music licensing. This is the real one.
+### Blocker 3 — Music licensing — **RESOLVED, see [doc 06 D2](06-decisions.md)**
+
+> **Stakeholder decision 2026-09-19: we can run TikTok / YouTube / other platform audio on
+> our owned platforms.** This blocker is descoped to advisory and no longer gates the build.
+> The pipeline still carries an `audioSource` field per item so the position is visible and
+> reversible by filter. The original analysis is retained below for the record.
+
+
 
 TikTok's Commercial Music Library and Instagram's sound licenses are **platform-scoped**.
 A commercial sound licensed for TikTok is licensed for *TikTok*, not for houstontexans.com
 and not for the Texans app. Republishing a Reel or a TikTok that uses a trending or CML
 sound onto our own owned-and-operated property is an unlicensed sync + master use.
 
-**Consequence:** even for content we made and own the video of, the *audio* may make it
-unshippable to our own platform. Any ingestion pipeline needs an audio-rights gate before
-anything goes live. This is not a theoretical risk for an NFL club.
+**Consequence (superseded by D2):** the concern was that even for content we own the video
+of, the audio could make it unshippable to our own property. Cleared by stakeholders.
 
-### Also: NFL rights
+### Still open: NFL game-footage rights
 
 Club digital rights have loosened — team social accounts are now treated as an extension of
 team owned-and-operated properties, and clubs can post game highlights to TikTok and
 Threads. But **game highlights remain league-controlled**, and a persistent, permanent,
 monetizable team-owned video feed is a materially different product from an ephemeral
-social post. This needs an explicit read from NFL Digital / legal, not an assumption.
+social post. This needs an explicit read from NFL Digital / legal, not an assumption. **Not covered by
+the music clearance in D2.**
 
 ## 3. What to build instead — invert the pipeline
 
 > **Use the social APIs for discovery and metadata. Use our own master files for media.**
 
-We own this content. We shot it, we cut it, it exists as a 9:16 master somewhere in our
-DAM/MAM before it ever gets uploaded to TikTok. The correct source of truth for the video
-is *that file*, not a re-derived copy scraped back out of a platform CDN.
+We own this content. The correct source of truth for the video is **our own master file**,
+not a re-derived copy scraped back out of a platform CDN.
+
+> **Except today there is no master store** — clips go straight into each platform's native
+> CMS and no copy is kept (doc 06 D3). So step one of this project is creating that store, in
+> Cloudinary. See [doc 04](04-build-vs-buy-and-architecture.md).
 
 ```
                  ┌─ Instagram Graph API ─┐
@@ -77,9 +87,8 @@ is *that file*, not a re-derived copy scraped back out of a platform CDN.
                                                           │ match on filename / slug /
                                                           │ posted-at / operator pick
                                                           ▼
-   media ────────  DAM / MAM master 9:16 file  ──────────> rights gate ──> transcode ──> feed
-                   (the file we already own)               (audio +
-                                                            NFL footage)
+   media ────────  Cloudinary master 9:16 file  ─────────> transcode/reframe ──────> feed
+                   (the store we are creating)             (ar_9:16 + ar_4:5)
 ```
 
 What each social API is genuinely good for:
