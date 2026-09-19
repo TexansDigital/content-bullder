@@ -22,7 +22,7 @@ header h1 i{color:var(--red);font-style:normal}
  border:1px solid var(--line2);padding:4px 8px;color:var(--mute)}
 header .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
 
-.cols{display:grid;grid-template-columns:262px minmax(0,1fr) 330px;min-height:0}
+.cols{display:grid;grid-template-columns:250px minmax(0,1fr) 392px;min-height:0}
 @media(max-width:1100px){.cols{grid-template-columns:1fr;overflow-y:auto}}
 .pane{min-height:0;overflow-y:auto;border-right:1px solid var(--line)}
 .pane:last-child{border-right:0}
@@ -85,6 +85,40 @@ button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
 #drop:focus-visible{outline:2px solid var(--red);outline-offset:2px}
 #drop b{color:var(--w)}
 #drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+/* ---- canvas: the 9:16 card being composed ---- */
+.canvas-wrap{display:grid;grid-template-columns:172px minmax(0,1fr);gap:14px;margin-bottom:14px}
+.canvas{position:relative;aspect-ratio:9/16;background:#000;border:1px solid var(--line);
+ overflow:hidden;container-type:inline-size;touch-action:none;user-select:none}
+.canvas>img,.canvas>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.canvas.contain>img,.canvas.contain>video{object-fit:contain}
+.canvas .ghost{position:absolute;inset:0;background:
+ radial-gradient(120% 90% at 30% 10%,#123,transparent 60%),linear-gradient(160deg,#02202f,#021118)}
+.ov{position:absolute;transform:translate(-50%,-50%);max-width:88%;font-weight:900;
+ text-transform:uppercase;line-height:.98;margin:0;cursor:grab;padding:2px 3px;
+ outline:1px dashed transparent;white-space:pre-wrap;overflow-wrap:anywhere}
+.ov.band{left:0!important;transform:translateY(-50%);width:100%;max-width:100%;padding:7px 9px}
+.ov.box{padding:6px 9px}
+.ov:hover{outline-color:rgba(255,255,255,.5)}
+.ov[data-sel="1"]{outline:2px solid var(--red);outline-offset:1px;cursor:grabbing}
+.ov.sm{font-size:clamp(7px,3.4cqw,13px)}.ov.md{font-size:clamp(9px,4.8cqw,18px)}
+.ov.lg{font-size:clamp(12px,7cqw,26px)}.ov.xl{font-size:clamp(15px,10cqw,38px)}
+.ov.c-white{color:#fff;text-shadow:0 1px 6px rgba(2,17,24,.8)}
+.ov.c-red{color:var(--red);text-shadow:0 1px 6px rgba(2,17,24,.8)}
+.ov.c-steel{color:var(--steel)}
+.ov.c-blue{color:var(--blue);text-shadow:0 1px 6px rgba(2,17,24,.8)}
+.ov.band.c-white,.ov.box.c-white{background:#fff;color:var(--steel);text-shadow:none}
+.ov.band.c-red,.ov.box.c-red{background:var(--red);color:#fff;text-shadow:none}
+.ov.band.c-steel,.ov.box.c-steel{background:var(--steel);color:#fff;text-shadow:none}
+.ov.band.c-blue,.ov.box.c-blue{background:var(--blue);color:#fff;text-shadow:none}
+.mini{display:grid;grid-template-columns:repeat(auto-fit,minmax(58px,1fr));gap:5px;margin-bottom:9px}
+.mini button{padding:6px 3px;font-size:9.5px;letter-spacing:.05em;background:var(--s2);
+ border:1px solid var(--line);font-weight:700}
+.mini button:hover{background:var(--s3);border-color:var(--line2)}
+.mini button[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
+.sect{border-top:1px solid var(--line);margin-top:14px;padding-top:13px}
+.sect>h4{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+ color:var(--mute);margin:0 0 9px;font-weight:400}
+.hint{font-size:11px;color:var(--mute);line-height:1.5;margin:6px 0 0}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--s3);
  border:1px solid var(--line2);padding:10px 16px;font-size:13px;z-index:50;
  transition:opacity .2s,transform .2s}
@@ -256,9 +290,47 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
 function renderEditor() {
   const i = STATE.items.find((x) => x.id === selected);
   const el = $('#editor');
+  if (!i || i.id !== renderEditor._last) { selOv = null; renderEditor._last = i?.id; }
   if (!i) { el.innerHTML = '<p class="empty">Select an item.</p>'; return; }
   const v = i.validation || { ok: true, errors: [], warnings: [] };
   el.innerHTML = `<div class="pad">
+    <div class="canvas-wrap">
+      <div class="canvas${i.fit === 'contain' ? ' contain' : ''}" id="cv">${canvasMedia(i)}</div>
+      <div>
+        <div class="mini">
+          <button data-add="text">+ Text</button>
+          <button data-add="link">+ Link</button>
+        </div>
+        <div class="mini">
+          <button data-fit="cover" aria-pressed="${i.fit !== 'contain'}">Fill</button>
+          <button data-fit="contain" aria-pressed="${i.fit === 'contain'}">Letterbox</button>
+        </div>
+        <p class="hint">Letterbox leaves room above and below the graphic for text.</p>
+        <div class="sect" style="margin-top:12px;padding-top:11px">
+          <h4>Default headline block</h4>
+          <div class="mini">
+            <button data-chrome="auto" aria-pressed="${i.chrome !== 'on' && i.chrome !== 'off'}">Auto</button>
+            <button data-chrome="on" aria-pressed="${i.chrome === 'on'}">Show</button>
+            <button data-chrome="off" aria-pressed="${i.chrome === 'off'}">Hide</button>
+          </div>
+          <p class="hint">Auto hides it once the card has its own text blocks.</p>
+        </div>
+        <div class="sect" style="margin-top:12px;padding-top:11px">
+          <h4>Advance</h4>
+          <div class="mini">
+            <button data-adv="auto" aria-pressed="${i.advance.mode !== 'manual'}">Auto</button>
+            <button data-adv="manual" aria-pressed="${i.advance.mode === 'manual'}">Swipe</button>
+          </div>
+          <div class="field" id="adv-secs" ${i.advance.mode === 'manual' ? 'hidden' : ''}>
+            <label for="e-sec">Hold (seconds)</label>
+            <input id="e-sec" type="number" min="2" max="60" value="${i.advance.seconds}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="ov-panel"></div>
+
     <div class="field"><label for="e-h">Headline</label>
       <input id="e-h" value="${esc(i.headline)}"></div>
     <div class="field"><label for="e-c">Collection</label>
@@ -298,7 +370,15 @@ function renderEditor() {
         `<a href="${esc(u)}" target="_blank" rel="noopener">${k} ↗</a>`).join(' · ') || ''}
     </p></div>`;
 
+  // The draft carries the whole item so a redraw still has media and poster to paint,
+  // but its overlays and advance are copies — nothing is written until Save.
+  const draft = { ...i, overlays: JSON.parse(JSON.stringify(i.overlays || [])),
+                  advance: { ...i.advance } };
+  const syncDraft = () => {};
+  renderOverlayPanel(draft); wireCanvas(draft, syncDraft); wirePanel(draft, syncDraft);
+
   const changes = () => ({
+    overlays: draft.overlays, fit: draft.fit, advance: draft.advance, chrome: draft.chrome,
     headline: $('#e-h').value, collection: $('#e-c').value,
     caption: $('#e-cap').value || null,
     action: $('#e-au').value ? { label: $('#e-al').value || 'Watch', url: $('#e-au').value } : null,
@@ -314,6 +394,139 @@ function renderEditor() {
   $('#e-pub')?.addEventListener('click', () => patch({ status: 'published' }, 'Published'));
   $('#e-unpub')?.addEventListener('click', () => patch({ status: 'inbox' }, 'Moved to inbox'));
   $('#e-arch').onclick = () => patch({ status: 'archived' }, 'Archived');
+}
+
+/* ---------- canvas ---------- */
+let selOv = null;
+
+function canvasMedia(i) {
+  const m = i.media || {};
+  const src = m.kind === 'image' || m.kind === 'file' ? m.url
+            : m.kind === 'cloudinary' ? m.mp4 : i.poster[0];
+  const base = /\.(mp4|webm|m3u8)(\?|$)/i.test(src || '')
+    ? `<video src="${esc(src)}" muted playsinline preload="metadata"></video>`
+    : src ? `<img src="${esc(src)}" alt="" onerror="this.remove()">` : '<div class="ghost"></div>';
+  return `<div class="ghost"></div>${base}${(i.overlays || []).map((o) => {
+    const pos = o.style === 'band' ? `top:${o.y}%;text-align:${o.align}`
+                                   : `left:${o.x}%;top:${o.y}%;text-align:${o.align}`;
+    return `<${o.type === 'link' ? 'span' : 'p'} class="ov ${o.style} ${o.size} c-${o.color}"
+      style="${pos}" data-ov="${o.id}" data-sel="${selOv === o.id ? 1 : 0}">${
+      esc(o.text || (o.type === 'link' ? 'Link text' : 'Text'))
+    }</${o.type === 'link' ? 'span' : 'p'}>`;
+  }).join('')}`;
+}
+
+function renderOverlayPanel(i) {
+  const panel = $('#ov-panel');
+  const o = (i.overlays || []).find((x) => x.id === selOv);
+  if (!o) {
+    panel.innerHTML = (i.overlays || []).length
+      ? `<p class="hint" style="margin:0 0 12px">Click a block on the card to edit it.</p>` : '';
+    return;
+  }
+  const opts = (name, vals, cur) => vals.map((v) =>
+    `<button data-set="${name}" data-val="${v}" aria-pressed="${v === cur}">${v}</button>`).join('');
+  panel.innerHTML = `<div class="sect" style="margin-top:0;border-top:0;padding-top:0">
+    <h4>${o.type === 'link' ? 'Link block' : 'Text block'}</h4>
+    <div class="field"><label for="o-t">Text</label>
+      <input id="o-t" value="${esc(o.text)}"></div>
+    ${o.type === 'link' ? `<div class="field"><label for="o-u">URL</label>
+      <input id="o-u" value="${esc(o.url || '')}" placeholder="https://…"></div>` : ''}
+    <div class="mini">${opts('size', ['sm', 'md', 'lg', 'xl'], o.size)}</div>
+    <div class="mini">${opts('style', ['plain', 'band', 'box'], o.style)}</div>
+    <div class="mini">${opts('color', ['white', 'red', 'steel', 'blue'], o.color)}</div>
+    <div class="mini">${opts('align', ['left', 'center', 'right'], o.align)}</div>
+    <div class="row"><button class="ghost sm" id="o-del">Remove block</button></div>
+    <p class="hint">Drag the block on the card to move it.</p>
+  </div>`;
+}
+
+/** Overlays are edited live in memory, then written with the rest of the item on Save. */
+function wireCanvas(i, syncDraft) {
+  const cv = $('#cv');
+
+  cv.querySelectorAll('.ov').forEach((el) => {
+    el.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      selOv = el.dataset.ov;
+      cv.querySelectorAll('.ov').forEach((x) => (x.dataset.sel = x === el ? 1 : 0));
+      renderOverlayPanel(i); wirePanel(i, syncDraft);
+      const o = i.overlays.find((x) => x.id === selOv);
+      if (!o) return;
+      el.setPointerCapture(ev.pointerId);
+      const move = (e) => {
+        const r = cv.getBoundingClientRect();
+        o.x = Math.round(Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100)));
+        o.y = Math.round(Math.min(100, Math.max(0, ((e.clientY - r.top) / r.height) * 100)));
+        if (o.style !== 'band') el.style.left = o.x + '%';
+        el.style.top = o.y + '%';
+        syncDraft();
+      };
+      const up = () => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); };
+      el.addEventListener('pointermove', move); el.addEventListener('pointerup', up);
+    });
+  });
+
+  document.querySelectorAll('[data-add]').forEach((b) => (b.onclick = () => {
+    const type = b.dataset.add;
+    const o = { id: `ov-${Math.random().toString(36).slice(2, 8)}`, type,
+      text: type === 'link' ? 'Register a team' : 'Headline', url: type === 'link' ? '' : null,
+      x: 50, y: i.overlays.length ? 70 : 50, align: 'center',
+      size: type === 'link' ? 'md' : 'lg', style: type === 'link' ? 'box' : 'plain',
+      color: type === 'link' ? 'red' : 'white' };
+    i.overlays.push(o); selOv = o.id; redraw(i, syncDraft); syncDraft();
+  }));
+  document.querySelectorAll('[data-fit]').forEach((b) => (b.onclick = () => {
+    i.fit = b.dataset.fit;
+    document.querySelectorAll('[data-fit]').forEach((x) =>
+      x.setAttribute('aria-pressed', x === b));
+    cv.classList.toggle('contain', i.fit === 'contain'); syncDraft();
+  }));
+  document.querySelectorAll('[data-chrome]').forEach((b) => (b.onclick = () => {
+    i.chrome = b.dataset.chrome;
+    document.querySelectorAll('[data-chrome]').forEach((x) =>
+      x.setAttribute('aria-pressed', x === b));
+    syncDraft();
+  }));
+  document.querySelectorAll('[data-adv]').forEach((b) => (b.onclick = () => {
+    i.advance.mode = b.dataset.adv;
+    document.querySelectorAll('[data-adv]').forEach((x) =>
+      x.setAttribute('aria-pressed', x === b));
+    $('#adv-secs').hidden = i.advance.mode === 'manual'; syncDraft();
+  }));
+  $('#e-sec')?.addEventListener('input', (e) => {
+    i.advance.seconds = Number(e.target.value) || 6; syncDraft();
+  });
+}
+
+function wirePanel(i, syncDraft) {
+  const o = i.overlays.find((x) => x.id === selOv);
+  if (!o) return;
+  $('#o-t')?.addEventListener('input', (e) => { o.text = e.target.value; redraw(i, syncDraft); });
+  $('#o-u')?.addEventListener('input', (e) => { o.url = e.target.value; syncDraft(); });
+  document.querySelectorAll('[data-set]').forEach((b) => (b.onclick = () => {
+    o[b.dataset.set] = b.dataset.val; redraw(i, syncDraft);
+  }));
+  $('#o-del').onclick = () => {
+    i.overlays = i.overlays.filter((x) => x.id !== selOv);
+    selOv = null; redraw(i, syncDraft);
+  };
+}
+
+function redraw(i, syncDraft) {
+  const cv = $('#cv');
+  const focus = document.activeElement?.id;
+  const caret = document.activeElement?.selectionStart;
+  cv.innerHTML = canvasMedia(i);
+  renderOverlayPanel(i);
+  wireCanvas(i, syncDraft); wirePanel(i, syncDraft);
+  if (focus && $('#' + focus)) {
+    $('#' + focus).focus();
+    if (caret != null && $('#' + focus).setSelectionRange) {
+      try { $('#' + focus).setSelectionRange(caret, caret); } catch {}
+    }
+  }
+  syncDraft();
 }
 
 /* ---------- compose ---------- */

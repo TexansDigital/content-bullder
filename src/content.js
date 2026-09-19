@@ -16,6 +16,40 @@ export const COLLECTIONS = [
 
 export const STATUS = { INBOX: 'inbox', PUBLISHED: 'published', ARCHIVED: 'archived' };
 
+/** How a card leaves the screen. Set per card, because a promo and a clip want different pacing. */
+export const ADVANCE = {
+  AUTO: 'auto',      // hold for `seconds` (or until a video ends), then move on
+  MANUAL: 'manual',  // stay until the viewer swipes
+};
+
+export const OVERLAY_SIZES = ['sm', 'md', 'lg', 'xl'];
+export const OVERLAY_STYLES = ['plain', 'band', 'box'];
+export const OVERLAY_COLORS = ['white', 'red', 'steel', 'blue'];
+
+/**
+ * A text or link block layered over the card, positioned as a percentage of the frame so it
+ * holds its place at any size. `band` runs the full width and ignores x, the way the brand's
+ * ticker strip does.
+ */
+export function makeOverlay(o = {}) {
+  return {
+    id: o.id || `ov-${Math.random().toString(36).slice(2, 8)}`,
+    type: o.type === 'link' ? 'link' : 'text',
+    text: String(o.text ?? '').slice(0, 220),
+    url: o.type === 'link' ? (o.url || null) : null,
+    x: clampPct(o.x, 50),
+    y: clampPct(o.y, 50),
+    align: ['left', 'center', 'right'].includes(o.align) ? o.align : 'center',
+    size: OVERLAY_SIZES.includes(o.size) ? o.size : 'lg',
+    style: OVERLAY_STYLES.includes(o.style) ? o.style : 'plain',
+    color: OVERLAY_COLORS.includes(o.color) ? o.color : 'white',
+  };
+}
+const clampPct = (v, fallback) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : fallback;
+};
+
 /**
  * @typedef {object} ContentItem
  * @property {string}  id            Stable, source-prefixed. Our key, never theirs.
@@ -55,6 +89,23 @@ export function makeItem(partial = {}) {
     action: partial.action || null,
     sponsor: partial.sponsor || null,
     clip: partial.clip || null,
+    /**
+     * `cover` fills the 9:16 frame and crops. `contain` letterboxes the graphic so there is
+     * deliberate empty space above and below it for text to sit in — which is what "a text
+     * block above or below the graphic" means in a fixed-aspect frame.
+     */
+    fit: partial.fit === 'contain' ? 'contain' : 'cover',
+    overlays: (partial.overlays || []).map(makeOverlay),
+    /**
+     * The built-in headline / caption / action block. `auto` hides it once the card carries
+     * its own overlays — if someone has composed the card, the default chrome competing with
+     * it is a bug, not a feature.
+     */
+    chrome: ['auto', 'on', 'off'].includes(partial.chrome) ? partial.chrome : 'auto',
+    advance: {
+      mode: partial.advance?.mode === ADVANCE.MANUAL ? ADVANCE.MANUAL : ADVANCE.AUTO,
+      seconds: Math.min(60, Math.max(2, Number(partial.advance?.seconds) || 6)),
+    },
     links: partial.links || {},
     flags: {
       vertical: partial.flags?.vertical ?? (secs > 0 && secs <= 180),
@@ -81,9 +132,17 @@ export function validate(item) {
   if (!item.poster.length) warnings.push('no poster — will fall back to a generated frame');
   if (!item.flags.hasCaptions) warnings.push('no caption track');
   if (item.durationSeconds > 180) warnings.push('over 3 min — clip it before publishing');
-  if (!item.action) warnings.push('no action button');
+  if (!item.action && showsChrome(item)) warnings.push('no action button');
+  for (const o of item.overlays) {
+    if (!o.text.trim()) errors.push('an overlay has no text');
+    if (o.type === 'link' && !o.url) errors.push(`overlay "${o.text.slice(0, 20)}" has no URL`);
+  }
   return { ok: errors.length === 0, errors, warnings };
 }
+
+/** Whether the default headline block should render for this card. */
+export const showsChrome = (item) =>
+  item.chrome === 'on' || (item.chrome !== 'off' && !(item.overlays?.length));
 
 /** Feed order: editorial index first, then newest. */
 export function feedSort(a, b) {

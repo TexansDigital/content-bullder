@@ -1,0 +1,9 @@
+{
+  "name": "content-builder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Source-agnostic vertical video feed for the Houston Texans",
+  "engines": { "node": ">=18" },
+  "scripts": { "start": "node server.mjs" }
+}

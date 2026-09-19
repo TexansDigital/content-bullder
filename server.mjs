@@ -177,9 +177,27 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`\n  studio   http://localhost:${PORT}/`);
-  console.log(`  feed     http://localhost:${PORT}/feed`);
-  console.log(`  api      http://localhost:${PORT}/api/feed`);
-  console.log(`  store    ${STORE}\n`);
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    console.error(`\n  Port ${PORT} is already in use — the server may already be running.`);
+    console.error(`  Open http://localhost:${PORT}/ , or start on another port:\n`);
+    console.error(`      PORT=4401 node server.mjs\n`);
+    process.exit(1);
+  }
+  throw e;
 });
+
+server.listen(PORT, () => {
+  const line = '─'.repeat(52);
+  console.log(`\n${line}`);
+  console.log('  Running. Open this in your browser:\n');
+  console.log(`      http://localhost:${PORT}/`);
+  console.log('\n  studio   /          pull, curate, publish');
+  console.log('  feed     /feed      what goes in the iframe');
+  console.log('  api      /api/feed  published items as JSON');
+  console.log(`\n  store    ${STORE}`);
+  console.log(`${line}`);
+  console.log('  Leave this window open — Ctrl-C stops the server.\n');
+});
+
+process.on('SIGINT', () => { console.log('\n  Stopped.\n'); process.exit(0); });

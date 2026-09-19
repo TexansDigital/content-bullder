@@ -66,6 +66,31 @@ body{margin:0;background:var(--steel);color:var(--w);font:15px/1.5 var(--sans);o
  text-shadow:0 1px 3px rgba(0,0,0,.9)}
 .rb[aria-pressed="true"] svg{color:var(--red)}
 .rb:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+/* ---- overlays: text and link blocks layered on the card ---- */
+.ovl{position:absolute;inset:0;z-index:2;pointer-events:none}
+.ov{position:absolute;transform:translate(-50%,-50%);pointer-events:auto;max-width:86%;
+ font-weight:900;text-transform:uppercase;line-height:.96;letter-spacing:-.01em;
+ text-wrap:balance;margin:0;text-decoration:none;display:block}
+.ov.band{left:0!important;transform:translateY(-50%);width:100%;max-width:100%;padding:10px 14px}
+.ov.box{padding:9px 13px}
+.ov.sm{font-size:clamp(11px,3.4cqw,15px)}
+.ov.md{font-size:clamp(14px,4.8cqw,21px)}
+.ov.lg{font-size:clamp(19px,7cqw,31px)}
+.ov.xl{font-size:clamp(25px,10cqw,45px)}
+.ov.c-white{color:#fff;text-shadow:0 2px 12px rgba(2,17,24,.75)}
+.ov.c-red{color:var(--red);text-shadow:0 2px 12px rgba(2,17,24,.75)}
+.ov.c-steel{color:var(--steel);text-shadow:none}
+.ov.c-blue{color:var(--blue);text-shadow:0 2px 12px rgba(2,17,24,.75)}
+.ov.band.c-white,.ov.box.c-white{background:#fff;color:var(--steel);text-shadow:none}
+.ov.band.c-red,.ov.box.c-red{background:var(--red);color:#fff;text-shadow:none}
+.ov.band.c-steel,.ov.box.c-steel{background:var(--steel);color:#fff;text-shadow:none}
+.ov.band.c-blue,.ov.box.c-blue{background:var(--blue);color:#fff;text-shadow:none}
+a.ov{transition:transform .14s var(--ease)}
+a.ov:hover{transform:translate(-50%,-50%) scale(1.02)}
+a.ov.band:hover{transform:translateY(-50%) scale(1.01)}
+a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.slide{container-type:inline-size}
+.slide>img.contain,.slide>video.contain{object-fit:contain;background:#000}
 .msg{display:flex;align-items:center;justify-content:center;height:100%;color:var(--mute);
  font-size:14px;text-align:center;padding:24px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}.feed{scroll-behavior:auto}}
@@ -98,14 +123,41 @@ function generated(id) {
     linear-gradient(160deg,#02202f,#021118 70%)"></div>`;
 }
 
+/** Text and link blocks, positioned as a percentage of the frame. */
+function overlaysFor(c) {
+  if (!c.overlays?.length) return '';
+  return `<div class="ovl">${c.overlays.map((o) => {
+    const cls = `ov ${o.style} ${o.size} c-${o.color}`;
+    const pos = o.style === 'band'
+      ? `top:${o.y}%;text-align:${o.align}`
+      : `left:${o.x}%;top:${o.y}%;text-align:${o.align}`;
+    return o.type === 'link' && o.url
+      ? `<a class="${cls}" style="${pos}" href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.text)}</a>`
+      : `<p class="${cls}" style="${pos}">${esc(o.text)}</p>`;
+  }).join('')}</div>`;
+}
+
+/** The default bottom block — suppressed when the card carries its own overlays. */
+function chromeFor(c) {
+  const show = c.chrome === 'on' || (c.chrome !== 'off' && !(c.overlays?.length));
+  if (!show) return '';
+  return `<div class="bot">
+      <h2>${esc(c.headline)}</h2>
+      ${c.caption ? `<p>${esc(c.caption)}</p>` : ''}
+      ${c.action ? `<a class="cta" href="${esc(c.action.url)}" target="_blank" rel="noopener">${esc(c.action.label)}</a>` : ''}
+    </div>`;
+}
+
 function mediaFor(c) {
   const m = c.media || {};
-  if (m.kind === 'image') return `<img src="${esc(m.url)}" alt="${esc(c.headline)}" loading="lazy">`;
+  const fit = c.fit === 'contain' ? ' class="contain"' : '';
+  if (m.kind === 'image')
+    return `<img${fit} src="${esc(m.url)}" alt="${esc(c.headline)}" loading="lazy">`;
   if (m.kind === 'cloudinary' || m.kind === 'file') {
     const src = m.kind === 'cloudinary' ? m.mp4 : m.url;
     // The generated ground sits behind every video, so a slow or failed source still reads
     // as a designed card rather than a black rectangle.
-    return generated(c.id) + `<video src="${esc(src)}" poster="${esc(c.poster[0] || '')}"
+    return generated(c.id) + `<video${fit} src="${esc(src)}" poster="${esc(c.poster[0] || '')}"
       playsinline muted loop preload="none"></video>`;
   }
   if (m.kind === 'youtube') {
@@ -129,8 +181,10 @@ function render() {
   const name = (k) => (DATA.collections.find((c) => c.key === k) || {}).name || k;
 
   feed.innerHTML = rows.map((c, i) => `<article class="slide" data-id="${esc(c.id)}"
-    data-hold="${Number(c.media?.holdSeconds) || 6}">
-    ${mediaFor(c)}<div class="st"></div><div class="sb"></div>
+    data-hold="${c.advance?.seconds || 6}" data-advance="${c.advance?.mode || 'auto'}">
+    ${mediaFor(c)}<div class="st"></div>${
+      (c.chrome === 'on' || (c.chrome !== 'off' && !(c.overlays?.length))) ? '<div class="sb"></div>' : ''
+    }${overlaysFor(c)}
     <div class="segs">${rows.map((_, j) =>
       j === i ? `<i class="on cur"><b class="fill"></b></i>`
               : `<i class="${j < i ? 'on' : ''}"></i>`).join('')}</div>
@@ -138,11 +192,7 @@ function render() {
       <span class="coll${c.sponsor ? ' sp' : ''}">${esc(c.sponsor ? c.sponsor.label : name(c.collection))}</span>
       ${c.duration ? `<span class="dur">${esc(c.duration)}</span>` : ''}
     </div>
-    <div class="bot">
-      <h2>${esc(c.headline)}</h2>
-      ${c.caption ? `<p>${esc(c.caption)}</p>` : ''}
-      ${c.action ? `<a class="cta" href="${esc(c.action.url)}" target="_blank" rel="noopener">${esc(c.action.label)}</a>` : ''}
-    </div>
+    ${chromeFor(c)}
     <div class="rail">
       <button class="rb like" aria-pressed="${!!liked[c.id]}" aria-label="Like">${IC.like}<span>Like</span></button>
       <button class="rb share" aria-label="Share">${IC.share}<span>Share</span></button>
@@ -181,23 +231,36 @@ const io = new IntersectionObserver((es) => es.forEach((e) => {
     if (slide._t) { clearTimeout(slide._t); slide._t = null; }
     return;
   }
-  if (v) { v.play().catch(() => {}); return; }
+  const auto = slide.dataset.advance !== 'manual'
+    && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const next = () => {
+    const feed = $('#feed');
+    if (slide.nextElementSibling) feed.scrollBy({ top: feed.clientHeight, behavior: 'smooth' });
+  };
+
+  if (v) {
+    // A video on auto plays once and moves on; on manual it loops until swiped.
+    v.loop = !auto;
+    v.onended = auto ? next : null;
+    v.currentTime = 0;
+    v.play().catch(() => {});
+    if (fill) {
+      fill.style.transition = 'none';
+      fill.style.width = auto ? '0%' : '100%';
+    }
+    return;
+  }
   if (!fill) return;
 
+  if (!auto) { fill.style.transition = 'none'; fill.style.width = '100%'; return; }
+
   const hold = Number(slide.dataset.hold) || 6;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    fill.style.width = '100%';
-    return;                       // no auto-advance when motion is reduced
-  }
   fill.style.transition = 'none'; fill.style.width = '0%';
   requestAnimationFrame(() => {
     fill.style.transition = `width ${hold}s linear`;
     fill.style.width = '100%';
   });
-  slide._t = setTimeout(() => {
-    const feed = $('#feed');
-    if (slide.nextElementSibling) feed.scrollBy({ top: feed.clientHeight, behavior: 'smooth' });
-  }, hold * 1000);
+  slide._t = setTimeout(next, hold * 1000);
 }), { threshold: 0.6 });
 
 function chips() {

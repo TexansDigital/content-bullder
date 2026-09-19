@@ -56,6 +56,25 @@ A card is not always a clip. The feed renders four kinds, and the studio treats 
 Every kind takes a headline, a caption, an action button and a sponsor. **A graphic with a link
 is a first-class card**, not a video with something missing.
 
+## Composing a card
+
+A card is a canvas, the way a story is. Beyond the media itself:
+
+**Text and link blocks.** Add as many as you want and drag them anywhere on the card. Each has a
+size, an alignment, a colour, and a treatment — `plain` (type over the art), `band` (a full-width
+strip, the brand's ticker motif) or `box`. Link blocks are tappable.
+
+**Fill or letterbox.** `Fill` crops the graphic to 9:16. `Letterbox` sits it in the middle and
+leaves deliberate empty space top and bottom — which is how you get a text block genuinely
+*above* or *below* the graphic rather than on top of it.
+
+**Per-card pacing.** `Auto` holds for a set number of seconds, fills the progress segment and
+moves on; a video on auto plays once then advances. `Swipe` stays until the viewer moves. Set per
+card, because a promo and a clip want different pacing.
+
+**The default headline block** gets out of the way once a card carries its own blocks — otherwise
+it competes with what you composed. Override with Show or Hide.
+
 ## Research
 
 The tool came out of the research in [`docs/research/`](docs/research/). Findings marked
