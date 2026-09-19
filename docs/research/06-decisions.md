@@ -170,3 +170,15 @@ come back as FORGE video pages.
 **D20 — `licensedContent` retired as a rights signal.** See [doc 13 §1](13-the-supply-picture.md).
 Rights classification is by content type; the API field is channel-level and carries no
 information about a specific clip.
+
+**D21 — Presser video is on the NFL Media Content Platform, not Cloudinary and not Mux.**
+See [doc 14](14-where-presser-video-lives.md). Cloudinary is images-only for club sites; the
+`mux` signal was a false positive from base64 noise. Consequence: clipping cannot run against
+existing assets, and the practical path is adding Cloudinary as a **third destination on the
+existing presser publish step** — the same file already goes to FORGE and YouTube.
+
+**D22 — GAM is already configured** for club video: network `4595`, unit `team.hou/video`,
+preroll frequency 3. Reduces the monetization build.
+
+**D23 — Video analytics currently report to Adobe** (`nflclubstexans`), not Parse.ly. Needs a
+deliberate decision so feed metrics stay comparable to existing video benchmarks.
