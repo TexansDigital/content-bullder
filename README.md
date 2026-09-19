@@ -36,9 +36,9 @@ studio and the embed only ever see a `ContentItem`, never the source that produc
 
 | Adapter | Gives us | Limit |
 | --- | --- | --- |
-| `upload` | **A graphic or video we upload.** Promo cards, sponsor slates, event art | — |
+| `upload` | **A graphic or video we upload.** Promo cards, sponsor slates, event art | Clippable |
 | `youtube` | Metadata for a whole channel, via the uploads playlist | Never the file; plays in YouTube's iframe |
-| `cloudinary` | Our own assets, at any aspect ratio | **The only clippable source** |
+| `cloudinary` | Our own assets, at any aspect ratio | Clippable, and reframed to 9:16 |
 | `rss` | Article metadata, no credentials or quota | Metadata only |
 | `manual` | Anything no API will hand over — TikTok, Reels, a pasted URL | Someone pastes it |
 
@@ -65,15 +65,29 @@ frame preview, name the moment, and **Create clip**.
 That makes a **new card**. The source stays whole, so the next clip comes out of the same asset.
 Three clips from one presser is three passes over the same scrubber.
 
-The whole operation is one delivery URL — `so_`/`eo_` trim it, `g_auto` reframes 16:9 to 9:16
-tracking the speaker, `sp_auto` builds the streaming ladder:
+How the cut is made depends on what the source is. Either way the card that comes out is the
+same shape, and the studio looks the same.
+
+**Cloudinary — trimmed in delivery.** The whole operation is one URL: `so_`/`eo_` trim it,
+`g_auto` reframes 16:9 to 9:16 tracking the speaker, `sp_auto` builds the streaming ladder.
 
 ```
 so_124,eo_146,f_auto,q_auto,c_fill,g_auto,ar_9:16/sp_auto/texans/pressers/w03.m3u8
 ```
 
-No render queue, no job to poll, one transformation per clip. **Cloudinary only** — YouTube
-never returns the file, so a YouTube item says so rather than offering a scrubber that can't work.
+No render queue, no job to poll, one transformation per clip.
+
+**An uploaded file — trimmed at playback.** The clip card carries the source plus an in and an
+out, and the player seeks in and stops at the out. Nothing is re-encoded and no transformation
+service is involved, which is the point: **a video file is clippable the moment it is uploaded**,
+with no Cloudinary account, no NFL media platform, and nothing to provision. The trade is that
+the frame is not reframed to 9:16, so an upload wants to be vertical already.
+
+This needs byte ranges — a browser marks media non-seekable without them and silently ignores
+every seek — so `/content/**` serves `206 Partial Content`. Any CDN in front of it has to as well.
+
+**Everything else says so.** YouTube never returns the file, so a YouTube item explains that
+rather than offering a scrubber that cannot work.
 
 ## Composing a card
 
@@ -96,7 +110,7 @@ it competes with what you composed. Override with Show or Hide.
 
 ## Verification
 
-Three browser-driven suites under [`test/`](test/), 51 assertions, each reproducing a specific
+Four browser-driven suites under [`test/`](test/), 71 assertions, each reproducing a specific
 reported failure so a regression names the thing that broke.
 
 ```sh
@@ -135,21 +149,6 @@ The tool came out of the research in [`docs/research/`](docs/research/). Finding
 
 Run [`tools/hunt.sh`](tools/hunt.sh) to settle the open questions in one pass
 (or [`tools/cloudinary-probe.html`](tools/cloudinary-probe.html) for the browser version).
-
-## Verification
-
-Three browser-driven suites under [`test/`](test/), 51 assertions, each reproducing a specific
-reported failure so a regression names the thing that broke.
-
-```sh
-npm --prefix /tmp i playwright@1.48.0
-```
-
-```sh
-cd /tmp && node <repo>/test/verify-fixes.mjs
-```
-
-Run against an empty store — delete `content/store.json` between suites.
 
 ## Research method / confidence
 

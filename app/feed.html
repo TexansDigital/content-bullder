@@ -211,8 +211,11 @@ function mediaFor(c) {
     const src = m.kind === 'cloudinary' ? m.mp4 : m.url;
     // The generated ground sits behind every video, so a slow or failed source still reads
     // as a designed card rather than a black rectangle.
+    // A playback-time clip has to seek before it shows anything right, and a seek needs
+    // metadata — so that one case preloads rather than waiting on play() to start loading.
     return generated(c.id) + `<video${fit} src="${esc(safeUrl(src))}"
-      poster="${esc(safeUrl(c.poster[0]))}" playsinline muted loop preload="none"></video>`;
+      poster="${esc(safeUrl(c.poster[0]))}" playsinline muted loop
+      preload="${c.clip?.playback ? 'metadata' : 'none'}"></video>`;
   }
   if (m.kind === 'youtube') {
     // YouTube's terms require its own player, so this item gets a poster rather than ours.
@@ -239,6 +242,7 @@ function render() {
   feed.innerHTML = rows.map((c, i) => `<article class="slide" data-id="${esc(c.id)}"
     data-hold="${c.advance?.seconds || 6}" data-advance="${c.advance?.mode || 'auto'}"
     data-index="${i}" data-total="${rows.length}" role="article"
+    ${c.clip?.playback ? `data-in="${c.clip.start}" data-out="${c.clip.end}"` : ''}
     aria-posinset="${i + 1}" aria-setsize="${rows.length}"
     aria-label="${esc(c.headline)}">
     ${mediaFor(c)}<div class="st"></div>${
@@ -354,10 +358,33 @@ const io = new IntersectionObserver((es) => es.forEach((e) => {
   };
 
   if (v) {
-    // A video on auto plays once and moves on; on manual it loops until swiped.
-    v.loop = !auto;
+    // A clip cut at playback time carries in/out rather than a trimmed file, so the player
+    // enforces the range: seek in, stop at out. Lets a plain uploaded file be clipped with
+    // no transformation service involved.
+    const inAt = Number(slide.dataset.in);
+    const outAt = Number(slide.dataset.out);
+    const ranged = Number.isFinite(inAt) && Number.isFinite(outAt);
+
+    v.loop = !auto && !ranged;
     v.onended = auto ? next : null;
-    v.currentTime = 0;
+    if (ranged) {
+      // Chromium drops a currentTime assignment made at readyState 0, and preload="none"
+      // means nothing is loaded when the observer first fires — so seek now for the case
+      // where metadata is already there, and again the moment it arrives. The bounds check
+      // is two-sided so a clip left paused on its out-point restarts on the way back.
+      const seek = () => {
+        if (!(v.currentTime >= inAt && v.currentTime < outAt)) v.currentTime = inAt;
+      };
+      v.onloadedmetadata = seek;
+      seek();
+      v.ontimeupdate = () => {
+        if (v.currentTime < outAt) return;
+        if (auto) { v.pause(); next(); } else { v.currentTime = inAt; }
+      };
+    } else {
+      v.ontimeupdate = null;
+      v.currentTime = 0;
+    }
     v.play().catch(() => {});
     if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
     return;

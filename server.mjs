@@ -13,7 +13,7 @@
  */
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, statSync, createReadStream } from 'node:fs';
 import { extname, join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listAdapters, pull } from './src/adapters/index.js';
@@ -143,7 +143,7 @@ const readBody = (req) => new Promise((ok, no) => {
   req.on('error', no);
 });
 
-async function serveFile(res, rel) {
+async function serveFile(req, res, rel) {
   const path = join(ROOT, rel);
   // A directory here used to reach readFile and throw EISDIR from an unawaited promise,
   // which took the whole process down on one unauthenticated request.
@@ -151,7 +151,7 @@ async function serveFile(res, rel) {
   try { stat = statSync(path); } catch { stat = null; }
   if (!path.startsWith(ROOT) || !stat?.isFile()) { res.writeHead(404); return res.end('not found'); }
   const uploaded = rel.startsWith('content/uploads/');
-  res.writeHead(200, {
+  const head = {
     'content-type': MIME[extname(path)] || 'application/octet-stream',
     'cache-control': 'no-store',
     // The feed is meant to be framed by houstontexans.com and the app webview.
@@ -159,8 +159,32 @@ async function serveFile(res, rel) {
     // Uploaded files are attacker-influenced content on our own origin, so deny them any
     // script execution and stop the browser sniffing a type we didn't set.
     'x-content-type-options': 'nosniff',
+    // Without byte ranges a browser marks media non-seekable and silently drops every
+    // currentTime assignment — which is the whole of playback-time clipping. Serving the
+    // file in one 200 is not enough: the seekable range comes from this header.
+    'accept-ranges': 'bytes',
     ...(uploaded ? { 'content-security-policy': "sandbox; default-src 'none'" } : {}),
-  });
+  };
+
+  const asked = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+  if (asked && stat.size && (asked[1] || asked[2])) {
+    // "bytes=-500" is the last 500 bytes, not a range starting at -500.
+    const suffix = asked[1] === '';
+    const start = suffix ? Math.max(0, stat.size - Number(asked[2])) : Number(asked[1]);
+    const end = suffix || asked[2] === ''
+      ? stat.size - 1
+      : Math.min(Number(asked[2]), stat.size - 1);
+    if (!(start <= end) || start >= stat.size) {
+      res.writeHead(416, { ...head, 'content-range': `bytes */${stat.size}` });
+      return res.end();
+    }
+    res.writeHead(206, { ...head,
+      'content-range': `bytes ${start}-${end}/${stat.size}`,
+      'content-length': end - start + 1 });
+    return createReadStream(path, { start, end }).pipe(res);
+  }
+
+  res.writeHead(200, { ...head, 'content-length': stat.size });
   res.end(await readFile(path));
 }
 
@@ -234,35 +258,49 @@ const server = createServer(async (req, res) => {
       return json(res, 200, await withStore((state) => {
         const src = state.items.find((i) => i.id === id);
         if (!src) throw new HttpError(404, 'no such item');
-        const pid = src.clip?.of || src.media?.publicId || publicId(src.media?.url);
-        if (!pid || src.media?.kind !== 'cloudinary')
+        const kind = src.media?.kind;
+        if (kind !== 'cloudinary' && kind !== 'file')
           throw new HttpError(400,
-            'only Cloudinary assets can be clipped — YouTube never returns the file');
+            `${src.source} media can't be clipped — the file is never returned. `
+            + 'Upload the video, or point at a Cloudinary asset.');
 
-        const origin = (src.media.mp4 || '').split('/video/upload/')[0] || undefined;
-        const b = builder({ baseUrl: origin });
-        const clipId = `cld-${pid}-${Math.round(s0)}-${Math.round(e0)}`;
-        if (state.items.some((i) => i.id === clipId))
-          throw new HttpError(409, 'that exact clip already exists');
-
-        state.items.push(makeItem({
-          id: clipId,
-          source: 'cloudinary',
+        const base = {
           collection: src.collection,
           headline: headline || `${src.headline} — ${Math.round(s0)}s`,
-          media: {
-            kind: 'cloudinary', publicId: pid,
-            hls: b.clip(pid, s0, e0), mp4: b.clip(pid, s0, e0, { ext: 'mp4' }),
-            tile: b.tile(pid),
-          },
-          poster: [b.clipPoster(pid, s0, e0)],
           durationSeconds: Math.round(e0 - s0),
-          clip: { of: pid, start: s0, end: e0 },
           publishedAt: src.publishedAt,
           links: src.links,
           flags: { vertical: true },
-        }));
-        return { created: clipId, seconds: Math.round(e0 - s0) };
+        };
+
+        if (kind === 'cloudinary') {
+          // Cloudinary can cut the clip server-side, which also reframes it to 9:16.
+          const pid = src.clip?.of || src.media.publicId || publicId(src.media.url);
+          if (!pid) throw new HttpError(400, 'could not resolve the asset id');
+          const origin = (src.media.mp4 || '').split('/video/upload/')[0] || undefined;
+          const b = builder({ baseUrl: origin });
+          const id2 = `cld-${pid}-${Math.round(s0)}-${Math.round(e0)}`;
+          if (state.items.some((i) => i.id === id2))
+            throw new HttpError(409, 'that exact clip already exists');
+          state.items.push(makeItem({ ...base, id: id2, source: 'cloudinary',
+            media: { kind: 'cloudinary', publicId: pid,
+              hls: b.clip(pid, s0, e0), mp4: b.clip(pid, s0, e0, { ext: 'mp4' }), tile: b.tile(pid) },
+            poster: [b.clipPoster(pid, s0, e0)],
+            clip: { of: pid, start: s0, end: e0 } }));
+          return { created: id2, seconds: Math.round(e0 - s0), mode: 'transform' };
+        }
+
+        // Anything else playable is clipped at playback: the card carries the source plus
+        // in/out, and the player seeks and stops. No transformation service needed, which
+        // means a plain uploaded file can be clipped today.
+        const id2 = `clip-${Math.round(s0)}-${Math.round(e0)}-${src.id}`.slice(0, 90);
+        if (state.items.some((i) => i.id === id2))
+          throw new HttpError(409, 'that exact clip already exists');
+        state.items.push(makeItem({ ...base, id: id2, source: src.source,
+          media: { ...src.media },
+          poster: src.poster,
+          clip: { of: src.id, start: s0, end: e0, playback: true } }));
+        return { created: id2, seconds: Math.round(e0 - s0), mode: 'playback' };
       }));
     }
 
@@ -377,9 +415,9 @@ const server = createServer(async (req, res) => {
     }
 
     // ---- static ----------------------------------------------------------
-    if (p === '/' || p === '/studio') return await serveFile(res, 'app/studio.html');
-    if (p === '/feed') return await serveFile(res, 'app/feed.html');
-    if (p.startsWith('/app/') || p.startsWith('/content/')) return await serveFile(res, p.slice(1));
+    if (p === '/' || p === '/studio') return await serveFile(req, res, 'app/studio.html');
+    if (p === '/feed') return await serveFile(req, res, 'app/feed.html');
+    if (p.startsWith('/app/') || p.startsWith('/content/')) return await serveFile(req, res, p.slice(1));
 
     res.writeHead(404); res.end('not found');
   } catch (e) {
