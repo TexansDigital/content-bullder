@@ -95,13 +95,13 @@ button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
  radial-gradient(120% 90% at 30% 10%,#123,transparent 60%),linear-gradient(160deg,#02202f,#021118)}
 .ov{position:absolute;transform:translate(-50%,-50%);max-width:88%;font-weight:900;
  text-transform:uppercase;line-height:.98;margin:0;cursor:grab;padding:2px 3px;
- outline:1px dashed transparent;white-space:pre-wrap;overflow-wrap:anywhere}
+ outline:1px dashed transparent;white-space:pre-wrap;overflow-wrap:break-word;hyphens:none}
 .ov.band{left:0!important;transform:translateY(-50%);width:100%;max-width:100%;padding:7px 9px}
 .ov.box{padding:6px 9px}
 .ov:hover{outline-color:rgba(255,255,255,.5)}
 .ov[data-sel="1"]{outline:2px solid var(--red);outline-offset:1px;cursor:grabbing}
-.ov.sm{font-size:clamp(7px,3.4cqw,13px)}.ov.md{font-size:clamp(9px,4.8cqw,18px)}
-.ov.lg{font-size:clamp(12px,7cqw,26px)}.ov.xl{font-size:clamp(15px,10cqw,38px)}
+.ov.sm{font-size:clamp(6px,3.2cqw,11px)}.ov.md{font-size:clamp(8px,4.4cqw,14px)}
+.ov.lg{font-size:clamp(10px,6.2cqw,19px)}.ov.xl{font-size:clamp(12px,8.6cqw,26px)}
 .ov.c-white{color:#fff;text-shadow:0 1px 6px rgba(2,17,24,.8)}
 .ov.c-red{color:var(--red);text-shadow:0 1px 6px rgba(2,17,24,.8)}
 .ov.c-steel{color:var(--steel)}
@@ -158,6 +158,8 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
         <img id="drop-prev" alt="" hidden>
       </div>
       <input id="file" type="file" accept="image/*,video/mp4,video/webm" hidden>
+      <div class="field"><label for="n-url">…or paste an image / video URL</label>
+        <input id="n-url" placeholder="https://static.clubs.nfl.com/…"></div>
       <div class="field"><label for="n-h">Headline</label><input id="n-h" placeholder="Girls flag signups are open"></div>
       <div class="field"><label for="n-col">Collection</label><select id="n-col"></select></div>
       <div class="row" style="margin-bottom:11px">
@@ -225,9 +227,15 @@ async function initAdapters() {
     const extra = { youtube: [['max', 'Max videos', '100']],
                     cloudinary: [['assets', 'Delivery URLs or public IDs, one per line', '', 'textarea']],
                     rss: [['collection', 'Collection', 'series']],
-                    manual: [] }[a.key] || [];
-    $('#adapter-fields').innerHTML = [...a.needs.map((n) => [n, n, DEFAULTS[n] || '']), ...extra]
-      .filter((f, i, all) => all.findIndex((x) => x[0] === f[0]) === i)
+                    manual: [['urls', 'One URL per line', '', 'textarea'],
+                             ['collection', 'Collection', 'series']],
+                    upload: [] }[a.key] || [];
+    // `extra` carries the label and the control type, so it must win over the bare field
+    // derived from `needs` — otherwise a multi-line field renders as a single-line input
+    // and silently drops every line but the first.
+    const byName = new Map(a.needs.map((n) => [n, [n, n, DEFAULTS[n] || '']]));
+    for (const f of extra) byName.set(f[0], f);
+    $('#adapter-fields').innerHTML = [...byName.values()]
       .map(([name, label, val, kind]) => `
         <div class="field"><label for="f-${name}">${label}</label>
         ${kind === 'textarea'
@@ -332,6 +340,13 @@ function renderEditor() {
       </div>
     </div>
 
+    <div class="sect" style="margin-top:0;border-top:0;padding-top:0">
+      <h4>Layout</h4>
+      <div class="mini" id="tpl"></div>
+      <p class="hint" id="tpl-note">Applying a layout replaces this card's blocks and pacing.
+        The media stays.</p>
+    </div>
+
     <div id="ov-panel"></div>
 
     <div class="field"><label for="e-h">Headline</label>
@@ -378,6 +393,7 @@ function renderEditor() {
   const draft = { ...i, overlays: JSON.parse(JSON.stringify(i.overlays || [])),
                   advance: { ...i.advance } };
   const syncDraft = () => {};
+  renderTemplates(i);
   renderOverlayPanel(draft); wireCanvas(draft, syncDraft); wirePanel(draft, syncDraft);
 
   const changes = () => ({
@@ -400,7 +416,28 @@ function renderEditor() {
 }
 
 /* ---------- canvas ---------- */
-let selOv = null;
+let selOv = null, TEMPLATES = [];
+
+async function loadTemplates() {
+  try { TEMPLATES = (await api('/api/templates')).templates; } catch { TEMPLATES = []; }
+}
+
+function renderTemplates(item) {
+  const el = $('#tpl'); if (!el) return;
+  el.innerHTML = TEMPLATES.map((t) =>
+    `<button data-tpl="${t.key}" title="${esc(t.note)}">${esc(t.name)}</button>`).join('');
+  el.querySelectorAll('[data-tpl]').forEach((b) => {
+    b.onmouseenter = () => {
+      const t = TEMPLATES.find((x) => x.key === b.dataset.tpl);
+      $('#tpl-note').textContent = t ? t.note : '';
+    };
+    b.onclick = async () => {
+      await api('/api/apply-template', { method: 'POST',
+        body: JSON.stringify({ id: item.id, template: b.dataset.tpl }) });
+      selOv = null; await refresh(); toast(`Applied ${b.textContent}`);
+    };
+  });
+}
 
 function canvasMedia(i) {
   const m = i.media || {};
@@ -568,12 +605,18 @@ function initCompose() {
   }
 
   $('#n-add').onclick = async () => {
-    if (!pending) return ($('#n-out').textContent = 'Choose a file first.');
+    const pasted = $('#n-url').value.trim();
+    if (!pending && !pasted)
+      return ($('#n-out').textContent = 'Choose a file or paste a URL.');
     if (!$('#n-h').value.trim()) return ($('#n-out').textContent = 'Needs a headline.');
+    const src = pending || {
+      url: pasted,
+      contentType: /\.(mp4|webm|mov)(\?|$)/i.test(pasted) ? 'video/mp4' : 'image/png',
+    };
     try {
       await api('/api/pull', { method: 'POST', body: JSON.stringify({
         adapter: 'upload', config: { files: [{
-          url: pending.url, contentType: pending.contentType,
+          url: src.url, contentType: src.contentType,
           headline: $('#n-h').value.trim(), collection: $('#n-col').value,
           actionLabel: $('#n-al').value.trim() || undefined,
           actionUrl: $('#n-au').value.trim() || undefined,
@@ -582,7 +625,7 @@ function initCompose() {
       pending = null;
       $('#drop-prev').hidden = true; $('#drop-label').hidden = false;
       $('#drop-label').innerHTML = 'Drop a graphic or video<br><b>or click to choose</b>';
-      ['#n-h', '#n-al', '#n-au'].forEach((s) => ($(s).value = ''));
+      ['#n-h', '#n-al', '#n-au', '#n-url'].forEach((s) => ($(s).value = ''));
       $('#n-out').textContent = '';
       await refresh(); toast('Card added to inbox');
     } catch (e) { $('#n-out').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
@@ -608,6 +651,7 @@ document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => {
   renderList();
 }));
 await initAdapters();
+await loadTemplates();
 await refresh();
 initCompose();
 </script></body></html>

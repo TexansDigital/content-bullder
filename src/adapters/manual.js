@@ -5,6 +5,27 @@ import { makeItem } from '../content.js';
  * Instagram Reel, a file someone exported — enters here. Keeping this as a first-class
  * adapter rather than a special case is what stops the tool being YouTube-shaped.
  */
+/** A readable name from a URL, for the inbox, before anyone edits it. */
+function titleFrom(url) {
+  try {
+    const u = new URL(url);
+    const segs = u.pathname.split('/').filter(Boolean);
+    const host = u.hostname.replace(/^www\./, '');
+    // Post IDs carry no meaning, so on a numeric or opaque last segment fall back to the
+    // handle and the platform — "TikTok · @houstontexans" beats "123".
+    const last = segs[segs.length - 1] || '';
+    const opaque = !last || /^\d+$/.test(last) || (last.length > 8 && !/[-_ ]/.test(last));
+    if (opaque) {
+      const handle = segs.find((s) => s.startsWith('@'));
+      const site = host.split('.')[0];
+      const platform = site.charAt(0).toUpperCase() + site.slice(1);
+      return handle ? `${platform} · ${handle}` : platform;
+    }
+    return decodeURIComponent(last).replace(/\.[a-z0-9]+$/i, '')
+      .replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90) || host;
+  } catch { return String(url).slice(0, 90); }
+}
+
 /** A pasted URL is a video, a graphic, or a link out — decide by extension. */
 function mediaKind(url, durationSeconds) {
   if (/\.(m3u8|mp4|webm|mov)(\?|$)/i.test(url)) return { kind: 'file', url };
@@ -15,12 +36,23 @@ function mediaKind(url, durationSeconds) {
 
 export default {
   key: 'manual',
-  label: 'Manual',
-  needs: [],
-  notes: 'Paste a URL and a headline. Covers anything no API will give us.',
+  label: 'Paste URLs',
+  needs: ['urls'],
+  notes: 'One URL per line — a TikTok, a Reel, a graphic, an article. Anything no API gives us.',
 
-  async fetch({ rows = [] }) {
-    return rows.map((r, i) =>
+  async fetch({ urls, rows, collection = 'series', headline }) {
+    const list = rows || String(urls || '')
+      .split('\n').map((u) => u.trim()).filter(Boolean)
+      .map((url) => ({
+        url,
+        collection,
+        // A bare URL still needs a name. Fall back to the last meaningful path segment so
+        // the inbox is readable before anyone edits it.
+        headline: headline || titleFrom(url),
+        originalUrl: url,
+      }));
+
+    return list.map((r, i) =>
       makeItem({
         id: r.id || `manual-${Date.now()}-${i}`,
         source: 'manual',

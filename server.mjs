@@ -18,6 +18,7 @@ import { extname, join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listAdapters, pull } from './src/adapters/index.js';
 import { makeItem, validate, feedSort, liveCollections, STATUS, COLLECTIONS } from './src/content.js';
+import { TEMPLATES, templatePatch } from './src/templates.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 4400);
@@ -89,6 +90,24 @@ const server = createServer(async (req, res) => {
 
     // ---- API -------------------------------------------------------------
     if (p === '/api/adapters') return json(res, 200, { adapters: listAdapters() });
+
+    if (p === '/api/templates') return json(res, 200, {
+      templates: TEMPLATES.map(({ key, name, note, apply }) => ({
+        key, name, note, blocks: apply.overlays.length, fit: apply.fit, advance: apply.advance.mode,
+      })),
+    });
+
+    if (p === '/api/apply-template' && req.method === 'POST') {
+      const { id, template } = await readBody(req);
+      const patch = templatePatch(template);
+      if (!patch) return json(res, 404, { error: `no such template: ${template}` });
+      const state = await load();
+      let hit = false;
+      state.items = state.items.map((i) => (i.id === id ? (hit = true, makeItem({ ...i, ...patch })) : i));
+      if (!hit) return json(res, 404, { error: 'no such item' });
+      await save(state);
+      return json(res, 200, { applied: template });
+    }
 
     if (p === '/api/feed') {
       const { items } = await load();
