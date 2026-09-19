@@ -27,3 +27,9 @@ Not this:
 One command per block where the commands are alternatives rather than a sequence.
 
 Comments inside committed script files are fine — that's source, not something to paste.
+
+## Where files land
+
+Files sent to the user arrive in their **Downloads** folder. Write commands that assume that —
+lead with `cd ~/Downloads` (in the same block, as part of the sequence) rather than leaving the
+path for them to work out.
