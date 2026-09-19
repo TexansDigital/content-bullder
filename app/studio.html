@@ -219,11 +219,14 @@ async function initAdapters() {
   const render = () => {
     const a = adapters.find((x) => x.key === sel.value);
     $('#adapter-note').textContent = a.notes || '';
+    // Known defaults, so the only thing anyone has to supply is a key.
+    const DEFAULTS = { channelId: 'UCa_FcpOBe8G6VAR18RYS-aA',
+                       baseUrl: 'https://static.clubs.nfl.com' };
     const extra = { youtube: [['max', 'Max videos', '100']],
                     cloudinary: [['assets', 'Delivery URLs or public IDs, one per line', '', 'textarea']],
                     rss: [['collection', 'Collection', 'series']],
                     manual: [] }[a.key] || [];
-    $('#adapter-fields').innerHTML = [...a.needs.map((n) => [n, n, '']), ...extra]
+    $('#adapter-fields').innerHTML = [...a.needs.map((n) => [n, n, DEFAULTS[n] || '']), ...extra]
       .filter((f, i, all) => all.findIndex((x) => x[0] === f[0]) === i)
       .map(([name, label, val, kind]) => `
         <div class="field"><label for="f-${name}">${label}</label>
