@@ -106,6 +106,24 @@ button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
 #drop-clear{position:absolute;top:4px;right:4px;z-index:2;background:rgba(2,17,24,.85);
  border:1px solid var(--line2);width:24px;height:24px;padding:0;font-size:14px;line-height:1}
 #drop-clear:hover{background:var(--red);border-color:var(--red)}
+/* ---- clip: cutting a vertical moment out of a longer asset ---- */
+.clip{border-top:1px solid var(--line);margin-top:14px;padding-top:13px}
+.clip h4{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+ color:var(--mute);margin:0 0 9px;font-weight:400}
+.scrub{position:relative;height:42px;background:var(--s2);border:1px solid var(--line);
+ margin-bottom:8px;touch-action:none;cursor:crosshair}
+.scrub .sel{position:absolute;top:0;bottom:0;background:rgba(235,0,40,.28);
+ border-left:2px solid var(--red);border-right:2px solid var(--red)}
+.scrub .h{position:absolute;top:0;bottom:0;width:14px;margin-left:-7px;cursor:ew-resize;z-index:2}
+.scrub .h::after{content:"";position:absolute;top:0;bottom:0;left:6px;width:2px;background:var(--red)}
+.scrub .h:focus-visible{outline:2px solid var(--w);outline-offset:1px}
+.clip-times{display:grid;grid-template-columns:1fr 1fr 74px;gap:6px;margin-bottom:9px}
+.clip-times label{font-size:8.5px}
+.clip-frame{aspect-ratio:9/16;max-width:84px;background:#000;border:1px solid var(--line);
+ overflow:hidden;flex:none}
+.clip-frame img{width:100%;height:100%;object-fit:cover;display:block}
+.clip-row{display:flex;gap:10px;align-items:flex-start}
+
 /* ---- canvas: the 9:16 card being composed ---- */
 /* Side by side, a canvas big enough to position on left the controls a sliver wide and
    their button grids wrapped to one per row. Stack instead: both get full width. */
@@ -467,6 +485,8 @@ function renderEditor() {
       </div>
     </div>
 
+    ${clipPanel(i)}
+
     <div class="sect" style="margin-top:0;border-top:0;padding-top:0">
       <h4>Layout</h4>
       <div class="mini" id="tpl"></div>
@@ -529,7 +549,7 @@ function renderEditor() {
   const syncDraft = () => markDirty();
   currentDraft = () => ({ overlays: draft.overlays, fit: draft.fit,
                           chrome: draft.chrome, advance: draft.advance });
-  renderTemplates(i);
+  renderTemplates(i); wireClip(i);
   renderOverlayPanel(draft); wireCanvas(draft, syncDraft); wirePanel(draft, syncDraft);
 
   const changes = () => ({
@@ -551,6 +571,123 @@ function renderEditor() {
   $('#e-pub')?.addEventListener('click', () => patch({ status: 'published' }, 'Published'));
   $('#e-unpub')?.addEventListener('click', () => patch({ status: 'inbox' }, 'Moved to inbox'));
   $('#e-arch').onclick = () => patch({ status: 'archived' }, 'Archived');
+}
+
+/* ---------- clipping ---------- */
+const hhmmss = (n) => {
+  const t = Math.max(0, Math.round(n));
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+};
+
+/**
+ * A long asset is not a card — it is the thing cards get cut out of. Only Cloudinary can be
+ * clipped, because the trim is expressed in the delivery URL and YouTube never returns the
+ * file at all.
+ */
+function clipPanel(i) {
+  if (i.media?.kind !== 'cloudinary') {
+    return i.durationSeconds > 180
+      ? `<div class="clip"><h4>Clipping</h4><p class="hint">This is
+         ${esc(i.duration)} long, but ${esc(i.source)} media can't be trimmed — only
+         Cloudinary assets can. Upload the master to Cloudinary to cut clips from it.</p></div>`
+      : '';
+  }
+  const total = i.clip ? (i.clip.end - i.clip.start) : (i.durationSeconds || 600);
+  const a = 0, bb = Math.min(20, Math.max(4, Math.round(total * 0.05)));
+  return `<div class="clip">
+    <h4>Cut a clip${i.clip ? ' from this clip' : ''}</h4>
+    <div class="scrub" id="scrub" role="group" aria-label="Clip range">
+      <div class="sel" id="c-sel"></div>
+      <div class="h" id="c-in"  tabindex="0" role="slider" aria-label="Clip start"></div>
+      <div class="h" id="c-out" tabindex="0" role="slider" aria-label="Clip end"></div>
+    </div>
+    <div class="clip-row">
+      <div style="flex:1;min-width:0">
+        <div class="clip-times">
+          <div><label for="c-s">In</label><input id="c-s" type="number" min="0" step="1" value="${a}"></div>
+          <div><label for="c-e">Out</label><input id="c-e" type="number" min="1" step="1" value="${bb}"></div>
+          <div><label>Length</label><input id="c-len" value="${hhmmss(bb - a)}" readonly tabindex="-1"></div>
+        </div>
+        <div class="field"><label for="c-h">Clip headline</label>
+          <input id="c-h" placeholder="The line that makes the clip"></div>
+        <button class="ghost sm" id="c-make">Create clip</button>
+        <p class="hint" id="c-out-msg" style="margin-top:7px">Makes a new card. This asset stays whole.</p>
+      </div>
+      <div class="clip-frame"><img id="c-frame" alt="" onerror="this.style.opacity=.15"></div>
+    </div>
+  </div>`;
+}
+
+function wireClip(i) {
+  const scrub = $('#scrub'); if (!scrub) return;
+  const total = i.clip ? (i.clip.end - i.clip.start) : (i.durationSeconds || 600);
+  let inS = Number($('#c-s').value) || 0, outS = Number($('#c-e').value) || 10;
+  const base = (i.media.mp4 || '').split('/video/upload/')[0];
+  const pid = i.clip?.of || i.media.publicId;
+
+  const paint = () => {
+    const pi = (inS / total) * 100, po = (outS / total) * 100;
+    $('#c-sel').style.left = pi + '%';
+    $('#c-sel').style.width = Math.max(0.5, po - pi) + '%';
+    $('#c-in').style.left = pi + '%';
+    $('#c-out').style.left = po + '%';
+    if (document.activeElement !== $('#c-s')) $('#c-s').value = Math.round(inS);
+    if (document.activeElement !== $('#c-e')) $('#c-e').value = Math.round(outS);
+    $('#c-len').value = hhmmss(outS - inS);
+    const len = outS - inS;
+    $('#c-out-msg').textContent = len > 180
+      ? `${hhmmss(len)} — long for a feed. Most clips land under a minute.`
+      : 'Makes a new card. This asset stays whole.';
+    // A real frame from the asset, so the in-point is chosen by eye rather than by number.
+    if (base && pid) $('#c-frame').src =
+      `${base}/video/upload/so_${Math.round(inS + (outS - inS) / 3)},`
+      + `f_auto,q_auto,c_fill,g_auto,ar_9:16,w_200/${pid}.jpg`;
+  };
+
+  const drag = (el, set) => {
+    el.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault(); el.setPointerCapture(ev.pointerId);
+      const move = (e) => {
+        const r = scrub.getBoundingClientRect();
+        set(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * total);
+        paint();
+      };
+      const up = () => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); };
+      el.addEventListener('pointermove', move); el.addEventListener('pointerup', up);
+    });
+    el.addEventListener('keydown', (e) => {
+      const step = e.shiftKey ? 10 : 1;
+      if (e.key === 'ArrowLeft') { set((el.id === 'c-in' ? inS : outS) - step); paint(); e.preventDefault(); }
+      if (e.key === 'ArrowRight') { set((el.id === 'c-in' ? inS : outS) + step); paint(); e.preventDefault(); }
+    });
+  };
+  drag($('#c-in'), (v) => { inS = Math.max(0, Math.min(v, outS - 1)); });
+  drag($('#c-out'), (v) => { outS = Math.min(total, Math.max(v, inS + 1)); });
+  // Typing the in-point first used to clamp it to the current out-point, so entering
+  // 124 then 146 silently produced 9-146. Push the other end along instead.
+  $('#c-s').oninput = () => {
+    inS = Math.max(0, Math.min(Number($('#c-s').value) || 0, total - 1));
+    if (outS <= inS) outS = Math.min(total, inS + 1);
+    paint();
+  };
+  $('#c-e').oninput = () => {
+    outS = Math.min(total, Math.max(Number($('#c-e').value) || 1, 1));
+    if (inS >= outS) inS = Math.max(0, outS - 1);
+    paint();
+  };
+
+  $('#c-make').onclick = async () => {
+    try {
+      const r = await api('/api/clip', { method: 'POST', body: JSON.stringify({
+        id: i.id, start: inS, end: outS, headline: $('#c-h').value.trim() || undefined }) });
+      $('#c-h').value = '';
+      // Land on the new clip: the next thing anyone does is caption it or publish it.
+      selected = r.created; markDirty(false); await refresh();
+      $('#editor').parentElement.scrollTop = 0;
+      toast(`Clip created — ${hhmmss(r.seconds)}`);
+    } catch (e) { toast(e.message); }
+  };
+  paint();
 }
 
 /* ---------- canvas ---------- */

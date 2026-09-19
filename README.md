@@ -56,6 +56,25 @@ A card is not always a clip. The feed renders four kinds, and the studio treats 
 Every kind takes a headline, a caption, an action button and a sponsor. **A graphic with a link
 is a first-class card**, not a video with something missing.
 
+## Clipping
+
+A 40-minute presser is not a card — it is the thing cards get cut out of. Select it and use
+**Cut a clip**: drag the in/out handles (or type the seconds, or use the arrow keys), watch the
+frame preview, name the moment, and **Create clip**.
+
+That makes a **new card**. The source stays whole, so the next clip comes out of the same asset.
+Three clips from one presser is three passes over the same scrubber.
+
+The whole operation is one delivery URL — `so_`/`eo_` trim it, `g_auto` reframes 16:9 to 9:16
+tracking the speaker, `sp_auto` builds the streaming ladder:
+
+```
+so_124,eo_146,f_auto,q_auto,c_fill,g_auto,ar_9:16/sp_auto/texans/pressers/w03.m3u8
+```
+
+No render queue, no job to poll, one transformation per clip. **Cloudinary only** — YouTube
+never returns the file, so a YouTube item says so rather than offering a scrubber that can't work.
+
 ## Composing a card
 
 A card is a canvas, the way a story is. Beyond the media itself:
@@ -74,6 +93,21 @@ card, because a promo and a clip want different pacing.
 
 **The default headline block** gets out of the way once a card carries its own blocks — otherwise
 it competes with what you composed. Override with Show or Hide.
+
+## Verification
+
+Three browser-driven suites under [`test/`](test/), 51 assertions, each reproducing a specific
+reported failure so a regression names the thing that broke.
+
+```sh
+npm --prefix /tmp i playwright@1.48.0
+```
+
+```sh
+cd /tmp && node <repo>/test/verify-fixes.mjs
+```
+
+Run against an empty store — delete `content/store.json` between suites.
 
 ## Research
 
@@ -101,6 +135,21 @@ The tool came out of the research in [`docs/research/`](docs/research/). Finding
 
 Run [`tools/hunt.sh`](tools/hunt.sh) to settle the open questions in one pass
 (or [`tools/cloudinary-probe.html`](tools/cloudinary-probe.html) for the browser version).
+
+## Verification
+
+Three browser-driven suites under [`test/`](test/), 51 assertions, each reproducing a specific
+reported failure so a regression names the thing that broke.
+
+```sh
+npm --prefix /tmp i playwright@1.48.0
+```
+
+```sh
+cd /tmp && node <repo>/test/verify-fixes.mjs
+```
+
+Run against an empty store — delete `content/store.json` between suites.
 
 ## Research method / confidence
 

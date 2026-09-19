@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 import { listAdapters, pull } from './src/adapters/index.js';
 import { makeItem, validate, feedSort, liveCollections, STATUS, COLLECTIONS } from './src/content.js';
 import { TEMPLATES, templatePatch, templateFromItem } from './src/templates.js';
+import { builder, publicId } from './src/cloudinary.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 4400);
@@ -217,6 +218,51 @@ const server = createServer(async (req, res) => {
         const before = (state.templates || []).length;
         state.templates = (state.templates || []).filter((t) => t.key !== key);
         return { removed: before - state.templates.length };
+      }));
+    }
+
+    /**
+     * Cut a vertical clip out of a longer asset. This creates a NEW card rather than
+     * trimming the source: one presser is meant to yield several clips, and the source has
+     * to stay whole to cut the next one from.
+     */
+    if (p === '/api/clip' && req.method === 'POST') {
+      const { id, start, end, headline } = await readBody(req);
+      const s0 = Number(start), e0 = Number(end);
+      if (!Number.isFinite(s0) || !Number.isFinite(e0) || e0 <= s0)
+        throw new HttpError(400, 'clip needs a start and an end, with end after start');
+      return json(res, 200, await withStore((state) => {
+        const src = state.items.find((i) => i.id === id);
+        if (!src) throw new HttpError(404, 'no such item');
+        const pid = src.clip?.of || src.media?.publicId || publicId(src.media?.url);
+        if (!pid || src.media?.kind !== 'cloudinary')
+          throw new HttpError(400,
+            'only Cloudinary assets can be clipped — YouTube never returns the file');
+
+        const origin = (src.media.mp4 || '').split('/video/upload/')[0] || undefined;
+        const b = builder({ baseUrl: origin });
+        const clipId = `cld-${pid}-${Math.round(s0)}-${Math.round(e0)}`;
+        if (state.items.some((i) => i.id === clipId))
+          throw new HttpError(409, 'that exact clip already exists');
+
+        state.items.push(makeItem({
+          id: clipId,
+          source: 'cloudinary',
+          collection: src.collection,
+          headline: headline || `${src.headline} — ${Math.round(s0)}s`,
+          media: {
+            kind: 'cloudinary', publicId: pid,
+            hls: b.clip(pid, s0, e0), mp4: b.clip(pid, s0, e0, { ext: 'mp4' }),
+            tile: b.tile(pid),
+          },
+          poster: [b.clipPoster(pid, s0, e0)],
+          durationSeconds: Math.round(e0 - s0),
+          clip: { of: pid, start: s0, end: e0 },
+          publishedAt: src.publishedAt,
+          links: src.links,
+          flags: { vertical: true },
+        }));
+        return { created: clipId, seconds: Math.round(e0 - s0) };
       }));
     }
 

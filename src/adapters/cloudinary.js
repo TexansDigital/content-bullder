@@ -1,5 +1,5 @@
 import { makeItem } from '../content.js';
-import { builder, publicId, originOf } from '../cloudinary.js';
+import { builder, publicId, originOf, parseClip } from '../cloudinary.js';
 
 /**
  * Assets we control, addressed by public ID. This is the only source that plays in our own
@@ -9,6 +9,11 @@ import { builder, publicId, originOf } from '../cloudinary.js';
  * Takes a list rather than discovering assets, because listing requires an API secret and
  * the whole point is to stay credential-free. Editorial pastes URLs or IDs; both work.
  */
+/** A readable name from a public ID's last segment. */
+const nameFrom = (pid) => String(pid).split('/').pop()
+  .replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim()
+  .replace(/^./, (c) => c.toUpperCase()).slice(0, 90) || 'Untitled';
+
 export default {
   key: 'cloudinary',
   label: 'Cloudinary',
@@ -28,24 +33,30 @@ export default {
       // A row we cannot resolve has no usable id; returning one anyway made several rows
       // share `cld-null`, so a single edit rewrote all of them.
       if (!pid) return null;
-      const isClip = Number.isFinite(r.start) && Number.isFinite(r.end);
-      const secs = isClip ? Math.round(r.end - r.start) : Number(r.durationSeconds) || 0;
+      // Honour a trim already present in the pasted URL, so hand-built clip URLs survive.
+      const pasted = parseClip(r.media);
+      const start = Number.isFinite(r.start) ? r.start : pasted?.start;
+      const end = Number.isFinite(r.end) ? r.end : pasted?.end;
+      const isClip = Number.isFinite(start) && Number.isFinite(end);
+      const secs = isClip ? Math.round(end - start) : Number(r.durationSeconds) || 0;
       return makeItem({
-        id: `cld-${pid}${isClip ? `-${Math.round(r.start)}` : ''}`,
+        id: `cld-${pid}${isClip ? `-${Math.round(start)}-${Math.round(end)}` : ''}`,
         source: 'cloudinary',
         collection: r.collection,
-        headline: r.headline,
+        // Without this every Cloudinary pull arrives as "Untitled", which validation blocks,
+        // so each one needed a manual retype before it could go anywhere.
+        headline: r.headline || nameFrom(pid),
         caption: r.caption,
         media: {
           kind: 'cloudinary',
           publicId: pid,
-          hls: isClip ? b.clip(pid, r.start, r.end) : b.hls(pid),
-          mp4: isClip ? b.clip(pid, r.start, r.end, { ext: 'mp4' }) : b.mp4(pid),
+          hls: isClip ? b.clip(pid, start, end) : b.hls(pid),
+          mp4: isClip ? b.clip(pid, start, end, { ext: 'mp4' }) : b.mp4(pid),
           tile: b.tile(pid),
         },
-        poster: [isClip ? b.clipPoster(pid, r.start, r.end) : b.poster(pid)],
+        poster: [isClip ? b.clipPoster(pid, start, end) : b.poster(pid)],
         durationSeconds: secs,
-        clip: isClip ? { of: pid, start: r.start, end: r.end } : null,
+        clip: isClip ? { of: pid, start, end } : null,
         publishedAt: r.publishedAt || null,
         flags: { vertical: true, hasCaptions: !!r.captions },
       });

@@ -132,6 +132,22 @@ export function publicId(input) {
     .replace(/\.[a-z0-9]+$/i, '');
 }
 
+/**
+ * Pulls an existing trim out of a delivery URL. `publicId()` strips transformation segments
+ * to find the asset, which means a pasted `so_5,eo_18` URL would otherwise silently deliver
+ * the untrimmed original.
+ */
+export function parseClip(input) {
+  const s = String(input || '');
+  const so = /(?:^|[/,])so_(\d+(?:\.\d+)?)(?:[,/]|$)/.exec(s);
+  const eo = /(?:^|[/,])eo_(\d+(?:\.\d+)?)(?:[,/]|$)/.exec(s);
+  if (!so && !eo) return null;
+  const start = so ? Number(so[1]) : 0;
+  const end = eo ? Number(eo[1]) : null;
+  if (end != null && !(end > start)) return null;
+  return { start, end };
+}
+
 /** Infers the delivery origin from a pasted URL, so editorial never has to state it. */
 export function originOf(input) {
   const m = String(input || '').match(/^(https?:\/\/[^/]+)\/(?:image|video|raw)\/upload\//i);
