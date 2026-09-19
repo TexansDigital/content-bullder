@@ -408,13 +408,21 @@ function cldUrl(kind,id,ext){
   const type=CDN.mediaType==="image"?"image":"video";
   return `${CDN.origin}/${type}/upload/${t}${sp}/${id}.${ext}`;
 }
+function ytPoster(c,cls){
+  const p=c.poster||[]; if(!p.length)return '<canvas></canvas>';
+  const chain=p.slice(1).map(u=>`this.onerror=null;this.src='${u}'`).join(";");
+  return `<img class="${cls}" src="${p[0]}" alt="" loading="lazy"
+            onerror="${chain||"this.style.display='none'"}">`;
+}
 function media(c){
+  if(REAL&&c.mediaType==="youtube")return ytPoster(c,"vid");
   if(!REAL||!c.pid)return '<canvas></canvas>';
   CDN.mediaType=c.mediaType;
   return `<video class="vid" playsinline muted loop preload="none"
     poster="${cldUrl("poster",c.pid,"jpg")}" src="${cldUrl("player",c.pid,"mp4")}"></video>`;
 }
 function tileArt(c){
+  if(REAL&&c.mediaType==="youtube")return ytPoster(c,"");
   if(!REAL||!c.pid)return '<canvas></canvas>';
   CDN.mediaType=c.mediaType;
   return `<img src="${cldUrl("tile",c.pid,"jpg")}" alt="" loading="lazy">`;
@@ -426,8 +434,7 @@ async function loadManifest(){
       const m=await r.json();
       const origin=m.baseUrl?String(m.baseUrl).replace(/\/+$/,"")
         :(m.cloud&&!/^REPLACE/.test(m.cloud)?`https://res.cloudinary.com/${m.cloud}`:null);
-      if(!origin)continue;
-      CDN={origin,named:!!m.namedTransformations};
+      CDN={origin:origin||"",named:!!m.namedTransformations};
       if(Array.isArray(m.collections)&&m.collections.length)
         COLLS.splice(1,COLLS.length-1,...m.collections.map(x=>({k:x.key,n:x.name})));
       if(Array.isArray(m.clips)&&m.clips.length){
@@ -435,7 +442,8 @@ async function loadManifest(){
         m.clips.forEach((x,i)=>CLIPS.push({
           id:x.id||`clip-${i}`, pid:/REPLACE/.test(String(x.media||""))?null:cldPublicId(x.media),
           mediaType:x.mediaType||"video", coll:x.collection||"gameday",
-          headline:x.headline, caption:x.caption, action:x.action,
+          headline:x.headline, caption:x.caption, action:x.action, poster:x.poster,
+          yt:x.youtubeId, flags:x.flags||{},
           dur:x.duration||"", h:180+((i*47)%190), seed:(i+1)*17, spon:!!x.sponsor
         }));
       }
@@ -553,7 +561,7 @@ let buildFeed=function(){
       <div class="segs">${items.map((_,j)=>`<i class="seg${j<=i?" on":""}"></i>`).join("")}</div>
       <div class="s-top">
         <span class="coll${c.spon?" spon":""}">${c.spon?"Presented by":label(c.coll)}</span>
-        <span class="mono">${c.dur}</span>
+        <span class="mono">${c.dur||""}</span>
       </div>
       <p class="cc" ${ccOn?"":"hidden"}>Caption track renders here &mdash; auto-transcribed by Cloudinary.</p>
       <div class="s-bot">
@@ -604,8 +612,9 @@ function buildRealness(){
     ["Clip count",`${CLIPS.length} items mapped to your ten Shorts IDs.`],
     ["Aspect","9:16 player, 4:5 tile — both derived from one master."],
     ["Interaction","Scroll-snap, keyboard, like, captions, action button."],
-    ["Frames",REAL?"Live Cloudinary media — reframed from one master.":"Generated stand-ins. Real posters land with Cloudinary."],
-    ["Copy","Placeholder. Real headlines come from post metadata."]
+    ["Frames",REAL?"Real YouTube posters. Mostly 16:9 — centre-cropped here, g_auto would do it properly.":"Generated stand-ins."],
+    ["Copy",REAL?"Real titles from the YouTube API. Descriptions were boilerplate, so stripped.":"Placeholder."],
+    ["Captions",REAL?"0 of 10 clips have a caption track on YouTube.":"—"]
   ].map(([k,v])=>`<li><span class="k">${k}</span><span class="v">${v}</span></li>`).join("");
 }
 

@@ -24,7 +24,8 @@ Start here: [`docs/research/00-executive-summary.md`](docs/research/00-executive
 | [07 — No-credentials path](docs/research/07-no-credentials-path.md) | What we ship if Cloudinary / Meta / TikTok access never lands |
 | [08 — Cloudinary, URL only](docs/research/08-cloudinary-url-only.md) | Delivery URLs need no credentials and recover the full design |
 | [09 — NFL Cloudinary findings](docs/research/09-nfl-cloudinary-findings.md) | It's a private CDN, and it may be images-only |
-| [10 — Where the video comes from](docs/research/10-video-home.md) | **Open decision** — YouTube playback vs. a feed-owned store |
+| [10 — Where the video comes from](docs/research/10-video-home.md) | YouTube playback vs. a feed-owned store |
+| [11 — First real data](docs/research/11-first-real-data.md) | **Start here** — measured results, and the rights issue that just became blocking |
 
 Run [`tools/hunt.sh`](tools/hunt.sh) to settle the open questions in one pass
 (or [`tools/cloudinary-probe.html`](tools/cloudinary-probe.html) for the browser version).

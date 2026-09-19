@@ -1,0 +1,349 @@
+{
+  "generatedAt": "2026-09-19T16:45:51.831Z",
+  "baseUrl": "https://static.clubs.nfl.com",
+  "namedTransformations": false,
+  "collections": [
+    {
+      "key": "gameday",
+      "name": "Gameday"
+    },
+    {
+      "key": "players",
+      "name": "Players"
+    },
+    {
+      "key": "series",
+      "name": "Series"
+    },
+    {
+      "key": "community",
+      "name": "Community & Foundation"
+    },
+    {
+      "key": "flag",
+      "name": "Girls Flag & Youth Football"
+    }
+  ],
+  "clips": [
+    {
+      "id": "yt-m6gOqjDBXxo",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "m6gOqjDBXxo",
+      "collection": "gameday",
+      "headline": "Woody flips for the first down 🚀",
+      "caption": null,
+      "durationSeconds": 16,
+      "duration": "0:16",
+      "publishedAt": "2026-09-15T19:31:13Z",
+      "poster": [
+        "https://i.ytimg.com/vi/m6gOqjDBXxo/oardefault.jpg",
+        "https://i.ytimg.com/vi/m6gOqjDBXxo/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/m6gOqjDBXxo/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "m6gOqjDBXxo",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-5f7d3ssRsvc",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "5f7d3ssRsvc",
+      "collection": "gameday",
+      "headline": "Stroud ➡️ Nico for 6",
+      "caption": null,
+      "durationSeconds": 19,
+      "duration": "0:19",
+      "publishedAt": "2026-09-15T19:30:12Z",
+      "poster": [
+        "https://i.ytimg.com/vi/5f7d3ssRsvc/oardefault.jpg",
+        "https://i.ytimg.com/vi/5f7d3ssRsvc/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/5f7d3ssRsvc/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "5f7d3ssRsvc",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-B2O7lzt94ow",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "B2O7lzt94ow",
+      "collection": "gameday",
+      "headline": "Hat trick for D-Mo 🏈🏈🏈",
+      "caption": null,
+      "durationSeconds": 40,
+      "duration": "0:40",
+      "publishedAt": "2026-09-15T18:57:31Z",
+      "poster": [
+        "https://i.ytimg.com/vi/B2O7lzt94ow/oardefault.jpg",
+        "https://i.ytimg.com/vi/B2O7lzt94ow/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/B2O7lzt94ow/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "B2O7lzt94ow",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-PEsizG9Nw9c",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "PEsizG9Nw9c",
+      "collection": "series",
+      "headline": "He's got wheels 🏃💨 | All Angles",
+      "caption": "Stroud scrambles for a first down vs. the Buffalo Bills",
+      "durationSeconds": 41,
+      "duration": "0:41",
+      "publishedAt": "2026-09-14T20:19:44Z",
+      "poster": [
+        "https://i.ytimg.com/vi/PEsizG9Nw9c/oardefault.jpg",
+        "https://i.ytimg.com/vi/PEsizG9Nw9c/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/PEsizG9Nw9c/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "PEsizG9Nw9c",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-1ofJgtx5kGs",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "1ofJgtx5kGs",
+      "collection": "gameday",
+      "headline": "How many TDs is that?",
+      "caption": null,
+      "durationSeconds": 17,
+      "duration": "0:17",
+      "publishedAt": "2026-09-13T19:41:57Z",
+      "poster": [
+        "https://i.ytimg.com/vi/1ofJgtx5kGs/oardefault.jpg",
+        "https://i.ytimg.com/vi/1ofJgtx5kGs/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/1ofJgtx5kGs/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "1ofJgtx5kGs",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-3CCZORLOJvI",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "3CCZORLOJvI",
+      "collection": "gameday",
+      "headline": "C.J. finds Nico for 6",
+      "caption": null,
+      "durationSeconds": 27,
+      "duration": "0:27",
+      "publishedAt": "2026-09-13T18:35:40Z",
+      "poster": [
+        "https://i.ytimg.com/vi/3CCZORLOJvI/oardefault.jpg",
+        "https://i.ytimg.com/vi/3CCZORLOJvI/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/3CCZORLOJvI/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "3CCZORLOJvI",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-JNTvbU4ntLA",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "JNTvbU4ntLA",
+      "collection": "gameday",
+      "headline": "Montgomery gets in the end zone 🏈",
+      "caption": null,
+      "durationSeconds": 27,
+      "duration": "0:27",
+      "publishedAt": "2026-09-13T17:33:51Z",
+      "poster": [
+        "https://i.ytimg.com/vi/JNTvbU4ntLA/oardefault.jpg",
+        "https://i.ytimg.com/vi/JNTvbU4ntLA/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/JNTvbU4ntLA/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "JNTvbU4ntLA",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-UKhZWYGTbYU",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "UKhZWYGTbYU",
+      "collection": "gameday",
+      "headline": "Stroud finds Marlin for the first down 1️⃣",
+      "caption": null,
+      "durationSeconds": 16,
+      "duration": "0:16",
+      "publishedAt": "2026-09-13T17:27:00Z",
+      "poster": [
+        "https://i.ytimg.com/vi/UKhZWYGTbYU/oardefault.jpg",
+        "https://i.ytimg.com/vi/UKhZWYGTbYU/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/UKhZWYGTbYU/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "UKhZWYGTbYU",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-y92971B7ihI",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "y92971B7ihI",
+      "collection": "gameday",
+      "headline": "Clowney gets the sack 😤",
+      "caption": null,
+      "durationSeconds": 17,
+      "duration": "0:17",
+      "publishedAt": "2026-09-13T17:23:46Z",
+      "poster": [
+        "https://i.ytimg.com/vi/y92971B7ihI/oardefault.jpg",
+        "https://i.ytimg.com/vi/y92971B7ihI/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/y92971B7ihI/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "y92971B7ihI",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-CQX5rQBGzYo",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "CQX5rQBGzYo",
+      "collection": "gameday",
+      "headline": "Kamari gets the 4th down stop ✋",
+      "caption": null,
+      "durationSeconds": 16,
+      "duration": "0:16",
+      "publishedAt": "2026-09-13T17:11:46Z",
+      "poster": [
+        "https://i.ytimg.com/vi/CQX5rQBGzYo/oardefault.jpg",
+        "https://i.ytimg.com/vi/CQX5rQBGzYo/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/CQX5rQBGzYo/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "CQX5rQBGzYo",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    }
+  ]
+}
