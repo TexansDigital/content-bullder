@@ -10,8 +10,9 @@ import youtube from './youtube.js';
 import cloudinary from './cloudinary.js';
 import rss from './rss.js';
 import manual from './manual.js';
+import upload from './upload.js';
 
-export const ADAPTERS = { youtube, cloudinary, rss, manual };
+export const ADAPTERS = { upload, youtube, cloudinary, rss, manual };
 
 export const listAdapters = () =>
   Object.values(ADAPTERS).map(({ key, label, needs, notes }) => ({ key, label, needs, notes }));

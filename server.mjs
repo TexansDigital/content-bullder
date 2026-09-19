@@ -25,7 +25,15 @@ const STORE = resolve(process.env.STORE || join(ROOT, 'content/store.json'));
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.otf': 'font/otf' };
+  '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp', '.avif': 'image/avif', '.gif': 'image/gif', '.mp4': 'video/mp4',
+  '.webm': 'video/webm', '.m3u8': 'application/vnd.apple.mpegurl', '.otf': 'font/otf' };
+
+const UPLOADS = join(ROOT, 'content/uploads');
+const MAX_UPLOAD = 12 * 1024 * 1024;
+const EXT_OF = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp',
+  'image/avif': '.avif', 'image/gif': '.gif', 'image/svg+xml': '.svg',
+  'video/mp4': '.mp4', 'video/webm': '.webm' };
 
 async function load() {
   if (!existsSync(STORE)) return { items: [], updatedAt: null };
@@ -123,6 +131,27 @@ const server = createServer(async (req, res) => {
       state.items = state.items.filter((i) => !ids.includes(i.id));
       await save(state);
       return json(res, 200, { removed: before - state.items.length });
+    }
+
+    // Uploads arrive as a data URL in JSON — no multipart parser, no dependency, and the
+    // studio already has the bytes in hand from the file picker.
+    if (p === '/api/upload' && req.method === 'POST') {
+      const { filename = 'upload', dataUrl } = await readBody(req);
+      const m = /^data:([^;,]+);base64,(.+)$/s.exec(dataUrl || '');
+      if (!m) return json(res, 400, { error: 'expected a base64 data URL' });
+      const [, contentType, b64] = m;
+      const ext = EXT_OF[contentType];
+      if (!ext) return json(res, 415, { error: `unsupported type: ${contentType}` });
+      const bytes = Buffer.from(b64, 'base64');
+      if (bytes.length > MAX_UPLOAD)
+        return json(res, 413, { error: `too large: ${(bytes.length / 1e6).toFixed(1)}MB, max 12MB` });
+
+      const safe = String(filename).replace(/\.[^.]*$/, '').replace(/[^a-z0-9]+/gi, '-')
+        .replace(/^-|-$/g, '').slice(0, 48).toLowerCase() || 'upload';
+      const name = `${Date.now().toString(36)}-${safe}${ext}`;
+      await mkdir(UPLOADS, { recursive: true });
+      await writeFile(join(UPLOADS, name), bytes);
+      return json(res, 200, { url: `/content/uploads/${name}`, contentType, bytes: bytes.length });
     }
 
     if (p === '/api/pull' && req.method === 'POST') {

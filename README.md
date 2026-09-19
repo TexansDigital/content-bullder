@@ -36,10 +36,25 @@ studio and the embed only ever see a `ContentItem`, never the source that produc
 
 | Adapter | Gives us | Limit |
 | --- | --- | --- |
+| `upload` | **A graphic or video we upload.** Promo cards, sponsor slates, event art | — |
 | `youtube` | Metadata for a whole channel, via the uploads playlist | Never the file; plays in YouTube's iframe |
 | `cloudinary` | Our own assets, at any aspect ratio | **The only clippable source** |
 | `rss` | Article metadata, no credentials or quota | Metadata only |
-| `manual` | Anything no API will hand over — TikTok, Reels, a file | Someone pastes it |
+| `manual` | Anything no API will hand over — TikTok, Reels, a pasted URL | Someone pastes it |
+
+## Card types
+
+A card is not always a clip. The feed renders four kinds, and the studio treats them alike:
+
+| `media.kind` | What it is | Behaviour |
+| --- | --- | --- |
+| `image` | A graphic — promo, sponsor slate, announcement | Holds for `holdSeconds`, fills the progress segment, then advances like a story |
+| `file` / `cloudinary` | Video we control | Plays and loops while on screen |
+| `youtube` | A YouTube video | Poster in the feed; playback goes to YouTube's player, as its terms require |
+| `link` | A page, no media | Poster plus an action button |
+
+Every kind takes a headline, a caption, an action button and a sponsor. **A graphic with a link
+is a first-class card**, not a video with something missing.
 
 ## Research
 
