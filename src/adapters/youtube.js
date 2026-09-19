@@ -31,16 +31,20 @@ export default {
     do {
       const page = await api('playlistItems', {
         part: 'contentDetails', playlistId: uploads, maxResults: 50, pageToken });
-      ids.push(...page.items.map((i) => i.contentDetails.videoId));
+      ids.push(...(page.items || []).map((i) => i.contentDetails?.videoId).filter(Boolean));
       pageToken = page.nextPageToken;
     } while (pageToken && ids.length < max);
 
+    // The paging loop fetches in 50s, so it overshoots `max`. Trim before spending quota
+    // on details for videos the caller never asked for.
+    ids.length = Math.min(ids.length, max);
+
     const items = [];
-    for (let i = 0; i < Math.min(ids.length, max); i += 50) {
+    for (let i = 0; i < ids.length; i += 50) {
       const page = await api('videos', {
         part: 'snippet,contentDetails,status,statistics',
         id: ids.slice(i, i + 50).join(',') });
-      items.push(...page.items);
+      items.push(...(page.items || []));
     }
 
     return normalize({ items }).map((c) =>

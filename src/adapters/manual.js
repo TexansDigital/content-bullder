@@ -5,6 +5,13 @@ import { makeItem } from '../content.js';
  * Instagram Reel, a file someone exported — enters here. Keeping this as a first-class
  * adapter rather than a special case is what stops the tool being YouTube-shaped.
  */
+/** Short stable digest, so the same URL always yields the same id. */
+function hash(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36);
+}
+
 /** A readable name from a URL, for the inbox, before anyone edits it. */
 function titleFrom(url) {
   try {
@@ -13,8 +20,13 @@ function titleFrom(url) {
     const host = u.hostname.replace(/^www\./, '');
     // Post IDs carry no meaning, so on a numeric or opaque last segment fall back to the
     // handle and the platform — "TikTok · @houstontexans" beats "123".
-    const last = segs[segs.length - 1] || '';
-    const opaque = !last || /^\d+$/.test(last) || (last.length > 8 && !/[-_ ]/.test(last));
+    // Strip the extension before judging: "three.jpg" is nine characters with no separator,
+    // which made a perfectly good name look like an opaque id.
+    const last = (segs[segs.length - 1] || '').replace(/\.[a-z0-9]{1,5}$/i, '');
+    const opaque = !last
+      || /^\d+$/.test(last)                                   // a numeric post id
+      || (last.length >= 11 && !/[-_ ]/.test(last)             // one long unbroken token…
+          && !/^[a-z]+$/i.test(last));                         // …that isn't just a word
     if (opaque) {
       const handle = segs.find((s) => s.startsWith('@'));
       const site = host.split('.')[0];
@@ -54,7 +66,9 @@ export default {
 
     return list.map((r, i) =>
       makeItem({
-        id: r.id || `manual-${Date.now()}-${i}`,
+        // Derived from the URL, so pulling the same list twice is a no-op rather than a
+        // second copy of everything.
+        id: r.id || `manual-${hash(r.url || `${i}`)}`,
         source: 'manual',
         collection: r.collection,
         headline: r.headline,

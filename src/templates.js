@@ -99,8 +99,11 @@ const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-')
  * collection and links stay with the card it came from, since those are what change between
  * uses. Block text is kept, because a saved layout's wording is usually most of its value.
  */
-export function templateFromItem(item, name) {
-  const key = `custom-${slug(name) || Date.now().toString(36)}`;
+export function templateFromItem(item, name, taken = new Set()) {
+  // Two names that slug alike would otherwise overwrite each other with no warning.
+  const base = `custom-${slug(name) || Date.now().toString(36)}`;
+  let key = base;
+  for (let n = 2; taken.has(key); n++) key = `${base}-${n}`;
   return {
     key,
     name: String(name).slice(0, 40) || 'Untitled layout',

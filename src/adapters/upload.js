@@ -19,7 +19,9 @@ export default {
     return files.map((f, i) => {
       const isVideo = /^video\//.test(f.contentType || '') || /\.(mp4|webm|m3u8)$/i.test(f.url || '');
       return makeItem({
-        id: f.id || `upload-${Date.now()}-${i}`,
+        // Keyed on the stored path, which is already unique per upload, so re-adding the
+        // same file does not create a second card.
+        id: f.id || `upload-${String(f.url || i).split('/').pop() || i}`.slice(0, 80),
         source: 'upload',
         collection: f.collection,
         headline: f.headline,

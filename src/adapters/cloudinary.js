@@ -25,6 +25,9 @@ export default {
 
     return rows.map((r) => {
       const pid = publicId(r.media);
+      // A row we cannot resolve has no usable id; returning one anyway made several rows
+      // share `cld-null`, so a single edit rewrote all of them.
+      if (!pid) return null;
       const isClip = Number.isFinite(r.start) && Number.isFinite(r.end);
       const secs = isClip ? Math.round(r.end - r.start) : Number(r.durationSeconds) || 0;
       return makeItem({
@@ -46,6 +49,6 @@ export default {
         publishedAt: r.publishedAt || null,
         flags: { vertical: true, hasCaptions: !!r.captions },
       });
-    });
+    }).filter(Boolean);
   },
 };

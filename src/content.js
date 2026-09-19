@@ -31,12 +31,17 @@ export const OVERLAY_COLORS = ['white', 'red', 'steel', 'blue'];
  * holds its place at any size. `band` runs the full width and ignores x, the way the brand's
  * ticker strip does.
  */
+export const SAFE_URL = /^(https?:\/\/|\/)/i;
+
 export function makeOverlay(o = {}) {
   return {
     id: o.id || `ov-${Math.random().toString(36).slice(2, 8)}`,
     type: o.type === 'link' ? 'link' : 'text',
     text: String(o.text ?? '').slice(0, 220),
-    url: o.type === 'link' ? (o.url || null) : null,
+    // `javascript:` must never reach an href, and escaping does not stop a scheme.
+    url: o.type === 'link'
+      ? (o.url && SAFE_URL.test(String(o.url).trim()) ? String(o.url).trim() : (o.url ? '' : null))
+      : null,
     x: clampPct(o.x, 50),
     y: clampPct(o.y, 50),
     align: ['left', 'center', 'right'].includes(o.align) ? o.align : 'center',
@@ -70,7 +75,9 @@ const clampPct = (v, fallback) => {
  * @property {number}  sortIndex     Editorial order within a collection.
  */
 
-const clean = (s) => (s == null ? null : String(s).trim() || null);
+const MAX_TEXT = 300;
+const clean = (s, max = MAX_TEXT) =>
+  (s == null ? null : String(s).trim().slice(0, max) || null);
 
 export function makeItem(partial = {}) {
   const secs = Number(partial.durationSeconds) || 0;
@@ -79,14 +86,16 @@ export function makeItem(partial = {}) {
     source: partial.source || 'manual',
     status: partial.status || STATUS.INBOX,
     collection: partial.collection || 'gameday',
-    headline: clean(partial.headline) || 'Untitled',
-    caption: clean(partial.caption),
+    headline: clean(partial.headline, 140) || 'Untitled',
+    caption: clean(partial.caption, 600),
     media: partial.media || { kind: 'none' },
     poster: Array.isArray(partial.poster) ? partial.poster.filter(Boolean) : [],
     durationSeconds: secs,
     duration: mmss(secs),
     publishedAt: partial.publishedAt || null,
-    action: partial.action || null,
+    action: partial.action?.url && SAFE_URL.test(String(partial.action.url).trim())
+      ? { label: clean(partial.action.label, 60) || 'Watch', url: String(partial.action.url).trim() }
+      : null,
     sponsor: partial.sponsor || null,
     clip: partial.clip || null,
     /**
@@ -95,7 +104,10 @@ export function makeItem(partial = {}) {
      * block above or below the graphic" means in a fixed-aspect frame.
      */
     fit: partial.fit === 'contain' ? 'contain' : 'cover',
-    overlays: (partial.overlays || []).map(makeOverlay),
+    // Coerce rather than trust: a malformed PATCH used to throw out of makeItem and surface
+    // as a 500 with an internal message.
+    overlays: (Array.isArray(partial.overlays) ? partial.overlays : [])
+      .filter((o) => o && typeof o === 'object').slice(0, 24).map(makeOverlay),
     /**
      * The built-in headline / caption / action block. `auto` hides it once the card carries
      * its own overlays — if someone has composed the card, the default chrome competing with
@@ -106,7 +118,8 @@ export function makeItem(partial = {}) {
       mode: partial.advance?.mode === ADVANCE.MANUAL ? ADVANCE.MANUAL : ADVANCE.AUTO,
       seconds: Math.min(60, Math.max(2, Number(partial.advance?.seconds) || 6)),
     },
-    links: partial.links || {},
+    links: Object.fromEntries(Object.entries(partial.links || {})
+      .filter(([, u]) => typeof u === 'string' && SAFE_URL.test(u.trim()))),
     flags: {
       vertical: partial.flags?.vertical ?? (secs > 0 && secs <= 180),
       embeddable: partial.flags?.embeddable ?? true,
@@ -118,8 +131,11 @@ export function makeItem(partial = {}) {
   };
 }
 
-export const mmss = (n) =>
-  n > 0 ? `${Math.floor(n / 60)}:${String(Math.round(n % 60)).padStart(2, '0')}` : '';
+export const mmss = (n) => {
+  // Round first: rounding the seconds separately turned 59.6 into "0:60".
+  const t = Math.round(Number(n) || 0);
+  return t > 0 ? `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}` : '';
+};
 
 /** Problems worth blocking a publish on, and problems worth only flagging. */
 export function validate(item) {

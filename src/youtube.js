@@ -17,7 +17,8 @@ export function decodeEntities(text) {
       const n = code[1] === 'x' || code[1] === 'X'
         ? parseInt(code.slice(2), 16)
         : parseInt(code.slice(1), 10);
-      return Number.isFinite(n) ? String.fromCodePoint(n) : m;
+      // fromCodePoint throws above 0x10FFFF, which would lose the whole batch.
+      return Number.isFinite(n) && n >= 0 && n <= 0x10FFFF ? String.fromCodePoint(n) : m;
     }
     return ENTITIES[code.toLowerCase()] ?? m;
   });

@@ -21,9 +21,17 @@ header h1 i{color:var(--red);font-style:normal}
 .pill{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
  border:1px solid var(--line2);padding:4px 8px;color:var(--mute)}
 header .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+.pill.dirty{border-color:var(--warn);color:var(--warn)}
+.blocking{border-left:3px solid var(--red);background:rgba(235,0,40,.1);padding:8px 11px;
+ font-size:12px;margin:0 0 10px;color:var(--w)}
+.blocking b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.12em;
+ text-transform:uppercase;color:var(--red);margin-bottom:4px}
+.swatch{width:100%;height:26px;border:1px solid var(--line);cursor:pointer;padding:0}
+.swatch[aria-pressed="true"]{outline:2px solid var(--w);outline-offset:-4px;border-color:var(--w)}
+.mini h5{grid-column:1/-1;font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;
+ text-transform:uppercase;color:var(--mute);margin:4px 0 0;font-weight:400}
 
 .cols{display:grid;grid-template-columns:250px minmax(0,1fr) 392px;min-height:0}
-@media(max-width:1100px){.cols{grid-template-columns:1fr;overflow-y:auto}}
 .pane{min-height:0;overflow-y:auto;border-right:1px solid var(--line)}
 .pane:last-child{border-right:0}
 .pane h2{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
@@ -36,7 +44,9 @@ label{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em
 input,select,textarea{width:100%;background:var(--s2);border:1px solid var(--line);
  padding:8px 9px;border-radius:0;font-size:13px}
 textarea{resize:vertical;min-height:58px;font-family:var(--mono);font-size:11.5px;line-height:1.6}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--red)}
+input:focus,select:focus,textarea:focus{border-color:var(--red)}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--w);
+ outline-offset:1px}
 .field{margin-bottom:11px}
 
 button{background:var(--red);border:0;padding:9px 14px;cursor:pointer;font-weight:700;
@@ -74,6 +84,14 @@ button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
 .tabs button:hover{color:var(--w);background:none}
 .count{font-family:var(--mono);font-size:9px;opacity:.7;margin-left:4px}
 
+@media(max-width:1100px){
+  /* Stacked, the per-pane scrollers cut panels off mid-control with no visible scrollbar,
+     so "Add to inbox" simply disappeared. Let the page be the only scroller. */
+  .cols{grid-template-columns:1fr;overflow-y:auto}
+  .pane{overflow:visible;border-right:0;border-bottom:1px solid var(--line)}
+  .pane h2,.tabs{position:static}
+}
+
 .warnlist{margin:9px 0 0;padding:0;list-style:none}
 .warnlist li{font-size:11.5px;color:var(--body);padding:4px 0 4px 13px;position:relative}
 .warnlist li::before{content:"";position:absolute;left:0;top:10px;width:5px;height:5px;background:var(--warn)}
@@ -85,10 +103,26 @@ button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
 #drop:focus-visible{outline:2px solid var(--red);outline-offset:2px}
 #drop b{color:var(--w)}
 #drop img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#drop-clear{position:absolute;top:4px;right:4px;z-index:2;background:rgba(2,17,24,.85);
+ border:1px solid var(--line2);width:24px;height:24px;padding:0;font-size:14px;line-height:1}
+#drop-clear:hover{background:var(--red);border-color:var(--red)}
 /* ---- canvas: the 9:16 card being composed ---- */
-.canvas-wrap{display:grid;grid-template-columns:172px minmax(0,1fr);gap:14px;margin-bottom:14px}
+/* Side by side, a canvas big enough to position on left the controls a sliver wide and
+   their button grids wrapped to one per row. Stack instead: both get full width. */
+.canvas-wrap{display:grid;gap:12px;margin-bottom:14px;justify-items:stretch}
+.canvas{max-width:232px;width:100%;margin:0 auto}
 .canvas{position:relative;aspect-ratio:9/16;background:#000;border:1px solid var(--line);
  overflow:hidden;container-type:inline-size;touch-action:none;user-select:none}
+.canvas-ctl{display:grid;gap:9px}
+.canvas-ctl .row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+/* These are toggles. Left on the default red fill, every one looked active and the pressed
+   state was invisible. */
+.canvas-ctl .row2 button{background:var(--s2);border:1px solid var(--line);font-size:10px;
+ letter-spacing:.05em;padding:8px 4px}
+.canvas-ctl .row2 button:hover{background:var(--s3);border-color:var(--line2)}
+.canvas-ctl .row2 button[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
+.canvas-ctl .row2 button[data-add]{background:var(--red);border-color:var(--red)}
+.canvas-ctl .row2 button[data-add]:hover{background:var(--red2)}
 .canvas>img,.canvas>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .canvas.contain>img,.canvas.contain>video{object-fit:contain}
 .canvas .ghost{position:absolute;inset:0;background:
@@ -159,6 +193,7 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
            aria-label="Choose a graphic or video to upload">
         <span id="drop-label">Drop a graphic or video<br><b>or click to choose</b></span>
         <img id="drop-prev" alt="" hidden>
+        <button id="drop-clear" type="button" aria-label="Clear the chosen file" hidden>×</button>
       </div>
       <input id="file" type="file" accept="image/*,video/mp4,video/webm" hidden>
       <div class="field"><label for="n-url">…or paste an image / video URL</label>
@@ -189,7 +224,7 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
       <button role="tab" data-status="published" aria-selected="false">Published<span class="count" id="c-published"></span></button>
       <button role="tab" data-status="archived" aria-selected="false">Archived<span class="count" id="c-archived"></span></button>
     </div>
-    <div id="list"></div>
+    <div id="list" role="listbox" aria-label="Content queue" tabindex="-1"></div>
   </section>
 
   <!-- ── editor ── -->
@@ -199,7 +234,7 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
   </section>
 </div>
 </div>
-<div id="toast" hidden></div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
 
 <script type="module">
 const $ = (s) => document.querySelector(s);
@@ -209,29 +244,71 @@ const api = async (path, opts) => {
   return r.json();
 };
 let STATE = { items: [], collections: [], counts: {} };
-let status = 'inbox', selected = null;
+let status = 'inbox', selected = null, dirty = false;
+
+/**
+ * Edits live in a local draft until Save, so anything that re-renders the editor from
+ * server state silently throws them away. Track it, show it, and ask before discarding.
+ */
+function markDirty(on = true) {
+  dirty = on;
+  const pill = $('#store-state');
+  if (!pill) return;
+  pill.classList.toggle('dirty', dirty);
+  if (dirty) pill.textContent = 'Unsaved changes';
+  else pill.textContent = STATE.updatedAt
+    ? `Saved ${new Date(STATE.updatedAt).toLocaleTimeString()}` : 'Empty';
+}
+/** Returns false if the user chose to keep editing. */
+function confirmDiscard(what = 'this card') {
+  if (!dirty) return true;
+  return confirm(`You have unsaved changes to ${what}. Discard them?`);
+}
+window.addEventListener('beforeunload', (e) => {
+  if (!dirty) return;
+  e.preventDefault(); e.returnValue = '';
+});
 
 function toast(msg) {
   const t = $('#toast'); t.textContent = msg; t.hidden = false;
   clearTimeout(t._t); t._t = setTimeout(() => (t.hidden = true), 2600);
 }
 
+/** Collections are keys, not labels — typing "Pressers" produced an invalid item. */
+const collectionOptions = (cur) => {
+  const known = (STATE.collections || []).map((c) =>
+    `<option value="${esc(c.key)}"${c.key === cur ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+  // Never show a value the item does not have: an unmatched stored key would otherwise
+  // silently display as the first option and be saved as that.
+  const orphan = cur && !(STATE.collections || []).some((c) => c.key === cur)
+    ? `<option value="${esc(cur)}" selected>${esc(cur)} — not a valid collection</option>` : '';
+  return orphan + known;
+};
+
+let renderAdapterFields = () => {};
+
 /* ---------- sources ---------- */
 async function initAdapters() {
   const { adapters } = await api('/api/adapters');
   const sel = $('#adapter');
+  // Upload has no pull step, so it is a poor default — its big red Pull button can only
+  // ever report success for doing nothing.
+  const order = ['manual', 'youtube', 'cloudinary', 'rss', 'upload'];
+  adapters.sort((x, y) => order.indexOf(x.key) - order.indexOf(y.key));
   sel.innerHTML = adapters.map((a) => `<option value="${a.key}">${a.label}</option>`).join('');
   const render = () => {
     const a = adapters.find((x) => x.key === sel.value);
     $('#adapter-note').textContent = a.notes || '';
+    $('#pull').hidden = a.key === 'upload';
     // Known defaults, so the only thing anyone has to supply is a key.
     const DEFAULTS = { channelId: 'UCa_FcpOBe8G6VAR18RYS-aA',
                        baseUrl: 'https://static.clubs.nfl.com' };
     const extra = { youtube: [['max', 'Max videos', '100']],
-                    cloudinary: [['assets', 'Delivery URLs or public IDs, one per line', '', 'textarea']],
-                    rss: [['collection', 'Collection', 'series']],
+                    cloudinary: [['assets', 'Delivery URLs or public IDs, one per line', '', 'textarea'],
+                                 ['baseUrl', 'Delivery origin', DEFAULTS.baseUrl]],
+                    rss: [['collection', 'Collection', '', 'collection']],
                     manual: [['urls', 'One URL per line', '', 'textarea'],
-                             ['collection', 'Collection', 'series']],
+                             ['collection', 'Collection', '', 'collection']],
                     upload: [] }[a.key] || [];
     // `extra` carries the label and the control type, so it must win over the bare field
     // derived from `needs` — otherwise a multi-line field renders as a single-line input
@@ -243,13 +320,24 @@ async function initAdapters() {
         <div class="field"><label for="f-${name}">${label}</label>
         ${kind === 'textarea'
           ? `<textarea id="f-${name}" name="${name}" placeholder="one per line"></textarea>`
+          : kind === 'collection'
+          ? `<select id="f-${name}" name="${name}">${collectionOptions()}</select>`
           : `<input id="f-${name}" name="${name}" value="${val}"
                ${/key|secret|token/i.test(name) ? 'type="password" autocomplete="off"' : ''}>`}
         </div>`).join('');
   };
-  sel.onchange = render; render();
+  sel.onchange = render;
+  // Collections arrive with the first refresh, so keep a handle and re-render once they do.
+  renderAdapterFields = render;
+  render();
 
   $('#pull').onclick = async () => {
+    if (sel.value === 'upload') {
+      $('#pull-out').textContent = 'Upload is not a pull source — use “Make a card” below.';
+      $('#drop').focus();
+      return;
+    }
+    if (!confirmDiscard()) return;
     const btn = $('#pull'); btn.disabled = true; btn.textContent = 'Pulling…';
     const config = {};
     $('#adapter-fields').querySelectorAll('[name]').forEach((el) => {
@@ -258,8 +346,11 @@ async function initAdapters() {
     try {
       const r = await api('/api/pull', { method: 'POST',
         body: JSON.stringify({ adapter: sel.value, config }) });
-      $('#pull-out').textContent = `${r.added} new, ${r.skipped} already here.`;
-      await refresh(); toast(`Pulled ${r.added} new items`);
+      $('#pull-out').textContent = r.added
+        ? `${r.added} new${r.skipped ? `, ${r.skipped} already here` : ''}.`
+        : `Nothing new — ${r.skipped || 0} already in the queue.`;
+      markDirty(false); await refresh();
+      toast(r.added ? `Pulled ${r.added} new item${r.added > 1 ? 's' : ''}` : 'Nothing new');
     } catch (e) {
       $('#pull-out').innerHTML = `<span style="color:var(--red)">${e.message}</span>`;
     } finally { btn.disabled = false; btn.textContent = 'Pull'; }
@@ -271,34 +362,62 @@ function renderList() {
   const rows = STATE.items.filter((i) => i.status === status);
   const el = $('#list');
   if (!rows.length) {
-    el.innerHTML = `<p class="empty">Nothing ${status}.${
-      status === 'inbox' ? ' Pull from a source to start.' : ''}</p>`;
+    const other = Object.entries(STATE.counts || {})
+      .filter(([k, n]) => k !== status && n).map(([k, n]) => `${n} ${k}`).join(' · ');
+    el.innerHTML = `<p class="empty">${
+      status === 'inbox' ? 'Inbox is clear.' : `Nothing ${status}.`}${
+      other ? `<br><span class="mono" style="font-size:10px">${esc(other)}</span>` : ''}${
+      status === 'inbox' && !other ? '<br>Pull from a source to start.' : ''}</p>`;
     return;
   }
   el.innerHTML = rows.map((i) => {
     const v = i.validation || { ok: true, errors: [], warnings: [] };
     const badges = [
-      `<span class="tag src">${i.source}</span>`,
-      `<span class="tag">${i.collection}</span>`,
-      i.duration ? `<span class="tag">${i.duration}</span>` : '',
+      `<span class="tag src">${esc(i.source)}</span>`,
+      `<span class="tag">${esc(i.collection)}</span>`,
+      i.duration ? `<span class="tag">${esc(i.duration)}</span>` : '',
       i.flags.vertical ? '' : '<span class="tag warn">not vertical</span>',
       i.flags.duplicate ? '<span class="tag warn">dupe</span>' : '',
       v.errors.length ? `<span class="tag err">${v.errors.length} blocking</span>`
-        : v.warnings.length ? `<span class="tag warn">${v.warnings.length}</span>`
+        : v.warnings.length
+          ? `<span class="tag warn" title="${esc(v.warnings.join('; '))}">${v.warnings.length} note${
+              v.warnings.length > 1 ? 's' : ''}</span>`
         : '<span class="tag ok">ready</span>',
     ].filter(Boolean).join('');
-    return `<article class="card" data-id="${i.id}" aria-selected="${selected === i.id}">
+    return `<article class="card" data-id="${esc(i.id)}" tabindex="0" role="option"
+      aria-selected="${selected === i.id}"
+      aria-label="${esc(i.headline)} — ${esc(i.collection)}${v.errors.length ? ', has blocking issues' : ''}">
       <div class="th">${i.poster[0]
-        ? `<img src="${i.poster[0]}" alt="" loading="lazy" onerror="this.remove()">`
+        ? `<img src="${esc(safeUrl(i.poster[0]))}" alt="" loading="lazy" onerror="this.remove()">`
         : `<span>no art</span>`}</div>
       <div><h3>${esc(i.headline)}</h3><div class="meta">${badges}</div></div>
     </article>`;
   }).join('');
-  el.querySelectorAll('.card').forEach((c) =>
-    (c.onclick = () => { selected = c.dataset.id; renderList(); renderEditor(); }));
+  const choose = (c) => {
+    if (c.dataset.id === selected) return;
+    if (!confirmDiscard()) return;
+    markDirty(false);
+    selected = c.dataset.id;
+    renderList(); renderEditor();
+    // Landing mid-form on the previous item's scroll offset hides the canvas entirely.
+    $('#editor').parentElement.scrollTop = 0;
+  };
+  el.querySelectorAll('.card').forEach((c) => {
+    c.onclick = () => choose(c);
+    c.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(c); return; }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      e.preventDefault();
+      const all = [...el.querySelectorAll('.card')];
+      const next = all[all.indexOf(c) + (e.key === 'ArrowDown' ? 1 : -1)];
+      next?.focus();
+    };
+  });
 }
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/** Escaping alone doesn't stop `javascript:` reaching an href or src. */
+const safeUrl = (u) => (/^(https?:|\/|data:image\/)/i.test(String(u || '').trim()) ? u : '');
 
 /* ---------- editor ---------- */
 function renderEditor() {
@@ -310,17 +429,21 @@ function renderEditor() {
   el.innerHTML = `<div class="pad">
     <div class="canvas-wrap">
       <div class="canvas${i.fit === 'contain' ? ' contain' : ''}" id="cv">${canvasMedia(i)}</div>
-      <div>
-        <div class="mini">
+      <div class="canvas-ctl">
+        <div class="row2">
           <button data-add="text">+ Text</button>
           <button data-add="link">+ Link</button>
         </div>
-        <div class="mini">
-          <button data-fit="cover" aria-pressed="${i.fit !== 'contain'}">Fill</button>
-          <button data-fit="contain" aria-pressed="${i.fit === 'contain'}">Letterbox</button>
+        <div>
+          <h5 style="font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;
+            text-transform:uppercase;color:var(--mute);margin:0 0 5px;font-weight:400">Graphic</h5>
+          <div class="row2">
+            <button data-fit="cover" aria-pressed="${i.fit !== 'contain'}">Fill</button>
+            <button data-fit="contain" aria-pressed="${i.fit === 'contain'}">Letterbox</button>
+          </div>
         </div>
-        <p class="hint">Letterbox leaves room above and below the graphic for text.</p>
-        <div class="sect" style="margin-top:12px;padding-top:11px">
+        <p class="hint" style="margin:0">Letterbox leaves room above and below the graphic for text.</p>
+        <div class="sect" style="margin-top:2px;padding-top:11px">
           <h4>Default headline block</h4>
           <div class="mini">
             <button data-chrome="auto" aria-pressed="${i.chrome !== 'on' && i.chrome !== 'off'}">Auto</button>
@@ -329,13 +452,14 @@ function renderEditor() {
           </div>
           <p class="hint">Auto hides it once the card has its own text blocks.</p>
         </div>
-        <div class="sect" style="margin-top:12px;padding-top:11px">
+        <div class="sect" style="margin-top:2px;padding-top:11px">
           <h4>Advance</h4>
-          <div class="mini">
+          <div class="row2">
             <button data-adv="auto" aria-pressed="${i.advance.mode !== 'manual'}">Auto</button>
             <button data-adv="manual" aria-pressed="${i.advance.mode === 'manual'}">Swipe</button>
           </div>
-          <div class="field" id="adv-secs" ${i.advance.mode === 'manual' ? 'hidden' : ''}>
+          <div class="field" id="adv-secs" style="margin-top:9px"
+            ${i.advance.mode === 'manual' ? 'hidden' : ''}>
             <label for="e-sec">Hold (seconds)</label>
             <input id="e-sec" type="number" min="2" max="60" value="${i.advance.seconds}">
           </div>
@@ -359,8 +483,7 @@ function renderEditor() {
     <div class="field"><label for="e-h">Headline</label>
       <input id="e-h" value="${esc(i.headline)}"></div>
     <div class="field"><label for="e-c">Collection</label>
-      <select id="e-c">${STATE.collections.map((c) =>
-        `<option value="${c.key}" ${c.key === i.collection ? 'selected' : ''}>${c.name}</option>`).join('')}</select></div>
+      <select id="e-c">${collectionOptions(i.collection)}</select></div>
     <div class="field"><label for="e-cap">Caption</label>
       <input id="e-cap" value="${esc(i.caption || '')}"></div>
     <div class="row" style="margin-bottom:11px">
@@ -374,32 +497,38 @@ function renderEditor() {
     <div class="field"><label for="e-si">Sort index</label>
       <input id="e-si" type="number" value="${i.sortIndex}"></div>
 
-    ${(v.errors.length || v.warnings.length) ? `<ul class="warnlist">
-      ${v.errors.map((e) => `<li class="e">${esc(e)}</li>`).join('')}
+    ${v.errors.length ? `<p class="blocking"><b>Can't publish yet</b>${
+      v.errors.map((e) => esc(e)).join('<br>')}</p>` : ''}
+    ${v.warnings.length ? `<ul class="warnlist" aria-label="Worth checking">
       ${v.warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
 
     <hr>
     <div class="row">
       <button id="e-save">Save</button>
       ${i.status !== 'published'
-        ? `<button id="e-pub" class="ghost" ${v.ok ? '' : 'disabled title="fix blocking issues first"'}>Publish</button>`
+        ? `<button id="e-pub" class="ghost"${v.ok ? '' : ' aria-disabled="true"'}>Publish</button>`
         : `<button id="e-unpub" class="ghost">Unpublish</button>`}
-      <button id="e-arch" class="ghost">Archive</button>
+      ${i.status === 'archived'
+        ? `<button id="e-inbox" class="ghost">Move to inbox</button>
+           <button id="e-del" class="ghost">Delete</button>`
+        : `<button id="e-arch" class="ghost">Archive</button>`}
     </div>
     <hr>
     <p class="mono" style="letter-spacing:.04em;text-transform:none;font-size:11px;line-height:1.7">
       <b style="color:var(--w)">${esc(i.id)}</b><br>
       source ${esc(i.source)} · ${esc(i.media.kind)}${i.clip
         ? ` · clip ${i.clip.start}–${i.clip.end}s` : ''}<br>
-      ${Object.entries(i.links).map(([k, u]) =>
-        `<a href="${esc(u)}" target="_blank" rel="noopener">${k} ↗</a>`).join(' · ') || ''}
+      ${Object.entries(i.links).filter(([, u]) => safeUrl(u)).map(([k, u]) =>
+        `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(k)} ↗</a>`).join(' · ') || ''}
     </p></div>`;
 
   // The draft carries the whole item so a redraw still has media and poster to paint,
   // but its overlays and advance are copies — nothing is written until Save.
   const draft = { ...i, overlays: JSON.parse(JSON.stringify(i.overlays || [])),
                   advance: { ...i.advance } };
-  const syncDraft = () => {};
+  const syncDraft = () => markDirty();
+  currentDraft = () => ({ overlays: draft.overlays, fit: draft.fit,
+                          chrome: draft.chrome, advance: draft.advance });
   renderTemplates(i);
   renderOverlayPanel(draft); wireCanvas(draft, syncDraft); wirePanel(draft, syncDraft);
 
@@ -416,6 +545,8 @@ function renderEditor() {
       body: JSON.stringify({ id: i.id, changes: { ...changes(), ...extra } }) });
     await refresh(); toast(msg);
   };
+  el.querySelectorAll('input,select,textarea').forEach((f) =>
+    f.addEventListener('input', () => markDirty()));
   $('#e-save').onclick = () => patch({}, 'Saved');
   $('#e-pub')?.addEventListener('click', () => patch({ status: 'published' }, 'Published'));
   $('#e-unpub')?.addEventListener('click', () => patch({ status: 'inbox' }, 'Moved to inbox'));
@@ -423,7 +554,7 @@ function renderEditor() {
 }
 
 /* ---------- canvas ---------- */
-let selOv = null, TEMPLATES = [];
+let selOv = null, TEMPLATES = [], currentDraft = null;
 
 async function loadTemplates() {
   try { TEMPLATES = (await api('/api/templates')).templates; } catch { TEMPLATES = []; }
@@ -436,12 +567,18 @@ function renderTemplates(item) {
       >${esc(t.name)}${t.custom ? ' <span aria-hidden="true">×</span>' : ''}</button>`).join('');
 
   el.querySelectorAll('[data-tpl]').forEach((b) => {
-    b.onmouseenter = () => {
+    const baseNote = "Applying a layout replaces this card's blocks and pacing. The media stays.";
+    b.onmouseenter = b.onfocus = () => {
       const t = TEMPLATES.find((x) => x.key === b.dataset.tpl);
-      $('#tpl-note').textContent = t ? t.note : '';
+      $('#tpl-note').textContent = t ? t.note : baseNote;
     };
+    // Without this the one sentence warning about a destructive action disappears the first
+    // time the cursor crosses the chips.
+    b.onmouseleave = b.onblur = () => { $('#tpl-note').textContent = baseNote; };
     b.onclick = async (ev) => {
       // The × on a saved layout removes it; anywhere else applies it.
+      if (ev.target.tagName !== 'SPAN'
+          && !confirmDiscard('this card (applying a layout replaces its blocks)')) return;
       if (b.dataset.custom && ev.target.tagName === 'SPAN') {
         if (!confirm(`Delete the layout "${b.textContent.replace(/\s*×$/, '')}"?`)) return;
         await api('/api/templates', { method: 'DELETE',
@@ -451,7 +588,7 @@ function renderTemplates(item) {
       }
       await api('/api/apply-template', { method: 'POST',
         body: JSON.stringify({ id: item.id, template: b.dataset.tpl }) });
-      selOv = null; await refresh();
+      selOv = null; markDirty(false); await refresh();
       toast(`Applied ${b.textContent.replace(/\s*×$/, '')}`);
     };
   });
@@ -460,8 +597,9 @@ function renderTemplates(item) {
     const name = $('#tpl-name').value.trim();
     if (!name) { $('#tpl-name').focus(); return toast('Name the layout first'); }
     try {
+      // Send the live draft, or an unsaved block is dropped while the toast says "Saved".
       await api('/api/templates', { method: 'POST',
-        body: JSON.stringify({ id: item.id, name }) });
+        body: JSON.stringify({ id: item.id, name, draft: currentDraft?.() }) });
       $('#tpl-name').value = '';
       await loadTemplates(); renderTemplates(item); toast(`Saved "${name}"`);
     } catch (e) { toast(e.message); }
@@ -473,15 +611,17 @@ function canvasMedia(i) {
   const src = m.kind === 'image' || m.kind === 'file' ? m.url
             : m.kind === 'cloudinary' ? m.mp4 : i.poster[0];
   const base = /\.(mp4|webm|m3u8)(\?|$)/i.test(src || '')
-    ? `<video src="${esc(src)}" muted playsinline preload="metadata"></video>`
-    : src ? `<img src="${esc(src)}" alt="" onerror="this.remove()">` : '<div class="ghost"></div>';
+    ? `<video src="${esc(safeUrl(src))}" muted playsinline preload="metadata"></video>`
+    : src ? `<img src="${esc(safeUrl(src))}" alt="" onerror="this.remove()">` : '<div class="ghost"></div>';
   return `<div class="ghost"></div>${base}${(i.overlays || []).map((o) => {
     const pos = o.style === 'band' ? `top:${o.y}%;text-align:${o.align}`
                                    : `left:${o.x}%;top:${o.y}%;text-align:${o.align}`;
-    return `<${o.type === 'link' ? 'span' : 'p'} class="ov ${o.style} ${o.size} c-${o.color}"
-      style="${pos}" data-ov="${o.id}" data-sel="${selOv === o.id ? 1 : 0}">${
+    const tag = o.type === 'link' ? 'span' : 'p';
+    return `<${tag} class="ov ${o.style} ${o.size} c-${o.color}" style="${pos}"
+      data-ov="${o.id}" data-sel="${selOv === o.id ? 1 : 0}" tabindex="0" role="button"
+      aria-label="${o.type === 'link' ? 'Link' : 'Text'} block: ${esc(o.text || 'empty')}">${
       esc(o.text || (o.type === 'link' ? 'Link text' : 'Text'))
-    }</${o.type === 'link' ? 'span' : 'p'}>`;
+    }</${tag}>`;
   }).join('')}`;
 }
 
@@ -493,20 +633,31 @@ function renderOverlayPanel(i) {
       ? `<p class="hint" style="margin:0 0 12px">Click a block on the card to edit it.</p>` : '';
     return;
   }
-  const opts = (name, vals, cur) => vals.map((v) =>
-    `<button data-set="${name}" data-val="${v}" aria-pressed="${v === cur}">${v}</button>`).join('');
+  const opts = (label, name, vals, cur, labels = {}) =>
+    `<h5>${label}</h5>` + vals.map((v) =>
+      `<button data-set="${name}" data-val="${v}" aria-pressed="${v === cur}">${
+        esc(labels[v] || v)}</button>`).join('');
+  // The pressed state is a red fill, so on the colour row red meant "selected" and the blue
+  // swatch turned red when chosen. Render each option in its own colour instead.
+  const SWATCH = { white: '#fff', red: 'var(--red)', steel: 'var(--steel)', blue: 'var(--blue)' };
+  const colours = `<h5>Colour</h5>` + Object.entries(SWATCH).map(([k, css]) =>
+    `<button class="swatch" data-set="color" data-val="${k}" aria-pressed="${k === o.color}"
+       aria-label="${k}" title="${k}" style="background:${css}"></button>`).join('');
   panel.innerHTML = `<div class="sect" style="margin-top:0;border-top:0;padding-top:0">
     <h4>${o.type === 'link' ? 'Link block' : 'Text block'}</h4>
     <div class="field"><label for="o-t">Text</label>
       <input id="o-t" value="${esc(o.text)}"></div>
     ${o.type === 'link' ? `<div class="field"><label for="o-u">URL</label>
       <input id="o-u" value="${esc(o.url || '')}" placeholder="https://…"></div>` : ''}
-    <div class="mini">${opts('size', ['sm', 'md', 'lg', 'xl'], o.size)}</div>
-    <div class="mini">${opts('style', ['plain', 'band', 'box'], o.style)}</div>
-    <div class="mini">${opts('color', ['white', 'red', 'steel', 'blue'], o.color)}</div>
-    <div class="mini">${opts('align', ['left', 'center', 'right'], o.align)}</div>
+    <div class="mini">${opts('Size', 'size', ['sm', 'md', 'lg', 'xl'], o.size)}</div>
+    <div class="mini">${opts('Background', 'style', ['plain', 'band', 'box'], o.style,
+      { plain: 'none', band: 'full band', box: 'pill' })}</div>
+    <div class="mini">${colours}</div>
+    <div class="mini">${opts('Align', 'align', ['left', 'center', 'right'], o.align)}</div>
     <div class="row"><button class="ghost sm" id="o-del">Remove block</button></div>
-    <p class="hint">Drag the block on the card to move it.</p>
+    <p class="hint">${o.style === 'band'
+      ? 'Bands span the full width — only vertical position applies.'
+      : 'Drag it on the card, or use the arrow keys (Shift for bigger steps).'}</p>
   </div>`;
 }
 
@@ -515,11 +666,33 @@ function wireCanvas(i, syncDraft) {
   const cv = $('#cv');
 
   cv.querySelectorAll('.ov').forEach((el) => {
-    el.addEventListener('pointerdown', (ev) => {
-      ev.preventDefault();
+    const select = () => {
       selOv = el.dataset.ov;
       cv.querySelectorAll('.ov').forEach((x) => (x.dataset.sel = x === el ? 1 : 0));
       renderOverlayPanel(i); wirePanel(i, syncDraft);
+    };
+    el.addEventListener('focus', select);
+    // Dragging is pointer-only, so without this a keyboard user can neither reach a block
+    // nor move one.
+    el.addEventListener('keydown', (ev) => {
+      const o = i.overlays.find((x) => x.id === el.dataset.ov);
+      if (!o) return;
+      if (ev.key === 'Escape') { el.blur(); selOv = null; renderOverlayPanel(i); return; }
+      const step = ev.shiftKey ? 10 : 1;
+      const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0],
+                      ArrowUp: [0, -step], ArrowDown: [0, step] };
+      const d = moves[ev.key];
+      if (!d) return;
+      ev.preventDefault();
+      if (o.style !== 'band') o.x = Math.max(0, Math.min(100, o.x + d[0]));
+      o.y = Math.max(0, Math.min(100, o.y + d[1]));
+      if (o.style !== 'band') el.style.left = o.x + '%';
+      el.style.top = o.y + '%';
+      syncDraft();
+    });
+    el.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      select();
       const o = i.overlays.find((x) => x.id === selOv);
       if (!o) return;
       el.setPointerCapture(ev.pointerId);
@@ -540,7 +713,8 @@ function wireCanvas(i, syncDraft) {
     const type = b.dataset.add;
     const o = { id: `ov-${Math.random().toString(36).slice(2, 8)}`, type,
       text: type === 'link' ? 'Register a team' : 'Headline', url: type === 'link' ? '' : null,
-      x: 50, y: i.overlays.length ? 70 : 50, align: 'center',
+      // Stacking every new block at one spot made all but the topmost invisible.
+      x: 50, y: Math.min(86, 42 + i.overlays.length * 9), align: 'center',
       size: type === 'link' ? 'md' : 'lg', style: type === 'link' ? 'box' : 'plain',
       color: type === 'link' ? 'red' : 'white' };
     i.overlays.push(o); selOv = o.id; redraw(i, syncDraft); syncDraft();
@@ -612,8 +786,19 @@ function initCompose() {
   drop.addEventListener('drop', (e) => { e.preventDefault(); take(e.dataTransfer.files[0]); });
   file.onchange = () => take(file.files[0]);
 
+  const MAX_MB = 12;
   async function take(f) {
     if (!f) return;
+    // Checked here because the server can only answer once the whole body has arrived, and
+    // an oversized POST dies as a bare "Failed to fetch".
+    if (f.size > MAX_MB * 1048576) {
+      $('#drop-label').innerHTML =
+        `<b>${esc(f.name)}</b><br>${(f.size / 1048576).toFixed(1)}MB — the limit is ${MAX_MB}MB.<br>`
+        + 'Export smaller or trim it first.';
+      $('#drop-label').hidden = false; $('#drop-prev').hidden = true;
+      $('#n-out').textContent = '';
+      return;
+    }
     $('#n-out').textContent = `Uploading ${f.name}…`;
     const dataUrl = await new Promise((ok, no) => {
       const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no;
@@ -629,9 +814,28 @@ function initCompose() {
         $('#drop-label').innerHTML = `<b>${esc(f.name)}</b><br>video ready`;
       }
       $('#n-out').textContent = `${(r.bytes / 1024).toFixed(0)}KB uploaded.`;
+      // The URL field is now ignored, so stop it looking like a live choice.
+      $('#n-url').disabled = true;
+      $('#n-url').placeholder = 'Using the uploaded file — clear it to paste a URL';
+      $('#drop-clear').hidden = false;
       if (!$('#n-h').value) $('#n-h').value = f.name.replace(/\.[^.]*$/, '').replace(/[-_]+/g, ' ');
-    } catch (e) { $('#n-out').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
+    } catch (e) {
+      const msg = /failed to fetch/i.test(e.message)
+        ? `Upload failed — the file may be too large. Max ${MAX_MB}MB.` : e.message;
+      $('#n-out').innerHTML = `<span style="color:var(--red)">${esc(msg)}</span>`;
+    }
   }
+
+  const clearStaged = () => {
+    pending = null;
+    $('#drop-prev').hidden = true; $('#drop-label').hidden = false;
+    $('#drop-label').innerHTML = 'Drop a graphic or video<br><b>or click to choose</b>';
+    $('#drop-clear').hidden = true;
+    $('#n-url').disabled = false; $('#n-url').placeholder = 'https://static.clubs.nfl.com/…';
+    $('#n-out').textContent = '';
+    $('#file').value = '';
+  };
+  $('#drop-clear').onclick = (e) => { e.stopPropagation(); clearStaged(); };
 
   $('#n-add').onclick = async () => {
     const pasted = $('#n-url').value.trim();
@@ -651,14 +855,16 @@ function initCompose() {
           actionUrl: $('#n-au').value.trim() || undefined,
           durationSeconds: Number($('#n-hold').value) || 6,
         }] } }) });
-      pending = null;
-      $('#drop-prev').hidden = true; $('#drop-label').hidden = false;
-      $('#drop-label').innerHTML = 'Drop a graphic or video<br><b>or click to choose</b>';
+      clearStaged();
       ['#n-h', '#n-al', '#n-au', '#n-url'].forEach((s) => ($(s).value = ''));
-      $('#n-out').textContent = '';
       await refresh(); toast('Card added to inbox');
-    } catch (e) { $('#n-out').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
-  };
+    } catch (e) {
+      const msg = /failed to fetch/i.test(e.message)
+        ? `Upload failed — the file may be too large. Max ${MAX_MB}MB.` : e.message;
+      $('#n-out').innerHTML = `<span style="color:var(--red)">${esc(msg)}</span>`;
+    }
+  }
+;
 }
 
 /* ---------- boot ---------- */
@@ -666,8 +872,8 @@ async function refresh() {
   STATE = await api('/api/items');
   for (const s of ['inbox', 'published', 'archived'])
     $(`#c-${s}`).textContent = STATE.counts[s] ? ` ${STATE.counts[s]}` : '';
-  $('#store-state').textContent = STATE.updatedAt
-    ? `saved ${new Date(STATE.updatedAt).toLocaleTimeString()}` : 'empty';
+  markDirty(false);
+  renderAdapterFields();
   const nc = $('#n-col');
   if (nc && !nc.options.length)
     nc.innerHTML = STATE.collections.map((c) => `<option value="${c.key}">${c.name}</option>`).join('');

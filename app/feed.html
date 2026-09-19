@@ -9,7 +9,8 @@
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--steel);color:var(--w);font:15px/1.5 var(--sans);overflow:hidden}
-.wrap{height:100%;display:grid;grid-template-rows:auto 1fr;max-width:1180px;margin:0 auto}
+.wrap{height:100%;display:grid;grid-template-rows:auto 1fr;max-width:1180px;margin:0 auto;
+ position:relative}
 
 .bar{display:flex;gap:7px;padding:12px 16px 10px;overflow-x:auto;scrollbar-width:none;
  padding-top:calc(12px + env(safe-area-inset-top,0px))}
@@ -37,12 +38,16 @@ body{margin:0;background:var(--steel);color:var(--w);font:15px/1.5 var(--sans);o
 .st,.sb{position:absolute;left:0;right:0;pointer-events:none}
 .st{top:0;height:32%;background:linear-gradient(180deg,rgba(2,17,24,.8),transparent)}
 .sb{bottom:0;height:54%;background:linear-gradient(0deg,rgba(2,17,24,.95) 8%,rgba(2,17,24,.5) 46%,transparent)}
-.segs{position:absolute;top:9px;left:9px;right:9px;display:flex;gap:3px;z-index:3}
+.segs{position:absolute;top:9px;left:9px;right:9px;display:flex;gap:3px;z-index:6;
+ pointer-events:none}
+.pos{position:absolute;top:19px;right:11px;z-index:6;margin:0;font-size:9.5px;
+ letter-spacing:.12em;color:rgba(255,255,255,.75);text-shadow:0 1px 4px rgba(0,0,0,.9);
+ pointer-events:none}
 .segs i{flex:1;height:2px;background:rgba(255,255,255,.26)}
 .segs i.on{background:#fff}
 .segs i.cur{background:rgba(255,255,255,.3);position:relative;overflow:hidden}
 .segs i.cur .fill{position:absolute;inset:0 auto 0 0;width:0;background:#fff;display:block}
-.top{position:absolute;top:20px;left:11px;right:11px;z-index:3;display:flex;gap:7px;align-items:center}
+.top{position:absolute;top:34px;left:11px;right:11px;z-index:3;display:flex;gap:7px;align-items:center}
 .coll{font:900 10px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;background:var(--red);
  padding:4px 7px}
 .coll.sp{background:var(--blue)}
@@ -57,6 +62,9 @@ body{margin:0;background:var(--steel);color:var(--w);font:15px/1.5 var(--sans);o
  cursor:pointer;text-decoration:none;transition:background .14s var(--ease)}
 .cta:hover{background:var(--red2)}
 .cta:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.flash{position:absolute;left:11px;right:56px;bottom:calc(60px + env(safe-area-inset-bottom,0px));
+ z-index:5;margin:0;font-family:var(--mono);font-size:11px;background:rgba(2,17,24,.92);
+ border:1px solid var(--line);padding:7px 10px;word-break:break-all}
 .rail{position:absolute;right:7px;bottom:calc(15px + env(safe-area-inset-bottom,0px));z-index:4;display:flex;flex-direction:column;
  gap:13px;align-items:center}
 .rb{background:none;border:0;padding:0;cursor:pointer;color:#fff;display:flex;
@@ -91,29 +99,75 @@ a.ov.band:hover{transform:translateY(-50%) scale(1.01)}
 a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .slide{container-type:inline-size}
 .slide>img.contain,.slide>video.contain{object-fit:contain;background:#000}
+.nav{position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:6;display:flex;
+ flex-direction:column;gap:6px;opacity:0;transition:opacity .16s var(--ease)}
+.phone:hover .nav,.nav:focus-within{opacity:1}
+.nav button{background:rgba(2,17,24,.72);border:1px solid var(--line);color:#fff;width:30px;
+ height:30px;padding:0;font-size:13px;cursor:pointer;line-height:1}
+.nav button:hover{background:var(--red);border-color:var(--red)}
+.nav button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+@media(hover:none){.nav{display:none}}
 .msg{display:flex;align-items:center;justify-content:center;height:100%;color:var(--mute);
  font-size:14px;text-align:center;padding:24px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}.feed{scroll-behavior:auto}}
+
+/* ---- responsive overrides live last so they win over the base rules ---- */
+/* On a phone this is the whole screen, not a preview of one — the gutters and the border
+   were showing letterboxing on the exact device it gets embedded in. */
+@media(max-width:600px){
+  .stage{padding:0}
+  .phone{border:0;aspect-ratio:auto;height:100%;width:100%}
+  .wrap{grid-template-rows:1fr}
+  /* Stacked in a fixed order down the top of the card: progress, then filters, then the
+     card's own meta. Overlaying them all at the top collided. */
+  .segs{top:calc(8px + env(safe-area-inset-top,0px));left:8px;right:8px}
+  .bar{position:absolute;top:calc(18px + env(safe-area-inset-top,0px));left:0;right:0;z-index:7;
+    padding:8px 12px 6px;background:linear-gradient(180deg,rgba(2,17,24,.8),transparent)}
+  .pos{top:calc(9px + env(safe-area-inset-top,0px));right:10px}
+  .top{top:calc(74px + env(safe-area-inset-top,0px))}
+  .nav{display:none}
+}
 </style></head><body>
 <div class="wrap">
   <div class="bar" id="bar" role="group" aria-label="Collections"></div>
-  <div class="stage"><div class="phone"><div class="feed" id="feed" tabindex="0"
+  <div class="stage"><div class="phone">
+    <div class="segs" id="segs" aria-hidden="true"></div>
+    <p class="pos" id="pos" aria-live="polite"></p>
+    <div class="nav">
+      <button id="prev" aria-label="Previous clip">&#8593;</button>
+      <button id="next" aria-label="Next clip">&#8595;</button>
+    </div>
+    <div class="feed" id="feed" tabindex="0" role="feed"
        aria-label="Vertical clip feed"><p class="msg">Loading…</p></div></div></div>
 </div>
 <script type="module">
 const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+/** Escaping doesn't stop `javascript:` in an href or src, so gate the scheme too. */
+const safeUrl = (u) => (/^(https?:|\/|data:image\/)/i.test(String(u || '').trim()) ? u : '');
 const IC = {
   like:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-8.5-5.4-8.5-11A4.8 4.8 0 0 1 12 6.6 4.8 4.8 0 0 1 20.5 10c0 5.6-8.5 11-8.5 11z"/></svg>',
   share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M4 12v8h16v-8"/><path d="M12 16V3"/><path d="M7 8l5-5 5 5"/></svg>',
   out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v6H4V6h6"/></svg>',
+  muted:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l4 6M21 9l-4 6"/></svg>',
+  sound:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 8a5 5 0 0 1 0 8"/></svg>',
 };
 const likes = {
   read(){ try { return JSON.parse(localStorage.getItem('txfeed.likes') || '{}'); } catch { return {}; } },
   write(v){ try { localStorage.setItem('txfeed.likes', JSON.stringify(v)); } catch {} },
 };
 let DATA = { clips: [], collections: [] }, active = 'all', liked = likes.read();
+// Autoplay requires muted, so the feed starts silent — but a presser clip is carried by
+// what is said, and without a control nothing suggests there is audio at all.
+let soundOn = false;
+function applySound() {
+  document.querySelectorAll('#feed video').forEach((v) => (v.muted = !soundOn));
+  document.querySelectorAll('.rb.sound').forEach((b) => {
+    b.setAttribute('aria-pressed', soundOn);
+    b.innerHTML = (soundOn ? IC.sound : IC.muted) + `<span>${soundOn ? 'Sound' : 'Muted'}</span>`;
+  });
+}
 
 /** Placeholder art when a source gives no poster — deterministic per id, on-brand. */
 function generated(id) {
@@ -132,7 +186,7 @@ function overlaysFor(c) {
       ? `top:${o.y}%;text-align:${o.align}`
       : `left:${o.x}%;top:${o.y}%;text-align:${o.align}`;
     return o.type === 'link' && o.url
-      ? `<a class="${cls}" style="${pos}" href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.text)}</a>`
+      ? `<a class="${cls}" style="${pos}" href="${esc(safeUrl(o.url))}" target="_blank" rel="noopener">${esc(o.text)}</a>`
       : `<p class="${cls}" style="${pos}">${esc(o.text)}</p>`;
   }).join('')}</div>`;
 }
@@ -144,7 +198,7 @@ function chromeFor(c) {
   return `<div class="bot">
       <h2>${esc(c.headline)}</h2>
       ${c.caption ? `<p>${esc(c.caption)}</p>` : ''}
-      ${c.action ? `<a class="cta" href="${esc(c.action.url)}" target="_blank" rel="noopener">${esc(c.action.label)}</a>` : ''}
+      ${c.action && safeUrl(c.action.url) ? `<a class="cta" href="${esc(c.action.url)}" target="_blank" rel="noopener">${esc(c.action.label)}</a>` : ''}
     </div>`;
 }
 
@@ -152,24 +206,26 @@ function mediaFor(c) {
   const m = c.media || {};
   const fit = c.fit === 'contain' ? ' class="contain"' : '';
   if (m.kind === 'image')
-    return `<img${fit} src="${esc(m.url)}" alt="${esc(c.headline)}" loading="lazy">`;
+    return `<img${fit} src="${esc(safeUrl(m.url))}" alt="${esc(c.headline)}" loading="lazy">`;
   if (m.kind === 'cloudinary' || m.kind === 'file') {
     const src = m.kind === 'cloudinary' ? m.mp4 : m.url;
     // The generated ground sits behind every video, so a slow or failed source still reads
     // as a designed card rather than a black rectangle.
-    return generated(c.id) + `<video${fit} src="${esc(src)}" poster="${esc(c.poster[0] || '')}"
-      playsinline muted loop preload="none"></video>`;
+    return generated(c.id) + `<video${fit} src="${esc(safeUrl(src))}"
+      poster="${esc(safeUrl(c.poster[0]))}" playsinline muted loop preload="none"></video>`;
   }
   if (m.kind === 'youtube') {
-    // YouTube's terms require its own player, so this item gets an iframe rather than ours.
-    const p = c.poster.filter(Boolean);
-    const chain = p.slice(1).map((u) => `this.onerror=null;this.src='${u}'`).join(';');
+    // YouTube's terms require its own player, so this item gets a poster rather than ours.
+    // The fallback chain is attached in JS below — interpolating URLs into an onerror
+    // attribute made every poster a script sink.
+    const p = c.poster.map(safeUrl).filter(Boolean);
     return p.length
-      ? `<img src="${esc(p[0])}" alt="" loading="lazy" onerror="${chain || "this.remove()"}">`
+      ? `<img src="${esc(p[0])}" alt="" loading="lazy" data-fallback="${esc(JSON.stringify(p.slice(1)))}">`
       : generated(c.id);
   }
-  return c.poster[0]
-    ? `<img src="${esc(c.poster[0])}" alt="" loading="lazy" onerror="this.remove()">`
+  const poster = safeUrl(c.poster[0]);
+  return poster
+    ? `<img src="${esc(poster)}" alt="" loading="lazy" data-fallback="[]">`
     : generated(c.id);
 }
 
@@ -181,25 +237,41 @@ function render() {
   const name = (k) => (DATA.collections.find((c) => c.key === k) || {}).name || k;
 
   feed.innerHTML = rows.map((c, i) => `<article class="slide" data-id="${esc(c.id)}"
-    data-hold="${c.advance?.seconds || 6}" data-advance="${c.advance?.mode || 'auto'}">
+    data-hold="${c.advance?.seconds || 6}" data-advance="${c.advance?.mode || 'auto'}"
+    data-index="${i}" data-total="${rows.length}" role="article"
+    aria-posinset="${i + 1}" aria-setsize="${rows.length}"
+    aria-label="${esc(c.headline)}">
     ${mediaFor(c)}<div class="st"></div>${
       (c.chrome === 'on' || (c.chrome !== 'off' && !(c.overlays?.length))) ? '<div class="sb"></div>' : ''
     }${overlaysFor(c)}
-    <div class="segs">${rows.map((_, j) =>
-      j === i ? `<i class="on cur"><b class="fill"></b></i>`
-              : `<i class="${j < i ? 'on' : ''}"></i>`).join('')}</div>
+
     <div class="top">
-      <span class="coll${c.sponsor ? ' sp' : ''}">${esc(c.sponsor ? c.sponsor.label : name(c.collection))}</span>
+      <span class="coll${c.sponsor ? ' sp' : ''}">${esc(c.sponsor
+        ? [c.sponsor.label, c.sponsor.name].filter(Boolean).join(' ')
+        : name(c.collection))}</span>
       ${c.duration ? `<span class="dur">${esc(c.duration)}</span>` : ''}
     </div>
     ${chromeFor(c)}
+    <p class="flash" hidden></p>
     <div class="rail">
       <button class="rb like" aria-pressed="${!!liked[c.id]}" aria-label="Like">${IC.like}<span>Like</span></button>
       <button class="rb share" aria-label="Share">${IC.share}<span>Share</span></button>
-      ${Object.values(c.links || {})[0]
+      <button class="rb sound" aria-pressed="${soundOn}"
+        aria-label="${soundOn ? 'Mute' : 'Unmute'}">${soundOn ? IC.sound : IC.muted}<span>${
+        soundOn ? 'Sound' : 'Muted'}</span></button>
+      ${safeUrl(Object.values(c.links || {})[0])
         ? `<a class="rb" href="${esc(Object.values(c.links)[0])}" target="_blank" rel="noopener"
              aria-label="Open original">${IC.out}<span>Source</span></a>` : ''}
     </div></article>`).join('');
+
+  feed.querySelectorAll('img[data-fallback]').forEach((img) => {
+    let queue;
+    try { queue = JSON.parse(img.dataset.fallback); } catch { queue = []; }
+    img.onerror = () => {
+      const next = queue.shift();
+      if (next) img.src = next; else { img.onerror = null; img.remove(); }
+    };
+  });
 
   feed.querySelectorAll('.slide').forEach((s) => {
     const id = s.dataset.id;
@@ -207,23 +279,66 @@ function render() {
       const b = e.currentTarget, on = b.getAttribute('aria-pressed') !== 'true';
       b.setAttribute('aria-pressed', on); liked[id] = on; likes.write(liked);
     };
-    s.querySelector('.share').onclick = () => {
+    s.querySelector('.sound').onclick = () => { soundOn = !soundOn; applySound(); };
+    s.querySelector('.share').onclick = async () => {
       const c = rows.find((x) => x.id === id);
       const url = c.action?.url || Object.values(c.links || {})[0] || location.href;
-      if (navigator.share) navigator.share({ title: c.headline, url }).catch(() => {});
-      else navigator.clipboard?.writeText(url);
+      const say = (m) => {
+        const el = s.querySelector('.flash');
+        el.textContent = m; el.hidden = false;
+        clearTimeout(el._t); el._t = setTimeout(() => (el.hidden = true), 2200);
+      };
+      if (navigator.share) {
+        try { await navigator.share({ title: c.headline, url }); return; } catch { /* dismissed */ }
+      }
+      // writeText rejects on an insecure origin or without permission, and silently doing
+      // nothing reads as a broken button.
+      try { await navigator.clipboard.writeText(url); say('Link copied'); }
+      catch { say(url); }
     };
   });
+  activeIdx = 0; paintSegs(rows.length);
   io.disconnect();
-  feed.querySelectorAll('.slide').forEach((s) => io.observe(s));
+  feed.querySelectorAll('.slide').forEach((s, j) => {
+    if (j > 1) s.setAttribute('inert', '');
+    io.observe(s);
+  });
 }
 
-let holdTimer = null;
+let activeIdx = 0;
+const MAX_SEGS = 8;
+
+/** One strip, redrawn on change — a per-slide strip was quadratic in the clip count. */
+function paintSegs(total) {
+  const segs = $('#segs');
+  const show = Math.min(total, MAX_SEGS);
+  const start = Math.max(0, Math.min(activeIdx - (show >> 1), total - show));
+  segs.innerHTML = Array.from({ length: show }, (_, k) => {
+    const idx = start + k;
+    if (idx === activeIdx) return '<i class="on cur"><b class="fill"></b></i>';
+    return `<i class="${idx < activeIdx ? 'on' : ''}"></i>`;
+  }).join('');
+  $('#pos').textContent = total > MAX_SEGS ? `${activeIdx + 1}/${total}` : '';
+}
 /** Static cards behave like a story: hold, fill the segment, advance. Video just plays. */
 const io = new IntersectionObserver((es) => es.forEach((e) => {
   const slide = e.target;
   const v = slide.querySelector('video');
-  const fill = slide.querySelector('.fill');
+
+  if (e.isIntersecting) {
+    const idx = Number(slide.dataset.index) || 0;
+    if (idx !== activeIdx) {
+      activeIdx = idx;
+      paintSegs(Number(slide.dataset.total) || 1);
+      // Keep the off-screen cards out of the tab order — otherwise a keyboard user walks
+      // every card's Like/Share before reaching the next one.
+      $('#feed').querySelectorAll('.slide').forEach((s2, j) => {
+        const near = Math.abs(j - activeIdx) <= 1;
+        if (near) s2.removeAttribute('inert'); else s2.setAttribute('inert', '');
+      });
+    }
+  }
+  const fill = $('#segs .fill');
 
   if (!e.isIntersecting) {
     v?.pause();
@@ -244,15 +359,13 @@ const io = new IntersectionObserver((es) => es.forEach((e) => {
     v.onended = auto ? next : null;
     v.currentTime = 0;
     v.play().catch(() => {});
-    if (fill) {
-      fill.style.transition = 'none';
-      fill.style.width = auto ? '0%' : '100%';
-    }
+    if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
     return;
   }
   if (!fill) return;
 
-  if (!auto) { fill.style.transition = 'none'; fill.style.width = '100%'; return; }
+  // Filling the bar under reduced motion made all 20 cards look already-seen.
+  if (!auto) { fill.style.transition = 'none'; fill.style.width = '0%'; return; }
 
   const hold = Number(slide.dataset.hold) || 6;
   fill.style.transition = 'none'; fill.style.width = '0%';
@@ -272,6 +385,10 @@ function chips() {
   }));
 }
 
+const step = (dir) => $('#feed').scrollBy({ top: dir * $('#feed').clientHeight, behavior: 'smooth' });
+$('#next').onclick = () => step(1);
+$('#prev').onclick = () => step(-1);
+
 $('#feed').addEventListener('keydown', (e) => {
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
   e.preventDefault();
@@ -281,7 +398,7 @@ $('#feed').addEventListener('keydown', (e) => {
 
 try {
   DATA = await (await fetch('/api/feed')).json();
-  chips(); render();
+  chips(); render(); applySound();
 } catch (e) {
   $('#feed').innerHTML = `<p class="msg">Couldn't load the feed.<br>${esc(e.message)}</p>`;
 }
