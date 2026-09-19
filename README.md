@@ -25,7 +25,8 @@ Start here: [`docs/research/00-executive-summary.md`](docs/research/00-executive
 | [08 — Cloudinary, URL only](docs/research/08-cloudinary-url-only.md) | Delivery URLs need no credentials and recover the full design |
 | [09 — NFL Cloudinary findings](docs/research/09-nfl-cloudinary-findings.md) | It's a private CDN, and it may be images-only |
 | [10 — Where the video comes from](docs/research/10-video-home.md) | YouTube playback vs. a feed-owned store |
-| [11 — First real data](docs/research/11-first-real-data.md) | **Start here** — measured results, and the rights issue that just became blocking |
+| [11 — First real data](docs/research/11-first-real-data.md) | Measured results, and the rights issue that became blocking |
+| [12 — What the channel publishes](docs/research/12-content-mix.md) | **Start here** — the vertical content and the usable content don't overlap |
 
 Run [`tools/hunt.sh`](tools/hunt.sh) to settle the open questions in one pass
 (or [`tools/cloudinary-probe.html`](tools/cloudinary-probe.html) for the browser version).
