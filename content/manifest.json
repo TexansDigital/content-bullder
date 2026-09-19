@@ -1,19 +1,43 @@
 {
-  "generatedAt": "2026-09-19T16:45:51.831Z",
+  "generatedAt": "2026-09-19T17:12:55.406Z",
   "baseUrl": "https://static.clubs.nfl.com",
   "namedTransformations": false,
+  "sourceStats": {
+    "harvested": 1000,
+    "range": [
+      "2025-12-21",
+      "2026-09-18"
+    ],
+    "verticalNative": 661,
+    "nonGamedayVertical": 76,
+    "longFormOver3min": 283,
+    "longFormByCollection": {
+      "presser": 110,
+      "gameday": 60,
+      "radio": 45,
+      "series": 34,
+      "players": 14,
+      "community": 12,
+      "flag": 8
+    },
+    "withCaptions": 20
+  },
   "collections": [
     {
       "key": "gameday",
       "name": "Gameday"
     },
     {
+      "key": "series",
+      "name": "Series"
+    },
+    {
       "key": "players",
       "name": "Players"
     },
     {
-      "key": "series",
-      "name": "Series"
+      "key": "radio",
+      "name": "Texans Radio"
     },
     {
       "key": "community",
@@ -26,11 +50,45 @@
   ],
   "clips": [
     {
+      "id": "yt-7xG8hH4FBtA",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "7xG8hH4FBtA",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "David Montgomery's 3-TD day | All Angles",
+      "caption": null,
+      "durationSeconds": 40,
+      "duration": "0:40",
+      "publishedAt": "2026-09-15T20:00:19Z",
+      "poster": [
+        "https://i.ytimg.com/vi/7xG8hH4FBtA/oardefault.jpg",
+        "https://i.ytimg.com/vi/7xG8hH4FBtA/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/7xG8hH4FBtA/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "7xG8hH4FBtA",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
       "id": "yt-m6gOqjDBXxo",
       "media": null,
       "mediaType": "youtube",
       "youtubeId": "m6gOqjDBXxo",
       "collection": "gameday",
+      "liveDupe": false,
       "headline": "Woody flips for the first down 🚀",
       "caption": null,
       "durationSeconds": 16,
@@ -63,6 +121,7 @@
       "mediaType": "youtube",
       "youtubeId": "5f7d3ssRsvc",
       "collection": "gameday",
+      "liveDupe": false,
       "headline": "Stroud ➡️ Nico for 6",
       "caption": null,
       "durationSeconds": 19,
@@ -95,6 +154,7 @@
       "mediaType": "youtube",
       "youtubeId": "B2O7lzt94ow",
       "collection": "gameday",
+      "liveDupe": false,
       "headline": "Hat trick for D-Mo 🏈🏈🏈",
       "caption": null,
       "durationSeconds": 40,
@@ -122,11 +182,45 @@
       }
     },
     {
+      "id": "yt--EN0p-HClsk",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "-EN0p-HClsk",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "Stroud with the dot to Nico 🎯",
+      "caption": null,
+      "durationSeconds": 16,
+      "duration": "0:16",
+      "publishedAt": "2026-09-14T21:29:00Z",
+      "poster": [
+        "https://i.ytimg.com/vi/-EN0p-HClsk/oardefault.jpg",
+        "https://i.ytimg.com/vi/-EN0p-HClsk/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/-EN0p-HClsk/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "-EN0p-HClsk",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
       "id": "yt-PEsizG9Nw9c",
       "media": null,
       "mediaType": "youtube",
       "youtubeId": "PEsizG9Nw9c",
-      "collection": "series",
+      "collection": "gameday",
+      "liveDupe": false,
       "headline": "He's got wheels 🏃💨 | All Angles",
       "caption": "Stroud scrambles for a first down vs. the Buffalo Bills",
       "durationSeconds": 41,
@@ -154,11 +248,45 @@
       }
     },
     {
+      "id": "yt-BzZXAVIF2ww",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "BzZXAVIF2ww",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "David Montgomery's best plays from 3-TD game vs. Bills | Week 1",
+      "caption": "Follow Us!",
+      "durationSeconds": 136,
+      "duration": "2:16",
+      "publishedAt": "2026-09-13T22:36:41Z",
+      "poster": [
+        "https://i.ytimg.com/vi/BzZXAVIF2ww/oardefault.jpg",
+        "https://i.ytimg.com/vi/BzZXAVIF2ww/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/BzZXAVIF2ww/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "BzZXAVIF2ww",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": true,
+        "licensedContent": false
+      }
+    },
+    {
       "id": "yt-1ofJgtx5kGs",
       "media": null,
       "mediaType": "youtube",
       "youtubeId": "1ofJgtx5kGs",
       "collection": "gameday",
+      "liveDupe": false,
       "headline": "How many TDs is that?",
       "caption": null,
       "durationSeconds": 17,
@@ -186,11 +314,45 @@
       }
     },
     {
+      "id": "yt-_cdhjIdFXU0",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "_cdhjIdFXU0",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "That's three for D-Mo 🏈🏈🏈",
+      "caption": null,
+      "durationSeconds": 18,
+      "duration": "0:18",
+      "publishedAt": "2026-09-13T19:38:05Z",
+      "poster": [
+        "https://i.ytimg.com/vi/_cdhjIdFXU0/oardefault.jpg",
+        "https://i.ytimg.com/vi/_cdhjIdFXU0/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/_cdhjIdFXU0/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "_cdhjIdFXU0",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
       "id": "yt-3CCZORLOJvI",
       "media": null,
       "mediaType": "youtube",
       "youtubeId": "3CCZORLOJvI",
       "collection": "gameday",
+      "liveDupe": false,
       "headline": "C.J. finds Nico for 6",
       "caption": null,
       "durationSeconds": 27,
@@ -218,11 +380,111 @@
       }
     },
     {
+      "id": "yt-jccdnOcYVZ0",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "jccdnOcYVZ0",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "That's 2 TDs 🏈🏈",
+      "caption": null,
+      "durationSeconds": 30,
+      "duration": "0:30",
+      "publishedAt": "2026-09-13T18:12:17Z",
+      "poster": [
+        "https://i.ytimg.com/vi/jccdnOcYVZ0/oardefault.jpg",
+        "https://i.ytimg.com/vi/jccdnOcYVZ0/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/jccdnOcYVZ0/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "jccdnOcYVZ0",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-2z2nCpZLVXM",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "2z2nCpZLVXM",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "POV: D-Mo scores and runs at you",
+      "caption": null,
+      "durationSeconds": 33,
+      "duration": "0:33",
+      "publishedAt": "2026-09-13T18:05:58Z",
+      "poster": [
+        "https://i.ytimg.com/vi/2z2nCpZLVXM/oardefault.jpg",
+        "https://i.ytimg.com/vi/2z2nCpZLVXM/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/2z2nCpZLVXM/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "2z2nCpZLVXM",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-_z_fO3qHk5Q",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "_z_fO3qHk5Q",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "First touchdown celly 🤘",
+      "caption": null,
+      "durationSeconds": 11,
+      "duration": "0:11",
+      "publishedAt": "2026-09-13T17:40:20Z",
+      "poster": [
+        "https://i.ytimg.com/vi/_z_fO3qHk5Q/oardefault.jpg",
+        "https://i.ytimg.com/vi/_z_fO3qHk5Q/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/_z_fO3qHk5Q/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "_z_fO3qHk5Q",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
       "id": "yt-JNTvbU4ntLA",
       "media": null,
       "mediaType": "youtube",
       "youtubeId": "JNTvbU4ntLA",
       "collection": "gameday",
+      "liveDupe": false,
       "headline": "Montgomery gets in the end zone 🏈",
       "caption": null,
       "durationSeconds": 27,
@@ -255,6 +517,7 @@
       "mediaType": "youtube",
       "youtubeId": "UKhZWYGTbYU",
       "collection": "gameday",
+      "liveDupe": false,
       "headline": "Stroud finds Marlin for the first down 1️⃣",
       "caption": null,
       "durationSeconds": 16,
@@ -287,6 +550,7 @@
       "mediaType": "youtube",
       "youtubeId": "y92971B7ihI",
       "collection": "gameday",
+      "liveDupe": false,
       "headline": "Clowney gets the sack 😤",
       "caption": null,
       "durationSeconds": 17,
@@ -314,15 +578,49 @@
       }
     },
     {
+      "id": "yt-lywpBHKpULk",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "lywpBHKpULk",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "Azeez Al-Shaair pregame speech | Texans vs. Bills",
+      "caption": null,
+      "durationSeconds": 26,
+      "duration": "0:26",
+      "publishedAt": "2026-09-13T17:13:56Z",
+      "poster": [
+        "https://i.ytimg.com/vi/lywpBHKpULk/oardefault.jpg",
+        "https://i.ytimg.com/vi/lywpBHKpULk/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/lywpBHKpULk/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "lywpBHKpULk",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
       "id": "yt-CQX5rQBGzYo",
       "media": null,
       "mediaType": "youtube",
       "youtubeId": "CQX5rQBGzYo",
       "collection": "gameday",
+      "liveDupe": false,
       "headline": "Kamari gets the 4th down stop ✋",
       "caption": null,
-      "durationSeconds": 16,
-      "duration": "0:16",
+      "durationSeconds": 26,
+      "duration": "0:26",
       "publishedAt": "2026-09-13T17:11:46Z",
       "poster": [
         "https://i.ytimg.com/vi/CQX5rQBGzYo/oardefault.jpg",
@@ -344,6 +642,2699 @@
         "hasCaptions": false,
         "licensedContent": true
       }
+    },
+    {
+      "id": "yt-N8KIjv5S2jw",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "N8KIjv5S2jw",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "IF THEY AIN'T GOT WHITE ON...",
+      "caption": null,
+      "durationSeconds": 26,
+      "duration": "0:26",
+      "publishedAt": "2026-09-13T17:03:59Z",
+      "poster": [
+        "https://i.ytimg.com/vi/N8KIjv5S2jw/oardefault.jpg",
+        "https://i.ytimg.com/vi/N8KIjv5S2jw/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/N8KIjv5S2jw/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "N8KIjv5S2jw",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-x1JK-LYKwzQ",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "x1JK-LYKwzQ",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "Things we love to see",
+      "caption": null,
+      "durationSeconds": 20,
+      "duration": "0:20",
+      "publishedAt": "2026-09-13T17:02:52Z",
+      "poster": [
+        "https://i.ytimg.com/vi/x1JK-LYKwzQ/oardefault.jpg",
+        "https://i.ytimg.com/vi/x1JK-LYKwzQ/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/x1JK-LYKwzQ/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "x1JK-LYKwzQ",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-SdtjvT0ouSg",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "SdtjvT0ouSg",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "C.J. Stroud pregame interview with Evan Washburn",
+      "caption": "C.J. Speaks pregame with Evan Washburn in the lead up to the game vs. the Buffalo Bills.",
+      "durationSeconds": 44,
+      "duration": "0:44",
+      "publishedAt": "2026-09-13T17:01:10Z",
+      "poster": [
+        "https://i.ytimg.com/vi/SdtjvT0ouSg/oardefault.jpg",
+        "https://i.ytimg.com/vi/SdtjvT0ouSg/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/SdtjvT0ouSg/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "SdtjvT0ouSg",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-PoR2ew7lY5o",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "PoR2ew7lY5o",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "They ready y’all!!!",
+      "caption": null,
+      "durationSeconds": 15,
+      "duration": "0:15",
+      "publishedAt": "2026-09-13T16:54:02Z",
+      "poster": [
+        "https://i.ytimg.com/vi/PoR2ew7lY5o/oardefault.jpg",
+        "https://i.ytimg.com/vi/PoR2ew7lY5o/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/PoR2ew7lY5o/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "PoR2ew7lY5o",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt--9XFmXGamF4",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "-9XFmXGamF4",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "Boutte is ready 😤",
+      "caption": null,
+      "durationSeconds": 12,
+      "duration": "0:12",
+      "publishedAt": "2026-09-13T16:23:58Z",
+      "poster": [
+        "https://i.ytimg.com/vi/-9XFmXGamF4/oardefault.jpg",
+        "https://i.ytimg.com/vi/-9XFmXGamF4/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/-9XFmXGamF4/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "-9XFmXGamF4",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-H-9LJdBhWeU",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "H-9LJdBhWeU",
+      "collection": "gameday",
+      "liveDupe": false,
+      "headline": "🔜",
+      "caption": null,
+      "durationSeconds": 10,
+      "duration": "0:10",
+      "publishedAt": "2026-09-13T15:20:03Z",
+      "poster": [
+        "https://i.ytimg.com/vi/H-9LJdBhWeU/oardefault.jpg",
+        "https://i.ytimg.com/vi/H-9LJdBhWeU/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/H-9LJdBhWeU/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "H-9LJdBhWeU",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-9_UwWHmXbGk",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "9_UwWHmXbGk",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "That's our brand of ball 😤",
+      "caption": "Episode 2 of Iron Sharpens Iron is out now.",
+      "durationSeconds": 20,
+      "duration": "0:20",
+      "publishedAt": "2026-09-10T00:46:21Z",
+      "poster": [
+        "https://i.ytimg.com/vi/9_UwWHmXbGk/oardefault.jpg",
+        "https://i.ytimg.com/vi/9_UwWHmXbGk/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/9_UwWHmXbGk/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "9_UwWHmXbGk",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-BXoC17LKlCI",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "BXoC17LKlCI",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "WE’RE SO BACK‼️",
+      "caption": "On the 50 with Hannah McNair returns with Will Anderson Jr.’s mom, Tereon Anderson 🤘 Get to know her in Episode 1!",
+      "durationSeconds": 17,
+      "duration": "0:17",
+      "publishedAt": "2026-09-08T16:34:32Z",
+      "poster": [
+        "https://i.ytimg.com/vi/BXoC17LKlCI/oardefault.jpg",
+        "https://i.ytimg.com/vi/BXoC17LKlCI/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/BXoC17LKlCI/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "BXoC17LKlCI",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-vJec2UIHHH0",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "vJec2UIHHH0",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Family time 🫶 | ISI ep. 2",
+      "caption": null,
+      "durationSeconds": 21,
+      "duration": "0:21",
+      "publishedAt": "2026-09-04T01:00:37Z",
+      "poster": [
+        "https://i.ytimg.com/vi/vJec2UIHHH0/oardefault.jpg",
+        "https://i.ytimg.com/vi/vJec2UIHHH0/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/vJec2UIHHH0/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "vJec2UIHHH0",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-i1N9oycTR2c",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "i1N9oycTR2c",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Fishing, family, and football | ISI ep. 2",
+      "caption": "Episode 2 of Iron Sharpens Iron presented by Houston Methodist out now!",
+      "durationSeconds": 64,
+      "duration": "1:04",
+      "publishedAt": "2026-09-04T00:04:32Z",
+      "poster": [
+        "https://i.ytimg.com/vi/i1N9oycTR2c/oardefault.jpg",
+        "https://i.ytimg.com/vi/i1N9oycTR2c/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/i1N9oycTR2c/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "i1N9oycTR2c",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-sfm3JrpVzAw",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "sfm3JrpVzAw",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "It's special 🤩 | Mic'd Up",
+      "caption": "Ful Mic'd Up presented by BMW out now",
+      "durationSeconds": 13,
+      "duration": "0:13",
+      "publishedAt": "2026-08-31T16:24:43Z",
+      "poster": [
+        "https://i.ytimg.com/vi/sfm3JrpVzAw/oardefault.jpg",
+        "https://i.ytimg.com/vi/sfm3JrpVzAw/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/sfm3JrpVzAw/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "sfm3JrpVzAw",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-1Iwrtxpo1sc",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "1Iwrtxpo1sc",
+      "collection": "radio",
+      "liveDupe": false,
+      "headline": "Woody Marks on Studying Defenses and the Texans Offense | Texans Radio",
+      "caption": "Texans running back Woody Marks reflects on the end of training camp and a strong joint practice performance from the offense. He talks about responding after a flat day, learning to read different defensive fronts and why knowing what a defense is doing can make life easier for a running back. 00:00 Training camp comes to an end 00:10 Facing a different defense in joint practice 00:22 Responding after a flat practice 00:40 Bringing more energy 00:55 Why Marks studies defensive film first 01:10 Learning different looks from Jalen Pitre 01:32 Looking ahead to Buffalo 01:52 Reacting to the Rivalries uniform 02:09 Trying not to leak the new uniforms",
+      "durationSeconds": 148,
+      "duration": "2:28",
+      "publishedAt": "2026-08-27T15:25:48Z",
+      "poster": [
+        "https://i.ytimg.com/vi/1Iwrtxpo1sc/oardefault.jpg",
+        "https://i.ytimg.com/vi/1Iwrtxpo1sc/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/1Iwrtxpo1sc/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "1Iwrtxpo1sc",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-ZOeD9_wGdc4",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "ZOeD9_wGdc4",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "Welcome to the land where it just don't stop.",
+      "caption": "houstontexans.com/rivalries",
+      "durationSeconds": 15,
+      "duration": "0:15",
+      "publishedAt": "2026-08-24T12:15:11Z",
+      "poster": [
+        "https://i.ytimg.com/vi/ZOeD9_wGdc4/oardefault.jpg",
+        "https://i.ytimg.com/vi/ZOeD9_wGdc4/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/ZOeD9_wGdc4/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "ZOeD9_wGdc4",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-DQuZFlZ46ns",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "DQuZFlZ46ns",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Take a look behind the scenes with Nico 👀",
+      "caption": null,
+      "durationSeconds": 8,
+      "duration": "0:08",
+      "publishedAt": "2026-08-23T20:31:54Z",
+      "poster": [
+        "https://i.ytimg.com/vi/DQuZFlZ46ns/oardefault.jpg",
+        "https://i.ytimg.com/vi/DQuZFlZ46ns/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/DQuZFlZ46ns/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "DQuZFlZ46ns",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-Kuf2WLJqgTI",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "Kuf2WLJqgTI",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "From the 8th round to the NFL",
+      "caption": "Watch the full Reed Blankenship Mic'd Up now!",
+      "durationSeconds": 13,
+      "duration": "0:13",
+      "publishedAt": "2026-08-16T00:30:14Z",
+      "poster": [
+        "https://i.ytimg.com/vi/Kuf2WLJqgTI/oardefault.jpg",
+        "https://i.ytimg.com/vi/Kuf2WLJqgTI/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/Kuf2WLJqgTI/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "Kuf2WLJqgTI",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-a6J0NufBeas",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "a6J0NufBeas",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Reed 🤝 TORO",
+      "caption": "Watch the full Reed Blankenship Mic'd Up now!",
+      "durationSeconds": 14,
+      "duration": "0:14",
+      "publishedAt": "2026-08-15T21:15:20Z",
+      "poster": [
+        "https://i.ytimg.com/vi/a6J0NufBeas/oardefault.jpg",
+        "https://i.ytimg.com/vi/a6J0NufBeas/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/a6J0NufBeas/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "a6J0NufBeas",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-JOWt03aVWbc",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "JOWt03aVWbc",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Teller knows his BBQ 🍖",
+      "caption": "Follow along as Wyatt Teller and Aireontae Ersery stop at some iconic Houston BBQ spots on the latest episode of Iron Sharpens Iron. Full episode out now.",
+      "durationSeconds": 75,
+      "duration": "1:15",
+      "publishedAt": "2026-08-15T00:00:28Z",
+      "poster": [
+        "https://i.ytimg.com/vi/JOWt03aVWbc/oardefault.jpg",
+        "https://i.ytimg.com/vi/JOWt03aVWbc/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/JOWt03aVWbc/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "JOWt03aVWbc",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-wNDEZ3o3OuY",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "wNDEZ3o3OuY",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Back at camp 🏈",
+      "caption": "The Houston Texans return to action at training camp in the latest episode of Iron Sharpens Iron presented by Houston Methodist. Watch the full episode now.",
+      "durationSeconds": 87,
+      "duration": "1:27",
+      "publishedAt": "2026-08-14T23:03:48Z",
+      "poster": [
+        "https://i.ytimg.com/vi/wNDEZ3o3OuY/oardefault.jpg",
+        "https://i.ytimg.com/vi/wNDEZ3o3OuY/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/wNDEZ3o3OuY/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "wNDEZ3o3OuY",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-W7N6gvfkZHY",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "W7N6gvfkZHY",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Texans Camp, Trents ranch and a BBQ stop 🤘",
+      "caption": "All new episode of Iron Sharpens Iron presented by Houston Methodist out now.",
+      "durationSeconds": 63,
+      "duration": "1:03",
+      "publishedAt": "2026-08-12T21:48:34Z",
+      "poster": [
+        "https://i.ytimg.com/vi/W7N6gvfkZHY/oardefault.jpg",
+        "https://i.ytimg.com/vi/W7N6gvfkZHY/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/W7N6gvfkZHY/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "W7N6gvfkZHY",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-fFWWLZaL8LA",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "fFWWLZaL8LA",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Trent Brown Trades the Trenches for the Ranch 🤠",
+      "caption": "Football isn’t the only place Trent Brown puts in work. Go to the ranch with him in Episode 1 of Iron Sharpens Iron, premiering tomorrow, Aug. 12.",
+      "durationSeconds": 27,
+      "duration": "0:27",
+      "publishedAt": "2026-08-11T22:00:38Z",
+      "poster": [
+        "https://i.ytimg.com/vi/fFWWLZaL8LA/oardefault.jpg",
+        "https://i.ytimg.com/vi/fFWWLZaL8LA/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/fFWWLZaL8LA/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "fFWWLZaL8LA",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-J4cLdTzqEBk",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "J4cLdTzqEBk",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "Best draft call of all time?? 👀",
+      "caption": null,
+      "durationSeconds": 38,
+      "duration": "0:38",
+      "publishedAt": "2026-08-07T23:45:14Z",
+      "poster": [
+        "https://i.ytimg.com/vi/J4cLdTzqEBk/oardefault.jpg",
+        "https://i.ytimg.com/vi/J4cLdTzqEBk/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/J4cLdTzqEBk/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "J4cLdTzqEBk",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-CIcc9hAqPTQ",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "CIcc9hAqPTQ",
+      "collection": "radio",
+      "liveDupe": false,
+      "headline": "Keylan Rutledge on Center Reps, C.J. Stroud and Rookie Camp | Texans Radio",
+      "caption": "Texans rookie Keylan Rutledge joins Shelby Coppedge to discuss his first NFL training camp and the transition from guard to taking more snaps at center. Rutledge explains how his wife has helped him get extra snapping work, what he is learning from C.J. Stroud and the responsibility that comes with directing the offensive line. He also shares the competitive mindset he brings to every rep. 00:00 Keylan Rutledge joins Shelby Coppedge 00:12 His wife helps him take 150 snaps a day 00:29 Transitioning from guard to center 00:45 Communicating and directing the offensive line 00:57 Working closely with C.J. Stroud 01:13 What his mother means to his NFL journey 01:27 Celebrating becoming a first-round pick 01:55 Competing against Azeez Al-Shaair 02:12 What Rutledge wants to prove in camp 02:23 Walking into an NFL locker room for the first time",
+      "durationSeconds": 178,
+      "duration": "2:58",
+      "publishedAt": "2026-08-07T22:00:07Z",
+      "poster": [
+        "https://i.ytimg.com/vi/CIcc9hAqPTQ/oardefault.jpg",
+        "https://i.ytimg.com/vi/CIcc9hAqPTQ/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/CIcc9hAqPTQ/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "CIcc9hAqPTQ",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-T8TOTHbuZFE",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "T8TOTHbuZFE",
+      "collection": "radio",
+      "liveDupe": false,
+      "headline": "Kamari Ramsey on Houston, Calen Bullock and Rookie Camp | Texans Radio",
+      "caption": "Kamari Ramsey sits down with Shelby Coppedge to talk about his transition from USC to the Houston Texans. He discusses learning by watching Calen Bullock’s technique, competing against Dalton Schultz, Brevin Jordan and Marlin Klein, and the surreal feeling of landing with an organization he had admired from afar. 00:00 Kamari Ramsey joins Shelby Coppedge 00:08 First impressions of Houston 00:20 Texans teammates making Houston feel like home 00:27 Learning from Calen Bullock 00:48 Tight ends challenging Ramsey in camp 00:57 Dalton Schultz, Brevin Jordan and Marlin Klein 01:08 Why Ramsey wanted to be a Texan 01:24 What he wants to prove as a rookie 01:42 Building a friendship with Lewis Bond 01:53 Preparing for his first NFL game",
+      "durationSeconds": 142,
+      "duration": "2:22",
+      "publishedAt": "2026-08-07T16:30:18Z",
+      "poster": [
+        "https://i.ytimg.com/vi/T8TOTHbuZFE/oardefault.jpg",
+        "https://i.ytimg.com/vi/T8TOTHbuZFE/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/T8TOTHbuZFE/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "T8TOTHbuZFE",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-ehDRM_z3wIk",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "ehDRM_z3wIk",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "7 to 1 🏈",
+      "caption": "C.J. Stroud makes a throw to Tank Dell at Texans Training Camp.",
+      "durationSeconds": 12,
+      "duration": "0:12",
+      "publishedAt": "2026-08-05T18:52:13Z",
+      "poster": [
+        "https://i.ytimg.com/vi/ehDRM_z3wIk/oardefault.jpg",
+        "https://i.ytimg.com/vi/ehDRM_z3wIk/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/ehDRM_z3wIk/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "ehDRM_z3wIk",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-w6jA7ZeXBSc",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "w6jA7ZeXBSc",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "Clowney's big hit 💥",
+      "caption": "Jadeveon Clowney makes his return to the team that drafter him #1 overall. The Houston Texans have signed the DE to the roster.",
+      "durationSeconds": 32,
+      "duration": "0:32",
+      "publishedAt": "2026-08-04T13:09:10Z",
+      "poster": [
+        "https://i.ytimg.com/vi/w6jA7ZeXBSc/oardefault.jpg",
+        "https://i.ytimg.com/vi/w6jA7ZeXBSc/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/w6jA7ZeXBSc/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "w6jA7ZeXBSc",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-KcZLvTzXkgc",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "KcZLvTzXkgc",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "Where it all started",
+      "caption": "A look back at the first ever Houston Texans Training Camp.",
+      "durationSeconds": 41,
+      "duration": "0:41",
+      "publishedAt": "2026-08-01T22:00:38Z",
+      "poster": [
+        "https://i.ytimg.com/vi/KcZLvTzXkgc/oardefault.jpg",
+        "https://i.ytimg.com/vi/KcZLvTzXkgc/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/KcZLvTzXkgc/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "KcZLvTzXkgc",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-9wOGbm8l-ek",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "9wOGbm8l-ek",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "🎥 Calen mic'd up at Media Day",
+      "caption": null,
+      "durationSeconds": 101,
+      "duration": "1:41",
+      "publishedAt": "2026-08-01T20:00:02Z",
+      "poster": [
+        "https://i.ytimg.com/vi/9wOGbm8l-ek/oardefault.jpg",
+        "https://i.ytimg.com/vi/9wOGbm8l-ek/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/9wOGbm8l-ek/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "9wOGbm8l-ek",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-wYx_ZnepBAo",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "wYx_ZnepBAo",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "Ready for the 25th season🤘",
+      "caption": "Cal and Hannah McNair welcome fans to Houston Texans Training Camp, take a moment to honor the legacy of Janice McNair and share their excitement for the season ahead, including the Texans’ new NFL x Nike Rivalries uniform inspired by the city of Houston.",
+      "durationSeconds": 76,
+      "duration": "1:16",
+      "publishedAt": "2026-08-01T16:45:17Z",
+      "poster": [
+        "https://i.ytimg.com/vi/wYx_ZnepBAo/oardefault.jpg",
+        "https://i.ytimg.com/vi/wYx_ZnepBAo/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/wYx_ZnepBAo/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "wYx_ZnepBAo",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-jcEjSRd4mUs",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "jcEjSRd4mUs",
+      "collection": "flag",
+      "liveDupe": false,
+      "headline": "Couldn’t have said it better Pat",
+      "caption": "@ThePatMcAfeeShow is right, Texas is a football state. Let’s get flag football sanctioned in Texas.",
+      "durationSeconds": 34,
+      "duration": "0:34",
+      "publishedAt": "2026-07-25T15:26:25Z",
+      "poster": [
+        "https://i.ytimg.com/vi/jcEjSRd4mUs/oardefault.jpg",
+        "https://i.ytimg.com/vi/jcEjSRd4mUs/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/jcEjSRd4mUs/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "jcEjSRd4mUs",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-kXvBXYhhsC8",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "kXvBXYhhsC8",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "\"It's not pressure, it's an opportunity\" - Will Anderson Jr.",
+      "caption": "Will Anderson Jr. response to if there is increase pressure due to his new contract #Shorts",
+      "durationSeconds": 26,
+      "duration": "0:26",
+      "publishedAt": "2026-07-17T21:00:29Z",
+      "poster": [
+        "https://i.ytimg.com/vi/kXvBXYhhsC8/oardefault.jpg",
+        "https://i.ytimg.com/vi/kXvBXYhhsC8/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/kXvBXYhhsC8/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "kXvBXYhhsC8",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-FYLT5kZ5EPc",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "FYLT5kZ5EPc",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Coach Barrett HYPED about that protection! 🛡️",
+      "caption": "Coach Barrett Mic'd Up and his energy is ready for the season #Shorts",
+      "durationSeconds": 18,
+      "duration": "0:18",
+      "publishedAt": "2026-07-17T18:30:06Z",
+      "poster": [
+        "https://i.ytimg.com/vi/FYLT5kZ5EPc/oardefault.jpg",
+        "https://i.ytimg.com/vi/FYLT5kZ5EPc/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/FYLT5kZ5EPc/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "FYLT5kZ5EPc",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-QS-c4lKOk8U",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "QS-c4lKOk8U",
+      "collection": "community",
+      "liveDupe": false,
+      "headline": "We honor Mrs. McNair's legacy.",
+      "caption": "Through her dedication, compassion and service, Mrs. McNair helped shape our community for the better. We honor her legacy.",
+      "durationSeconds": 77,
+      "duration": "1:17",
+      "publishedAt": "2026-07-17T16:05:25Z",
+      "poster": [
+        "https://i.ytimg.com/vi/QS-c4lKOk8U/oardefault.jpg",
+        "https://i.ytimg.com/vi/QS-c4lKOk8U/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/QS-c4lKOk8U/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "QS-c4lKOk8U",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-iIZWm4Gut50",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "iIZWm4Gut50",
+      "collection": "community",
+      "liveDupe": false,
+      "headline": "How Frank Ross Is Serving Houston Through Coach’s Cuts",
+      "caption": "Texans special teams coordinator Frank Ross leads the fifth annual Coach’s Cuts event in Houston, bringing together barbers, volunteers and supporters to serve neighbors in need. From haircuts and meals to clothing, showers and care, this initiative is all about restoring dignity and showing what community looks like.",
+      "durationSeconds": 178,
+      "duration": "2:58",
+      "publishedAt": "2026-06-22T18:21:15Z",
+      "poster": [
+        "https://i.ytimg.com/vi/iIZWm4Gut50/oardefault.jpg",
+        "https://i.ytimg.com/vi/iIZWm4Gut50/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/iIZWm4Gut50/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "iIZWm4Gut50",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-IrV4aTiSQLg",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "IrV4aTiSQLg",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "Will Anderson Jr: \"My Family Is Set, That's It\"",
+      "caption": "Will Anderson Jr.'s first thought after his contract wasn't about himself Family first 🙏❤️ #HoustonTexans #NFL #Shorts",
+      "durationSeconds": 28,
+      "duration": "0:28",
+      "publishedAt": "2026-06-20T18:00:13Z",
+      "poster": [
+        "https://i.ytimg.com/vi/IrV4aTiSQLg/oardefault.jpg",
+        "https://i.ytimg.com/vi/IrV4aTiSQLg/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/IrV4aTiSQLg/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "IrV4aTiSQLg",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-i-IgBfYiRJc",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "i-IgBfYiRJc",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "\"That's been a dream of mine since I was a little kid\" 🥹",
+      "caption": "Jaylin Noel reflects on his incredible journey from childhood dreams to getting drafted and helping the Houston Texans clinch a playoff spot. This is what football is all about. #HoustonTexans #NFL #Texans #Shorts",
+      "durationSeconds": 17,
+      "duration": "0:17",
+      "publishedAt": "2026-06-17T23:00:24Z",
+      "poster": [
+        "https://i.ytimg.com/vi/i-IgBfYiRJc/oardefault.jpg",
+        "https://i.ytimg.com/vi/i-IgBfYiRJc/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/i-IgBfYiRJc/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "i-IgBfYiRJc",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-S7N-w8Y3das",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "S7N-w8Y3das",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Welcome Home Keylan | ISI Exclusive",
+      "caption": "Go behind the scenes with Keylan Rutledge on his first day with the Houston Texans as he walks through Reliant Stadium and takes in his new home in H-Town. New ISI Exclusive out now.",
+      "durationSeconds": 44,
+      "duration": "0:44",
+      "publishedAt": "2026-05-12T13:15:05Z",
+      "poster": [
+        "https://i.ytimg.com/vi/S7N-w8Y3das/oardefault.jpg",
+        "https://i.ytimg.com/vi/S7N-w8Y3das/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/S7N-w8Y3das/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "S7N-w8Y3das",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-Q2w271iIvi0",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "Q2w271iIvi0",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "Keylan Rutledge's Reaction to Being Drafted by Houston | ISI Exclusive",
+      "caption": "From draft night to H-Town, Keylan Rutledge is ready to be a Houston Texan. Watch Nick Caserio discuss Rutledge’s toughness and see Keylan’s first reaction to joining the team. New ISI Exclusive out now.",
+      "durationSeconds": 49,
+      "duration": "0:49",
+      "publishedAt": "2026-05-11T22:30:07Z",
+      "poster": [
+        "https://i.ytimg.com/vi/Q2w271iIvi0/oardefault.jpg",
+        "https://i.ytimg.com/vi/Q2w271iIvi0/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/Q2w271iIvi0/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "Q2w271iIvi0",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-yUpCTsZgAAc",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "yUpCTsZgAAc",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Will Anderson Jr. on What His Extension Means to Him | ISI Exclusive",
+      "caption": "Will Anderson Jr. talks about his extension with the Houston Texans and what it means to keep building in H-Town. Go behind the scenes with WAJ in an all-new Iron Sharpens Iron, out now.",
+      "durationSeconds": 16,
+      "duration": "0:16",
+      "publishedAt": "2026-05-07T13:31:12Z",
+      "poster": [
+        "https://i.ytimg.com/vi/yUpCTsZgAAc/oardefault.jpg",
+        "https://i.ytimg.com/vi/yUpCTsZgAAc/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/yUpCTsZgAAc/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "yUpCTsZgAAc",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-klwwfjmXC_o",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "klwwfjmXC_o",
+      "collection": "community",
+      "liveDupe": false,
+      "headline": "Why Houston Means More Than Football to Will Anderson | ISI Exclusive",
+      "caption": "Will Anderson Jr. is all in on H-Town. Follow along as he connects with the community, reflects on his extension with the Houston Texans and shares what it means to build a legacy in H-Town. Watch the new Iron Sharpens Iron exclusive out now.",
+      "durationSeconds": 28,
+      "duration": "0:28",
+      "publishedAt": "2026-05-06T23:15:03Z",
+      "poster": [
+        "https://i.ytimg.com/vi/klwwfjmXC_o/oardefault.jpg",
+        "https://i.ytimg.com/vi/klwwfjmXC_o/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/klwwfjmXC_o/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "klwwfjmXC_o",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-fgmKN5Qt1DU",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "fgmKN5Qt1DU",
+      "collection": "radio",
+      "liveDupe": false,
+      "headline": "Was This the Linebacker Plan?",
+      "caption": "Houston Texans Executive Vice President and General Manager Nick Caserio joins Texans Radio to discuss selecting linebackers Wade Woodaz and Aiden Fisher in the 2026 NFL Draft. Hear how the Texans evaluated both players, what stood out in the process and how the picks fit into Houston’s Draft class. Watch the full Texans Radio interview, Nick Caserio Recaps the 2026 NFL Draft, out now on YouTube.",
+      "durationSeconds": 77,
+      "duration": "1:17",
+      "publishedAt": "2026-05-03T22:30:10Z",
+      "poster": [
+        "https://i.ytimg.com/vi/fgmKN5Qt1DU/oardefault.jpg",
+        "https://i.ytimg.com/vi/fgmKN5Qt1DU/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/fgmKN5Qt1DU/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "fgmKN5Qt1DU",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-gxS6kzBZY1Q",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "gxS6kzBZY1Q",
+      "collection": "radio",
+      "liveDupe": false,
+      "headline": "Keylan Rutledge & Kayden McDonald: How Houston Got THem",
+      "caption": "Houston Texans Executive Vice President and General Manager Nick Caserio joins Texans Radio to discuss the moves that helped land Keylan Rutledge and Kayden McDonald in the 2026 NFL Draft. Hear how the Texans approached the board, identified their targets and made the decisions that shaped their Draft class. Watch the full Texans Radio interview, Nick Caserio Recaps the 2026 NFL Draft, out now on YouTube.",
+      "durationSeconds": 122,
+      "duration": "2:02",
+      "publishedAt": "2026-05-03T19:45:03Z",
+      "poster": [
+        "https://i.ytimg.com/vi/gxS6kzBZY1Q/oardefault.jpg",
+        "https://i.ytimg.com/vi/gxS6kzBZY1Q/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/gxS6kzBZY1Q/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "gxS6kzBZY1Q",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-h6JlzmTZM88",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "h6JlzmTZM88",
+      "collection": "radio",
+      "liveDupe": false,
+      "headline": "College Record vs Raw Talent: Caserio on How Scouts Decide",
+      "caption": "Houston Texans Executive Vice President and General Manager Nick Caserio joins Texans Radio to discuss NIL, the transfer portal and how college football changes are impacting the NFL Draft evaluation process. Hear what the Texans consider when looking at player movement, draft prospects and the future of scouting. Watch the full Texans Radio interview, Nick Caserio Recaps the 2026 NFL Draft, out now on YouTube.",
+      "durationSeconds": 75,
+      "duration": "1:15",
+      "publishedAt": "2026-05-03T15:45:03Z",
+      "poster": [
+        "https://i.ytimg.com/vi/h6JlzmTZM88/oardefault.jpg",
+        "https://i.ytimg.com/vi/h6JlzmTZM88/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/h6JlzmTZM88/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "h6JlzmTZM88",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-epG8iLYDAYA",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "epG8iLYDAYA",
+      "collection": "radio",
+      "liveDupe": false,
+      "headline": "How the Texans Evaluated Their 2026 Draft Class",
+      "caption": "Houston Texans Executive Vice President and General Manager Nick Caserio joins Texans Radio to discuss how the Texans evaluate toughness and mentality during the 2026 NFL Draft process. Hear what the team looks for beyond talent, production and measurables when identifying prospects who are built to compete at the NFL level. Watch the full Texans Radio interview, Nick Caserio Recaps the 2026 NFL Draft, out now on YouTube.",
+      "durationSeconds": 64,
+      "duration": "1:04",
+      "publishedAt": "2026-05-03T14:15:04Z",
+      "poster": [
+        "https://i.ytimg.com/vi/epG8iLYDAYA/oardefault.jpg",
+        "https://i.ytimg.com/vi/epG8iLYDAYA/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/epG8iLYDAYA/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "epG8iLYDAYA",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-Dw83eDsw4iM",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "Dw83eDsw4iM",
+      "collection": "radio",
+      "liveDupe": false,
+      "headline": "The Non-Negotiable for Every Texans Draft Pick",
+      "caption": "Houston Texans Executive Vice President and General Manager Nick Caserio joins Texans Radio to discuss why character matters in the Texans 2026 NFL Draft evaluation process. Hear how the Texans identify players with the right mindset, work ethic and team-first approach when building their 2026 Draft class. Watch the full Texans Radio interview, Nick Caserio Recaps the 2026 NFL Draft, out now.",
+      "durationSeconds": 100,
+      "duration": "1:40",
+      "publishedAt": "2026-05-02T19:15:00Z",
+      "poster": [
+        "https://i.ytimg.com/vi/Dw83eDsw4iM/oardefault.jpg",
+        "https://i.ytimg.com/vi/Dw83eDsw4iM/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/Dw83eDsw4iM/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "Dw83eDsw4iM",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-_GSUphNeGxI",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "_GSUphNeGxI",
+      "collection": "radio",
+      "liveDupe": false,
+      "headline": "Does Winning Matter...?",
+      "caption": "Houston Texans Executive Vice President and General Manager Nick Caserio joins Texans Radio to discuss the Texans’ 2026 NFL Draft evaluation process and whether coming from a winning college football program impacts how the team looks at draft prospects and future Texans. Watch the full Texans Radio interview, Nick Caserio Recaps the 2026 NFL Draft, on YouTube now.",
+      "durationSeconds": 77,
+      "duration": "1:17",
+      "publishedAt": "2026-05-02T18:00:27Z",
+      "poster": [
+        "https://i.ytimg.com/vi/_GSUphNeGxI/oardefault.jpg",
+        "https://i.ytimg.com/vi/_GSUphNeGxI/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/_GSUphNeGxI/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "_GSUphNeGxI",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-MIziI6AQnBg",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "MIziI6AQnBg",
+      "collection": "radio",
+      "liveDupe": false,
+      "headline": "Why the Houston Texans Keep Drafting USC DBs",
+      "caption": "Texans Radio talks with Executive Vice President and General Manager Nick Caserio about the Houston Texans evolving NFL Draft evaluation process and the team’s recent run of drafting defensive backs from USC.",
+      "durationSeconds": 100,
+      "duration": "1:40",
+      "publishedAt": "2026-05-02T15:15:03Z",
+      "poster": [
+        "https://i.ytimg.com/vi/MIziI6AQnBg/oardefault.jpg",
+        "https://i.ytimg.com/vi/MIziI6AQnBg/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/MIziI6AQnBg/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "MIziI6AQnBg",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-t5TqCPu2sWg",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "t5TqCPu2sWg",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "With the 204th pick in the NFL Draft we select..",
+      "caption": "Texans select Lewis Bond with No. 204 pick in 2026 draft",
+      "durationSeconds": 64,
+      "duration": "1:04",
+      "publishedAt": "2026-04-25T21:19:00Z",
+      "poster": [
+        "https://i.ytimg.com/vi/t5TqCPu2sWg/oardefault.jpg",
+        "https://i.ytimg.com/vi/t5TqCPu2sWg/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/t5TqCPu2sWg/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "t5TqCPu2sWg",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-geVHYAgtmuQ",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "geVHYAgtmuQ",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "Welcome to the swarm, Kamari Ramsey ✌️",
+      "caption": null,
+      "durationSeconds": 39,
+      "duration": "0:39",
+      "publishedAt": "2026-04-25T19:24:02Z",
+      "poster": [
+        "https://i.ytimg.com/vi/geVHYAgtmuQ/oardefault.jpg",
+        "https://i.ytimg.com/vi/geVHYAgtmuQ/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/geVHYAgtmuQ/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "geVHYAgtmuQ",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-UiwxXi--4IQ",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "UiwxXi--4IQ",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "With the 141st pick in the NFL Draft we select..",
+      "caption": "The Houston Texans select USC defensive back Kamari Ramsey in Round 5 of the 2026 NFL Draft with the No. 141 overall pick.",
+      "durationSeconds": 136,
+      "duration": "2:16",
+      "publishedAt": "2026-04-25T18:21:40Z",
+      "poster": [
+        "https://i.ytimg.com/vi/UiwxXi--4IQ/oardefault.jpg",
+        "https://i.ytimg.com/vi/UiwxXi--4IQ/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/UiwxXi--4IQ/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "UiwxXi--4IQ",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-FuXzaVkHQ1A",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "FuXzaVkHQ1A",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "With the 123 overall pick we select..",
+      "caption": "The Houston Texans select Clemson Tigers linebacker Wade Woodaz in Round 4 of the 2026 NFL Draft with the No. 123 overall pick (via a trade with the Los Angeles Chargers).",
+      "durationSeconds": 61,
+      "duration": "1:01",
+      "publishedAt": "2026-04-25T17:31:02Z",
+      "poster": [
+        "https://i.ytimg.com/vi/FuXzaVkHQ1A/oardefault.jpg",
+        "https://i.ytimg.com/vi/FuXzaVkHQ1A/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/FuXzaVkHQ1A/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "FuXzaVkHQ1A",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-aaAvCKCMCPs",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "aaAvCKCMCPs",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "With the 59th pick in the 2026 NFL Draft we select..",
+      "caption": "Marlin Klein TE out of Michigan.",
+      "durationSeconds": 48,
+      "duration": "0:48",
+      "publishedAt": "2026-04-25T01:04:55Z",
+      "poster": [
+        "https://i.ytimg.com/vi/aaAvCKCMCPs/oardefault.jpg",
+        "https://i.ytimg.com/vi/aaAvCKCMCPs/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/aaAvCKCMCPs/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "aaAvCKCMCPs",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-aQQm1naiPKY",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "aQQm1naiPKY",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "JUMPIN’ FOR JOY 🤘",
+      "caption": "The newest Texan meets Texans fans at the NFL Draft.",
+      "durationSeconds": 27,
+      "duration": "0:27",
+      "publishedAt": "2026-04-25T00:02:15Z",
+      "poster": [
+        "https://i.ytimg.com/vi/aQQm1naiPKY/oardefault.jpg",
+        "https://i.ytimg.com/vi/aQQm1naiPKY/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/aQQm1naiPKY/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "aQQm1naiPKY",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-pttLtOcs6No",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "pttLtOcs6No",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "With the 36th pick in the NFL Draft we select...",
+      "caption": "Watch the moment Kayden McDonald walks the stage at the 2026 NFL Draft.",
+      "durationSeconds": 161,
+      "duration": "2:41",
+      "publishedAt": "2026-04-24T23:37:16Z",
+      "poster": [
+        "https://i.ytimg.com/vi/pttLtOcs6No/oardefault.jpg",
+        "https://i.ytimg.com/vi/pttLtOcs6No/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/pttLtOcs6No/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "pttLtOcs6No",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-A4lKk9dZagA",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "A4lKk9dZagA",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "Texans draft night done right 🤘",
+      "caption": null,
+      "durationSeconds": 18,
+      "duration": "0:18",
+      "publishedAt": "2026-04-24T04:01:30Z",
+      "poster": [
+        "https://i.ytimg.com/vi/A4lKk9dZagA/oardefault.jpg",
+        "https://i.ytimg.com/vi/A4lKk9dZagA/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/A4lKk9dZagA/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "A4lKk9dZagA",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-DO9YnKgsBUc",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "DO9YnKgsBUc",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Got 'Em | Callin' Bull Ep. 2",
+      "caption": "Can the panel and host Jeff Shelley find the real cheerleader? Watch episode 2 of Callin' Bull now.",
+      "durationSeconds": 28,
+      "duration": "0:28",
+      "publishedAt": "2026-04-17T22:00:28Z",
+      "poster": [
+        "https://i.ytimg.com/vi/DO9YnKgsBUc/oardefault.jpg",
+        "https://i.ytimg.com/vi/DO9YnKgsBUc/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/DO9YnKgsBUc/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "DO9YnKgsBUc",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-er0EC10Y1lg",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "er0EC10Y1lg",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "From Detroit to H-Town, The Mindset Travels | Iron Sharpens Iron Feature",
+      "caption": "Speed is cool. Strength is cool. But mindset changes everything. David Montgomery brings a mentality to Houston that goes beyond the stat sheet. A runner who looks you in the eye and dares you to stop him. In this episode, he shares why Houston feels like home, the influence of Arian Foster, and how his game fits the Texans identity under DeMeco Ryans.",
+      "durationSeconds": 98,
+      "duration": "1:38",
+      "publishedAt": "2026-03-17T19:59:00Z",
+      "poster": [
+        "https://i.ytimg.com/vi/er0EC10Y1lg/oardefault.jpg",
+        "https://i.ytimg.com/vi/er0EC10Y1lg/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/er0EC10Y1lg/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "er0EC10Y1lg",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-5VK04G36-YQ",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "5VK04G36-YQ",
+      "collection": "community",
+      "liveDupe": false,
+      "headline": "Houston Texans Announce Global Headquarters",
+      "caption": "On February 12, 2026, the Houston Texans Announce Global Headquarters In Landmark Public-Private Partnership With Harris County and Howard Hughes Communities™ “Today is a historic day for the Houston Texans, our fans, and the Greater Houston area as we partner with Howard Hughes and Harris County on a world-class sports and entertainment destination, including our new headquarters and training facility,” said Cal McNair, Chair and Chief Executive Officer of the Houston Texans. “Our organization continues to grow and this aligns with our goals of bringing a championship to Houston, enhancing community services and making sports more accessible. This project reinforces our long-term commitment to Harris County and our focus on driving growth and opportunity for the community. It will set the new standard for the global sports and entertainment industry and it’s the most significant evolution for our organization since our inception.”",
+      "durationSeconds": 131,
+      "duration": "2:11",
+      "publishedAt": "2026-02-12T18:32:06Z",
+      "poster": [
+        "https://i.ytimg.com/vi/5VK04G36-YQ/oardefault.jpg",
+        "https://i.ytimg.com/vi/5VK04G36-YQ/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/5VK04G36-YQ/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "5VK04G36-YQ",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-2rffFb4Hyvo",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "2rffFb4Hyvo",
+      "collection": "players",
+      "liveDupe": false,
+      "headline": "On this day 3 years ago, we welcomed Coach Ryans back home 🤘",
+      "caption": null,
+      "durationSeconds": 10,
+      "duration": "0:10",
+      "publishedAt": "2026-01-31T15:50:53Z",
+      "poster": [
+        "https://i.ytimg.com/vi/2rffFb4Hyvo/oardefault.jpg",
+        "https://i.ytimg.com/vi/2rffFb4Hyvo/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/2rffFb4Hyvo/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "2rffFb4Hyvo",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-T1USlOarDXI",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "T1USlOarDXI",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Passion, Joy and Grit | Ep. 13 of ISI out now",
+      "caption": null,
+      "durationSeconds": 57,
+      "duration": "0:57",
+      "publishedAt": "2026-01-29T22:06:35Z",
+      "poster": [
+        "https://i.ytimg.com/vi/T1USlOarDXI/oardefault.jpg",
+        "https://i.ytimg.com/vi/T1USlOarDXI/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/T1USlOarDXI/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "T1USlOarDXI",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-ULyJ06U-I_4",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "ULyJ06U-I_4",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Turnovers. Touchdowns. Cellys | ISI Ep 12 out now",
+      "caption": null,
+      "durationSeconds": 46,
+      "duration": "0:46",
+      "publishedAt": "2026-01-16T21:01:49Z",
+      "poster": [
+        "https://i.ytimg.com/vi/ULyJ06U-I_4/oardefault.jpg",
+        "https://i.ytimg.com/vi/ULyJ06U-I_4/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/ULyJ06U-I_4/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "ULyJ06U-I_4",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-9Rqu9om_bDE",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "9Rqu9om_bDE",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Pitre is really like that 😤 | Mic'd Up",
+      "caption": null,
+      "durationSeconds": 40,
+      "duration": "0:40",
+      "publishedAt": "2026-01-16T16:17:56Z",
+      "poster": [
+        "https://i.ytimg.com/vi/9Rqu9om_bDE/oardefault.jpg",
+        "https://i.ytimg.com/vi/9Rqu9om_bDE/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/9Rqu9om_bDE/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "9Rqu9om_bDE",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-MgCWMDXEikQ",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "MgCWMDXEikQ",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "Rankins called game 🎬 | Mic'd up",
+      "caption": "Jalen Pitre celebrates the Sheldon Rankins scoop n score while mic'd up.",
+      "durationSeconds": 47,
+      "duration": "0:47",
+      "publishedAt": "2026-01-16T16:00:37Z",
+      "poster": [
+        "https://i.ytimg.com/vi/MgCWMDXEikQ/oardefault.jpg",
+        "https://i.ytimg.com/vi/MgCWMDXEikQ/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/MgCWMDXEikQ/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "MgCWMDXEikQ",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-feuluMRkUWQ",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "feuluMRkUWQ",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "It’s like he knew it was coming 🫡🤘 | Mic'd Up",
+      "caption": null,
+      "durationSeconds": 73,
+      "duration": "1:13",
+      "publishedAt": "2026-01-14T16:32:56Z",
+      "poster": [
+        "https://i.ytimg.com/vi/feuluMRkUWQ/oardefault.jpg",
+        "https://i.ytimg.com/vi/feuluMRkUWQ/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/feuluMRkUWQ/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "feuluMRkUWQ",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-R5H_ONzBmE0",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "R5H_ONzBmE0",
+      "collection": "series",
+      "liveDupe": false,
+      "headline": "PLAYOFF DEFENSE travels to DOMINATE 🔥 | Inside the Locker Room",
+      "caption": "Tough road win. Big finish. Same standard.",
+      "durationSeconds": 133,
+      "duration": "2:13",
+      "publishedAt": "2026-01-13T05:24:38Z",
+      "poster": [
+        "https://i.ytimg.com/vi/R5H_ONzBmE0/oardefault.jpg",
+        "https://i.ytimg.com/vi/R5H_ONzBmE0/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/R5H_ONzBmE0/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "R5H_ONzBmE0",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-gvRtjUV4JXk",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "gvRtjUV4JXk",
+      "collection": "flag",
+      "liveDupe": false,
+      "headline": "Built by pioneers, played by the future | New On The 50",
+      "caption": "They started the story, we keep writing it. Hear from Ashlea Klam and Ava Wallace on Flag Football and Olympic Dreams in the newest episode of Hannah McNair's \"On the 50.\"",
+      "durationSeconds": 56,
+      "duration": "0:56",
+      "publishedAt": "2026-01-03T19:15:03Z",
+      "poster": [
+        "https://i.ytimg.com/vi/gvRtjUV4JXk/oardefault.jpg",
+        "https://i.ytimg.com/vi/gvRtjUV4JXk/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/gvRtjUV4JXk/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "gvRtjUV4JXk",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-pXndCyOSo0s",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "pXndCyOSo0s",
+      "collection": "flag",
+      "liveDupe": false,
+      "headline": "The pioneers of girls flag football lit the torch and we’re proud to carry it forward.",
+      "caption": "New Episode of \"On the 50\" out now!",
+      "durationSeconds": 45,
+      "duration": "0:45",
+      "publishedAt": "2026-01-02T19:14:17Z",
+      "poster": [
+        "https://i.ytimg.com/vi/pXndCyOSo0s/oardefault.jpg",
+        "https://i.ytimg.com/vi/pXndCyOSo0s/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/pXndCyOSo0s/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "pXndCyOSo0s",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    },
+    {
+      "id": "yt-WiIodcIz6Co",
+      "media": null,
+      "mediaType": "youtube",
+      "youtubeId": "WiIodcIz6Co",
+      "collection": "community",
+      "liveDupe": false,
+      "headline": "C.J. Stroud on PLAYOFF MINDSET after Chargers win 🏈",
+      "caption": "C.J. Stroud speaks with the media after the Houston Texans’ road win over the Los Angeles Chargers — the team’s eighth straight victory in a game that felt like a playoff test. Stroud breaks down what made the matchup challenging, how the Texans adjusted after halftime, and why “weathering the storm” is part of winning in December football. Stroud also gives major credit to the Texans defense for its relentless pressure on Justin Herbert, piling up sacks and creating a takeaway to swing momentum. With Houston continuing to build toward January, Stroud explains what makes this team equipped for a postseason run — pointing to the organizational foundation, physical style, and tough preparation led by Nick Casario and DeMeco Ryans. Plus, Stroud shares a brief “welcome home” moment in Southern California and shouts out his roots after a big Texans win in LA. Subscribe for more Houston Texans postgame interviews, highlights, locker room coverage, and behind-the-scenes content all season long. #HoustonTexans #CJStroud #Texans #NFL #Chargers #Postgame #DeMecoRyans #NickCasario",
+      "durationSeconds": 82,
+      "duration": "1:22",
+      "publishedAt": "2025-12-28T01:27:54Z",
+      "poster": [
+        "https://i.ytimg.com/vi/WiIodcIz6Co/oardefault.jpg",
+        "https://i.ytimg.com/vi/WiIodcIz6Co/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/WiIodcIz6Co/hqdefault.jpg"
+      ],
+      "action": null,
+      "sources": {
+        "youtube": "WiIodcIz6Co",
+        "instagram": null,
+        "tiktok": null
+      },
+      "sponsor": null,
+      "audioSource": "unknown",
+      "flags": {
+        "isShort": true,
+        "embeddable": true,
+        "public": true,
+        "hasCaptions": false,
+        "licensedContent": true
+      }
+    }
+  ],
+  "longForm": [
+    {
+      "youtubeId": "pswEndu3NFM",
+      "headline": "Football Fans: 10 Hours of Fan Noise While You Wait for Training Camp | Black Screen White Noise",
+      "collection": "players",
+      "duration": "600:04",
+      "durationSeconds": 36004,
+      "poster": [
+        "https://i.ytimg.com/vi/pswEndu3NFM/oardefault.jpg",
+        "https://i.ytimg.com/vi/pswEndu3NFM/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/pswEndu3NFM/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "DqJiY52KzvI",
+      "headline": "Houston Texans Lofi Hip Hop Radio 📻 Beats to Relax/Study To [10 HOURS]",
+      "collection": "gameday",
+      "duration": "599:19",
+      "durationSeconds": 35959,
+      "poster": [
+        "https://i.ytimg.com/vi/DqJiY52KzvI/oardefault.jpg",
+        "https://i.ytimg.com/vi/DqJiY52KzvI/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/DqJiY52KzvI/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "WyecQ70fnRw",
+      "headline": "2 Hours of Texans Training Camp Lo-Fi Beats",
+      "collection": "players",
+      "duration": "120:08",
+      "durationSeconds": 7208,
+      "poster": [
+        "https://i.ytimg.com/vi/WyecQ70fnRw/oardefault.jpg",
+        "https://i.ytimg.com/vi/WyecQ70fnRw/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/WyecQ70fnRw/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "-GKhJzzrzAw",
+      "headline": "Houston Texans Press Conference 🎙️ | 2026",
+      "collection": "presser",
+      "duration": "80:38",
+      "durationSeconds": 4838,
+      "poster": [
+        "https://i.ytimg.com/vi/-GKhJzzrzAw/oardefault.jpg",
+        "https://i.ytimg.com/vi/-GKhJzzrzAw/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/-GKhJzzrzAw/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "Wydp1L3y1mk",
+      "headline": "\"On the 50\" with Hannah McNair | Meet My Sisters",
+      "collection": "series",
+      "duration": "77:10",
+      "durationSeconds": 4630,
+      "poster": [
+        "https://i.ytimg.com/vi/Wydp1L3y1mk/oardefault.jpg",
+        "https://i.ytimg.com/vi/Wydp1L3y1mk/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/Wydp1L3y1mk/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "9fF7exCtxPE",
+      "headline": "Texans Playbook | 7 Straight Wins + DeMeco Ryans & Nick Caserio",
+      "collection": "community",
+      "duration": "60:04",
+      "durationSeconds": 3604,
+      "poster": [
+        "https://i.ytimg.com/vi/9fF7exCtxPE/oardefault.jpg",
+        "https://i.ytimg.com/vi/9fF7exCtxPE/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/9fF7exCtxPE/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "OPOk89MHeZE",
+      "headline": "\"On the 50\" with Hannah McNair | Lady Texans Stories with Chanel Shorts and Caroline Walter",
+      "collection": "community",
+      "duration": "59:24",
+      "durationSeconds": 3564,
+      "poster": [
+        "https://i.ytimg.com/vi/OPOk89MHeZE/oardefault.jpg",
+        "https://i.ytimg.com/vi/OPOk89MHeZE/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/OPOk89MHeZE/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "AmDtg6kuD2k",
+      "headline": "Texans EVP/GM Nick Caserio, Asst. GM James Liipfert, & Asst. GM Chris Blanco speak to the media",
+      "collection": "gameday",
+      "duration": "57:45",
+      "durationSeconds": 3465,
+      "poster": [
+        "https://i.ytimg.com/vi/AmDtg6kuD2k/oardefault.jpg",
+        "https://i.ytimg.com/vi/AmDtg6kuD2k/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/AmDtg6kuD2k/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "HKjEWNLkIS4",
+      "headline": "\"On the 50\" with Hannah McNair | Team USA Dreams and H-Town Roots",
+      "collection": "flag",
+      "duration": "52:39",
+      "durationSeconds": 3159,
+      "poster": [
+        "https://i.ytimg.com/vi/HKjEWNLkIS4/oardefault.jpg",
+        "https://i.ytimg.com/vi/HKjEWNLkIS4/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/HKjEWNLkIS4/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "bBXYE6vtSYg",
+      "headline": "SWARM City RISES | J.J. Watt's Epic Return | Divisional Preview",
+      "collection": "gameday",
+      "duration": "44:03",
+      "durationSeconds": 2643,
+      "poster": [
+        "https://i.ytimg.com/vi/bBXYE6vtSYg/oardefault.jpg",
+        "https://i.ytimg.com/vi/bBXYE6vtSYg/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/bBXYE6vtSYg/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "mpNR21HPKEg",
+      "headline": "Texans Playbook | How We Got Here | Steelers Wild Card Week",
+      "collection": "series",
+      "duration": "44:03",
+      "durationSeconds": 2643,
+      "poster": [
+        "https://i.ytimg.com/vi/mpNR21HPKEg/oardefault.jpg",
+        "https://i.ytimg.com/vi/mpNR21HPKEg/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/mpNR21HPKEg/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "Be6I7MW3EB0",
+      "headline": "\"On the 50\" with Hannah McNair | Tereon Anderson on Motherhood & Houston",
+      "collection": "series",
+      "duration": "43:08",
+      "durationSeconds": 2588,
+      "poster": [
+        "https://i.ytimg.com/vi/Be6I7MW3EB0/oardefault.jpg",
+        "https://i.ytimg.com/vi/Be6I7MW3EB0/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/Be6I7MW3EB0/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "4uLd7wb1cL0",
+      "headline": "Full Press Conference: Nick Caserio on Texans 2025 Season, Draft & Free Agency",
+      "collection": "presser",
+      "duration": "41:41",
+      "durationSeconds": 2501,
+      "poster": [
+        "https://i.ytimg.com/vi/4uLd7wb1cL0/oardefault.jpg",
+        "https://i.ytimg.com/vi/4uLd7wb1cL0/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/4uLd7wb1cL0/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "rdq0EmNYFvg",
+      "headline": "Houston Texans Press Conference after win over Steelers in Wild Card Round 🎙️ | 2026",
+      "collection": "presser",
+      "duration": "41:11",
+      "durationSeconds": 2471,
+      "poster": [
+        "https://i.ytimg.com/vi/rdq0EmNYFvg/oardefault.jpg",
+        "https://i.ytimg.com/vi/rdq0EmNYFvg/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/rdq0EmNYFvg/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "bBzo4IbRlxg",
+      "headline": "Houston Texans Coordinators spoke to the media | Full Q&A",
+      "collection": "presser",
+      "duration": "37:59",
+      "durationSeconds": 2279,
+      "poster": [
+        "https://i.ytimg.com/vi/bBzo4IbRlxg/oardefault.jpg",
+        "https://i.ytimg.com/vi/bBzo4IbRlxg/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/bBzo4IbRlxg/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "B77U2-2IAko",
+      "headline": "Lil Keke on DJ Screw, Chopped and Screwed, and Houston Pride | No Audibles",
+      "collection": "gameday",
+      "duration": "36:19",
+      "durationSeconds": 2179,
+      "poster": [
+        "https://i.ytimg.com/vi/B77U2-2IAko/oardefault.jpg",
+        "https://i.ytimg.com/vi/B77U2-2IAko/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/B77U2-2IAko/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "B4S6YnagVns",
+      "headline": "How the Texans built UNSTOPPABLE December momentum 👀",
+      "collection": "series",
+      "duration": "35:04",
+      "durationSeconds": 2104,
+      "poster": [
+        "https://i.ytimg.com/vi/B4S6YnagVns/oardefault.jpg",
+        "https://i.ytimg.com/vi/B4S6YnagVns/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/B4S6YnagVns/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "F0cKfdsc8jQ",
+      "headline": "Toro District Press Conference",
+      "collection": "presser",
+      "duration": "34:34",
+      "durationSeconds": 2074,
+      "poster": [
+        "https://i.ytimg.com/vi/F0cKfdsc8jQ/oardefault.jpg",
+        "https://i.ytimg.com/vi/F0cKfdsc8jQ/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/F0cKfdsc8jQ/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "z7JElg9slFE",
+      "headline": "Week 1 Texans Coordinator media availability | Full Q&A",
+      "collection": "presser",
+      "duration": "34:00",
+      "durationSeconds": 2040,
+      "poster": [
+        "https://i.ytimg.com/vi/z7JElg9slFE/oardefault.jpg",
+        "https://i.ytimg.com/vi/z7JElg9slFE/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/z7JElg9slFE/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "6Rx8gFNZeIs",
+      "headline": "Every Pick, Every Highlight | 2026 Houston Texans Draft Class",
+      "collection": "gameday",
+      "duration": "33:40",
+      "durationSeconds": 2020,
+      "poster": [
+        "https://i.ytimg.com/vi/6Rx8gFNZeIs/oardefault.jpg",
+        "https://i.ytimg.com/vi/6Rx8gFNZeIs/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/6Rx8gFNZeIs/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "8oxF99yC84E",
+      "headline": "No Audibles | Chinedu on Houston Comedy, Viral Clips, and Staying Grounded",
+      "collection": "series",
+      "duration": "30:00",
+      "durationSeconds": 1800,
+      "poster": [
+        "https://i.ytimg.com/vi/8oxF99yC84E/oardefault.jpg",
+        "https://i.ytimg.com/vi/8oxF99yC84E/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/8oxF99yC84E/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "DYXVcXsDxc4",
+      "headline": "Full Coordinator Pressers | Wild Card Week",
+      "collection": "presser",
+      "duration": "29:20",
+      "durationSeconds": 1760,
+      "poster": [
+        "https://i.ytimg.com/vi/DYXVcXsDxc4/oardefault.jpg",
+        "https://i.ytimg.com/vi/DYXVcXsDxc4/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/DYXVcXsDxc4/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "I3bnUJtX_js",
+      "headline": "Houston Texans Coordinators Address the media | Full Q&A",
+      "collection": "presser",
+      "duration": "29:09",
+      "durationSeconds": 1749,
+      "poster": [
+        "https://i.ytimg.com/vi/I3bnUJtX_js/oardefault.jpg",
+        "https://i.ytimg.com/vi/I3bnUJtX_js/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/I3bnUJtX_js/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "nXndz0VwEIc",
+      "headline": "From Walk-On to Difference Maker | Chandler Smith on No Audibles",
+      "collection": "gameday",
+      "duration": "28:03",
+      "durationSeconds": 1683,
+      "poster": [
+        "https://i.ytimg.com/vi/nXndz0VwEIc/oardefault.jpg",
+        "https://i.ytimg.com/vi/nXndz0VwEIc/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/nXndz0VwEIc/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "2O7ZKsQy9z4",
+      "headline": "DeMeco: 'This team is BUILT DIFFERENT' 💪 | Playoff Win",
+      "collection": "gameday",
+      "duration": "25:45",
+      "durationSeconds": 1545,
+      "poster": [
+        "https://i.ytimg.com/vi/2O7ZKsQy9z4/oardefault.jpg",
+        "https://i.ytimg.com/vi/2O7ZKsQy9z4/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/2O7ZKsQy9z4/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "DSmXMYYjj9c",
+      "headline": "Houston Texans Coordinators spoke to the media on August 8 | Full Q&A",
+      "collection": "presser",
+      "duration": "25:03",
+      "durationSeconds": 1503,
+      "poster": [
+        "https://i.ytimg.com/vi/DSmXMYYjj9c/oardefault.jpg",
+        "https://i.ytimg.com/vi/DSmXMYYjj9c/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/DSmXMYYjj9c/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "O9AGUj2IHis",
+      "headline": "All Access | DeMeco Ryans on Clinching the Playoffs and What Comes Next",
+      "collection": "series",
+      "duration": "24:54",
+      "durationSeconds": 1494,
+      "poster": [
+        "https://i.ytimg.com/vi/O9AGUj2IHis/oardefault.jpg",
+        "https://i.ytimg.com/vi/O9AGUj2IHis/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/O9AGUj2IHis/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "XV_gx6fVtFc",
+      "headline": "All Access | Nick Caserio on Closing Games and the January Mindset",
+      "collection": "players",
+      "duration": "24:46",
+      "durationSeconds": 1486,
+      "poster": [
+        "https://i.ytimg.com/vi/XV_gx6fVtFc/oardefault.jpg",
+        "https://i.ytimg.com/vi/XV_gx6fVtFc/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/XV_gx6fVtFc/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "ACCF4NJ-kog",
+      "headline": "Will Anderson Jr. on Houston, Family and What Comes Next | Full Press Conference 4/21",
+      "collection": "presser",
+      "duration": "24:29",
+      "durationSeconds": 1469,
+      "poster": [
+        "https://i.ytimg.com/vi/ACCF4NJ-kog/oardefault.jpg",
+        "https://i.ytimg.com/vi/ACCF4NJ-kog/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/ACCF4NJ-kog/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "ainZQjjrQyQ",
+      "headline": "Nick Caserio on Building a Tougher Texans Team | Texans Radio",
+      "collection": "radio",
+      "duration": "24:26",
+      "durationSeconds": 1466,
+      "poster": [
+        "https://i.ytimg.com/vi/ainZQjjrQyQ/oardefault.jpg",
+        "https://i.ytimg.com/vi/ainZQjjrQyQ/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/ainZQjjrQyQ/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "mrLddeyRRVM",
+      "headline": "Ranch Life, BBQ & Training Camp | Iron Sharpens Iron Ep. 1",
+      "collection": "series",
+      "duration": "23:51",
+      "durationSeconds": 1431,
+      "poster": [
+        "https://i.ytimg.com/vi/mrLddeyRRVM/oardefault.jpg",
+        "https://i.ytimg.com/vi/mrLddeyRRVM/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/mrLddeyRRVM/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "jkuzPOXvOQ0",
+      "headline": "Nick Caserio All Access | Steelers Win Review and On to New England",
+      "collection": "gameday",
+      "duration": "23:21",
+      "durationSeconds": 1401,
+      "poster": [
+        "https://i.ytimg.com/vi/jkuzPOXvOQ0/oardefault.jpg",
+        "https://i.ytimg.com/vi/jkuzPOXvOQ0/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/jkuzPOXvOQ0/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "uSKo4lOi720",
+      "headline": "All Access with DeMeco Ryans | Seven Straight and Closing in December",
+      "collection": "gameday",
+      "duration": "23:19",
+      "durationSeconds": 1399,
+      "poster": [
+        "https://i.ytimg.com/vi/uSKo4lOi720/oardefault.jpg",
+        "https://i.ytimg.com/vi/uSKo4lOi720/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/uSKo4lOi720/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "copDYzNFsN4",
+      "headline": "Inside the Texans Playoff Push | DeMeco Ryans All Access",
+      "collection": "series",
+      "duration": "23:18",
+      "durationSeconds": 1398,
+      "poster": [
+        "https://i.ytimg.com/vi/copDYzNFsN4/oardefault.jpg",
+        "https://i.ytimg.com/vi/copDYzNFsN4/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/copDYzNFsN4/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "1flpFsAIgR0",
+      "headline": "More to Me presented by TDECU | DeMeco Ryans on Purpose Pressure and Belief",
+      "collection": "series",
+      "duration": "23:17",
+      "durationSeconds": 1397,
+      "poster": [
+        "https://i.ytimg.com/vi/1flpFsAIgR0/oardefault.jpg",
+        "https://i.ytimg.com/vi/1flpFsAIgR0/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/1flpFsAIgR0/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "hSgOdSr_1xE",
+      "headline": "Nick Caserio Previews Texans vs Bills Week 1 | Texans Radio",
+      "collection": "radio",
+      "duration": "23:07",
+      "durationSeconds": 1387,
+      "poster": [
+        "https://i.ytimg.com/vi/hSgOdSr_1xE/oardefault.jpg",
+        "https://i.ytimg.com/vi/hSgOdSr_1xE/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/hSgOdSr_1xE/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "yBkdo1F5sPw",
+      "headline": "Texans Radio | How the Texans Fuel Performance with Ladd Harris",
+      "collection": "radio",
+      "duration": "22:50",
+      "durationSeconds": 1370,
+      "poster": [
+        "https://i.ytimg.com/vi/yBkdo1F5sPw/oardefault.jpg",
+        "https://i.ytimg.com/vi/yBkdo1F5sPw/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/yBkdo1F5sPw/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "FXjZcbA2juc",
+      "headline": "Nine Straight Wins and a Playoff Run | Texans 2025 Recap",
+      "collection": "gameday",
+      "duration": "22:46",
+      "durationSeconds": 1366,
+      "poster": [
+        "https://i.ytimg.com/vi/FXjZcbA2juc/oardefault.jpg",
+        "https://i.ytimg.com/vi/FXjZcbA2juc/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/FXjZcbA2juc/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "MGGWi5DbszU",
+      "headline": "Texans bring PHYSICAL football to Pittsburgh 💪 | Wild Card Win",
+      "collection": "series",
+      "duration": "22:37",
+      "durationSeconds": 1357,
+      "poster": [
+        "https://i.ytimg.com/vi/MGGWi5DbszU/oardefault.jpg",
+        "https://i.ytimg.com/vi/MGGWi5DbszU/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/MGGWi5DbszU/hqdefault.jpg"
+      ]
+    },
+    {
+      "youtubeId": "vZp35GPRobY",
+      "headline": "Texans Playbook: Steelers Wild Card Breakdown + Nick Caserio Talks Free Agency, Draft, 2026",
+      "collection": "flag",
+      "duration": "22:35",
+      "durationSeconds": 1355,
+      "poster": [
+        "https://i.ytimg.com/vi/vZp35GPRobY/oardefault.jpg",
+        "https://i.ytimg.com/vi/vZp35GPRobY/maxresdefault.jpg",
+        "https://i.ytimg.com/vi/vZp35GPRobY/hqdefault.jpg"
+      ]
     }
   ]
 }

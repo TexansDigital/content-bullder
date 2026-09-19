@@ -188,6 +188,52 @@ h1,h2,h3{font-family:var(--font-d);font-weight:900;text-transform:uppercase;
   line-height:1.05;margin:9px 0 3px;letter-spacing:.01em}
 .tile .mono{font-size:9px;letter-spacing:.1em}
 
+/* ---------- clipping ---------- */
+.clip-wrap{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:32px;align-items:start}
+@media(max-width:840px){.clip-wrap{grid-template-columns:1fr}}
+.srcs{border:1px solid var(--line);max-height:430px;overflow-y:auto}
+.src{display:flex;gap:10px;width:100%;background:none;border:0;border-bottom:1px solid var(--line);
+  padding:9px 10px;cursor:pointer;text-align:left;color:inherit;align-items:center}
+.src:hover{background:rgba(255,255,255,.05)}
+.src[aria-pressed="true"]{background:var(--red);color:#fff}
+.src:focus-visible{outline:2px solid var(--red);outline-offset:-2px}
+.src .d{font-family:var(--font-m);font-size:10px;letter-spacing:.04em;flex:none;
+  min-width:44px;color:var(--txt-mute)}
+.src[aria-pressed="true"] .d{color:rgba(255,255,255,.85)}
+.src .t{font-size:12px;line-height:1.3;overflow:hidden;display:-webkit-box;
+  -webkit-line-clamp:2;-webkit-box-orient:vertical}
+.track{position:relative;height:56px;background:var(--steel-850);border:1px solid var(--line);
+  margin:14px 0 8px;cursor:crosshair;overflow:hidden;touch-action:none}
+.track .wave{position:absolute;inset:0;display:flex;align-items:center;gap:2px;padding:0 1px;
+  pointer-events:none;opacity:.35}
+.track .wave i{flex:1;background:var(--steel-500);min-width:1px}
+.sel{position:absolute;top:0;bottom:0;background:rgba(235,0,40,.26);
+  border-left:2px solid var(--red);border-right:2px solid var(--red);pointer-events:none}
+.hand{position:absolute;top:0;bottom:0;width:11px;margin-left:-5px;cursor:ew-resize;z-index:2}
+.hand::after{content:"";position:absolute;top:0;bottom:0;left:4px;width:3px;background:var(--red)}
+.hand:focus-visible{outline:2px solid #fff;outline-offset:1px}
+.ticks{display:flex;justify-content:space-between;font-family:var(--font-m);font-size:9.5px;
+  letter-spacing:.1em;color:var(--txt-mute);margin-bottom:18px}
+.readout{display:flex;gap:26px;flex-wrap:wrap;margin-bottom:14px}
+.readout div{display:flex;flex-direction:column;gap:2px}
+.readout b{font-family:var(--font-d);font-weight:900;font-size:26px;line-height:1}
+.readout span{font-family:var(--font-m);font-size:9.5px;letter-spacing:.12em;color:var(--txt-mute);
+  text-transform:uppercase}
+.readout b.warn{color:var(--warn,#f5a623)}
+.url{font-family:var(--font-m);font-size:11px;line-height:1.7;background:var(--steel-850);
+  border:1px solid var(--line);padding:13px;word-break:break-all;color:var(--txt-body)}
+.url b{color:var(--red);font-weight:700}
+.url i{color:var(--sky);font-style:normal}
+.yield{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));
+  gap:0;border:1px solid var(--line);margin-top:26px}
+.yield div{padding:14px;border-right:1px solid var(--line)}
+.yield div:last-child{border-right:0}
+.yield b{display:block;font-family:var(--font-d);font-weight:900;font-size:27px;line-height:1;
+  margin-bottom:5px}
+.yield b.hot{color:var(--red)}
+.yield span{font-family:var(--font-m);font-size:9px;letter-spacing:.1em;color:var(--txt-mute);
+  text-transform:uppercase;display:block}
+
 /* ---------- pipeline ---------- */
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:0 34px}
 .pipe{font-family:var(--font-m);font-size:11.5px;line-height:1.75;color:var(--txt-body);
@@ -224,6 +270,7 @@ footer .mono{font-size:10px}
 <nav class="tabs wrap" role="tablist" aria-label="Views">
   <button class="tab" role="tab" id="t-app" aria-controls="p-app" aria-selected="true">In-app feed</button>
   <button class="tab" role="tab" id="t-web" aria-controls="p-web" aria-selected="false">Web embed</button>
+  <button class="tab" role="tab" id="t-clip" aria-controls="p-clip" aria-selected="false">Clipping</button>
   <button class="tab" role="tab" id="t-pipe" aria-controls="p-pipe" aria-selected="false">Pipeline &amp; spec</button>
 </nav>
 
@@ -304,6 +351,69 @@ footer .mono{font-size:10px}
         <li><span class="k">Open</span><span class="v">Player takes over the frame on web; on app it goes full-bleed through the bridge.</span></li>
       </ul>
     </div>
+  </div>
+</section>
+
+<!-- ============ CLIPPING ============ -->
+<section class="panel" id="p-clip" role="tabpanel" aria-labelledby="t-clip" hidden>
+  <p class="lede">Only <strong id="ng-count">76</strong> of the vertical clips on the channel are
+  non-gameday &mdash; about two a week, which isn&rsquo;t a feed. But <strong id="lf-count">283</strong>
+  long-form videos sit there, <strong id="pr-count">110</strong> of them pressers. Each holds
+  several good vertical moments. <strong>Mining those is the product.</strong></p>
+
+  <div class="clip-wrap">
+    <div>
+      <h2 style="margin-top:0">Long-form on the channel</h2>
+      <div class="srcs" id="srcs"></div>
+    </div>
+
+    <div class="notes">
+      <h2 style="margin-top:0">Mark the moment</h2>
+      <p style="color:var(--txt-body);margin:0 0 4px;font-size:14px" id="sel-title">&mdash;</p>
+      <div class="track" id="track">
+        <div class="wave" id="wave"></div>
+        <div class="sel" id="sel"></div>
+        <div class="hand" id="h-in"  tabindex="0" role="slider" aria-label="Clip start"></div>
+        <div class="hand" id="h-out" tabindex="0" role="slider" aria-label="Clip end"></div>
+      </div>
+      <div class="ticks"><span>0:00</span><span id="tick-mid">&mdash;</span><span id="tick-end">&mdash;</span></div>
+
+      <div class="readout">
+        <div><b id="r-in">2:04</b><span>In</span></div>
+        <div><b id="r-out">2:26</b><span>Out</span></div>
+        <div><b id="r-len">0:22</b><span>Length</span></div>
+        <div><b id="r-ar">9:16</b><span>Output</span></div>
+      </div>
+
+      <p class="mono" style="margin:0 0 7px">The whole operation, as one URL</p>
+      <div class="url" id="clip-url"></div>
+      <p style="color:var(--txt-mute);font-size:13px;margin:11px 0 0">
+        <code style="font-family:var(--font-m);font-size:11.5px;color:var(--sky)">so_</code>/<code
+        style="font-family:var(--font-m);font-size:11.5px;color:var(--sky)">eo_</code> trim,
+        <code style="font-family:var(--font-m);font-size:11.5px;color:var(--sky)">g_auto</code>
+        reframes 16:9 to 9:16 tracking the speaker,
+        <code style="font-family:var(--font-m);font-size:11.5px;color:var(--sky)">sp_auto</code>
+        builds the streaming ladder. No render queue, no job to poll, no credentials &mdash;
+        Cloudinary generates it on first request and caches it. One transformation per clip.
+      </p>
+    </div>
+  </div>
+
+  <div class="yield">
+    <div><b id="y-src">110</b><span>Pressers a year</span></div>
+    <div><b id="y-per">3</b><span>Clips each</span></div>
+    <div><b class="hot" id="y-total">330</b><span>Verticals a year</span></div>
+    <div><b id="y-week">6.3</b><span>Per week</span></div>
+    <div><b id="y-vs">2.0</b><span>Per week today</span></div>
+  </div>
+
+  <div class="flag" style="margin-top:26px">
+    <span class="mono">Two assumptions to check</span>
+    <p><b>Pressers need to be rights-clean.</b> They aren&rsquo;t game footage, so presumably yes
+    &mdash; but the whole plan rests on it, so confirm rather than assume.</p>
+    <p><b>The masters need to reach Cloudinary.</b> None of this works against YouTube, which
+    never returns the file. The presser has to exist as a Cloudinary asset first. That is the
+    same master-first workflow change everything else needs.</p>
   </div>
 </section>
 
@@ -388,7 +498,13 @@ footer .mono{font-size:10px}
    renders real Cloudinary media. Absent or unconfigured, it falls back to generated
    on-brand frames. The published artifact always falls back: its sandbox CSP blocks
    res.cloudinary.com. See docs/research/08-cloudinary-url-only.md. */
-let CDN=null, REAL=false;
+let CDN=null, REAL=false, STATS=null;
+/* Real channel data, inlined so the published artifact works without a manifest fetch
+   (its sandbox blocks both the fetch and i.ytimg.com, so it renders generated frames). */
+const FALLBACK_STATS={"harvested": 1000, "range": ["2025-12-21", "2026-09-18"], "verticalNative": 661, "nonGamedayVertical": 76, "longFormOver3min": 283, "longFormByCollection": {"presser": 110, "gameday": 60, "radio": 45, "series": 34, "players": 14, "community": 12, "flag": 8}, "withCaptions": 20};
+const FALLBACK_LONG=[{"youtubeId": "pswEndu3NFM", "headline": "Football Fans: 10 Hours of Fan Noise While You Wait for Training Camp | Black Screen White Noise", "duration": "600:04", "durationSeconds": 36004, "collection": "players"}, {"youtubeId": "DqJiY52KzvI", "headline": "Houston Texans Lofi Hip Hop Radio 📻 Beats to Relax/Study To [10 HOURS]", "duration": "599:19", "durationSeconds": 35959, "collection": "gameday"}, {"youtubeId": "WyecQ70fnRw", "headline": "2 Hours of Texans Training Camp Lo-Fi Beats", "duration": "120:08", "durationSeconds": 7208, "collection": "players"}, {"youtubeId": "-GKhJzzrzAw", "headline": "Houston Texans Press Conference 🎙️ | 2026", "duration": "80:38", "durationSeconds": 4838, "collection": "presser"}, {"youtubeId": "Wydp1L3y1mk", "headline": "\"On the 50\" with Hannah McNair | Meet My Sisters", "duration": "77:10", "durationSeconds": 4630, "collection": "series"}, {"youtubeId": "9fF7exCtxPE", "headline": "Texans Playbook | 7 Straight Wins + DeMeco Ryans & Nick Caserio", "duration": "60:04", "durationSeconds": 3604, "collection": "community"}, {"youtubeId": "OPOk89MHeZE", "headline": "\"On the 50\" with Hannah McNair | Lady Texans Stories with Chanel Shorts and Caroline Walter", "duration": "59:24", "durationSeconds": 3564, "collection": "community"}, {"youtubeId": "AmDtg6kuD2k", "headline": "Texans EVP/GM Nick Caserio, Asst. GM James Liipfert, & Asst. GM Chris Blanco speak to the media", "duration": "57:45", "durationSeconds": 3465, "collection": "gameday"}, {"youtubeId": "HKjEWNLkIS4", "headline": "\"On the 50\" with Hannah McNair | Team USA Dreams and H-Town Roots", "duration": "52:39", "durationSeconds": 3159, "collection": "flag"}, {"youtubeId": "bBXYE6vtSYg", "headline": "SWARM City RISES | J.J. Watt's Epic Return | Divisional Preview", "duration": "44:03", "durationSeconds": 2643, "collection": "gameday"}, {"youtubeId": "mpNR21HPKEg", "headline": "Texans Playbook | How We Got Here | Steelers Wild Card Week", "duration": "44:03", "durationSeconds": 2643, "collection": "series"}, {"youtubeId": "Be6I7MW3EB0", "headline": "\"On the 50\" with Hannah McNair | Tereon Anderson on Motherhood & Houston", "duration": "43:08", "durationSeconds": 2588, "collection": "series"}, {"youtubeId": "4uLd7wb1cL0", "headline": "Full Press Conference: Nick Caserio on Texans 2025 Season, Draft & Free Agency", "duration": "41:41", "durationSeconds": 2501, "collection": "presser"}, {"youtubeId": "rdq0EmNYFvg", "headline": "Houston Texans Press Conference after win over Steelers in Wild Card Round 🎙️ | 2026", "duration": "41:11", "durationSeconds": 2471, "collection": "presser"}, {"youtubeId": "bBzo4IbRlxg", "headline": "Houston Texans Coordinators spoke to the media | Full Q&A", "duration": "37:59", "durationSeconds": 2279, "collection": "presser"}, {"youtubeId": "B77U2-2IAko", "headline": "Lil Keke on DJ Screw, Chopped and Screwed, and Houston Pride | No Audibles", "duration": "36:19", "durationSeconds": 2179, "collection": "gameday"}, {"youtubeId": "B4S6YnagVns", "headline": "How the Texans built UNSTOPPABLE December momentum 👀", "duration": "35:04", "durationSeconds": 2104, "collection": "series"}, {"youtubeId": "F0cKfdsc8jQ", "headline": "Toro District Press Conference", "duration": "34:34", "durationSeconds": 2074, "collection": "presser"}, {"youtubeId": "z7JElg9slFE", "headline": "Week 1 Texans Coordinator media availability | Full Q&A", "duration": "34:00", "durationSeconds": 2040, "collection": "presser"}, {"youtubeId": "6Rx8gFNZeIs", "headline": "Every Pick, Every Highlight | 2026 Houston Texans Draft Class", "duration": "33:40", "durationSeconds": 2020, "collection": "gameday"}, {"youtubeId": "8oxF99yC84E", "headline": "No Audibles | Chinedu on Houston Comedy, Viral Clips, and Staying Grounded", "duration": "30:00", "durationSeconds": 1800, "collection": "series"}, {"youtubeId": "DYXVcXsDxc4", "headline": "Full Coordinator Pressers | Wild Card Week", "duration": "29:20", "durationSeconds": 1760, "collection": "presser"}, {"youtubeId": "I3bnUJtX_js", "headline": "Houston Texans Coordinators Address the media | Full Q&A", "duration": "29:09", "durationSeconds": 1749, "collection": "presser"}, {"youtubeId": "nXndz0VwEIc", "headline": "From Walk-On to Difference Maker | Chandler Smith on No Audibles", "duration": "28:03", "durationSeconds": 1683, "collection": "gameday"}, {"youtubeId": "2O7ZKsQy9z4", "headline": "DeMeco: 'This team is BUILT DIFFERENT' 💪 | Playoff Win", "duration": "25:45", "durationSeconds": 1545, "collection": "gameday"}, {"youtubeId": "DSmXMYYjj9c", "headline": "Houston Texans Coordinators spoke to the media on August 8 | Full Q&A", "duration": "25:03", "durationSeconds": 1503, "collection": "presser"}];
+const FALLBACK_CLIPS=[{"id": "yt-7xG8hH4FBtA", "youtubeId": "7xG8hH4FBtA", "collection": "gameday", "headline": "David Montgomery's 3-TD day | All Angles", "duration": "0:40", "poster": ["https://i.ytimg.com/vi/7xG8hH4FBtA/oardefault.jpg", "https://i.ytimg.com/vi/7xG8hH4FBtA/maxresdefault.jpg", "https://i.ytimg.com/vi/7xG8hH4FBtA/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-m6gOqjDBXxo", "youtubeId": "m6gOqjDBXxo", "collection": "gameday", "headline": "Woody flips for the first down 🚀", "duration": "0:16", "poster": ["https://i.ytimg.com/vi/m6gOqjDBXxo/oardefault.jpg", "https://i.ytimg.com/vi/m6gOqjDBXxo/maxresdefault.jpg", "https://i.ytimg.com/vi/m6gOqjDBXxo/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-5f7d3ssRsvc", "youtubeId": "5f7d3ssRsvc", "collection": "gameday", "headline": "Stroud ➡️ Nico for 6", "duration": "0:19", "poster": ["https://i.ytimg.com/vi/5f7d3ssRsvc/oardefault.jpg", "https://i.ytimg.com/vi/5f7d3ssRsvc/maxresdefault.jpg", "https://i.ytimg.com/vi/5f7d3ssRsvc/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-B2O7lzt94ow", "youtubeId": "B2O7lzt94ow", "collection": "gameday", "headline": "Hat trick for D-Mo 🏈🏈🏈", "duration": "0:40", "poster": ["https://i.ytimg.com/vi/B2O7lzt94ow/oardefault.jpg", "https://i.ytimg.com/vi/B2O7lzt94ow/maxresdefault.jpg", "https://i.ytimg.com/vi/B2O7lzt94ow/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt--EN0p-HClsk", "youtubeId": "-EN0p-HClsk", "collection": "gameday", "headline": "Stroud with the dot to Nico 🎯", "duration": "0:16", "poster": ["https://i.ytimg.com/vi/-EN0p-HClsk/oardefault.jpg", "https://i.ytimg.com/vi/-EN0p-HClsk/maxresdefault.jpg", "https://i.ytimg.com/vi/-EN0p-HClsk/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-PEsizG9Nw9c", "youtubeId": "PEsizG9Nw9c", "collection": "gameday", "headline": "He's got wheels 🏃💨 | All Angles", "duration": "0:41", "poster": ["https://i.ytimg.com/vi/PEsizG9Nw9c/oardefault.jpg", "https://i.ytimg.com/vi/PEsizG9Nw9c/maxresdefault.jpg", "https://i.ytimg.com/vi/PEsizG9Nw9c/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-BzZXAVIF2ww", "youtubeId": "BzZXAVIF2ww", "collection": "gameday", "headline": "David Montgomery's best plays from 3-TD game vs. Bills | Week 1", "duration": "2:16", "poster": ["https://i.ytimg.com/vi/BzZXAVIF2ww/oardefault.jpg", "https://i.ytimg.com/vi/BzZXAVIF2ww/maxresdefault.jpg", "https://i.ytimg.com/vi/BzZXAVIF2ww/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": true, "licensedContent": false}}, {"id": "yt-1ofJgtx5kGs", "youtubeId": "1ofJgtx5kGs", "collection": "gameday", "headline": "How many TDs is that?", "duration": "0:17", "poster": ["https://i.ytimg.com/vi/1ofJgtx5kGs/oardefault.jpg", "https://i.ytimg.com/vi/1ofJgtx5kGs/maxresdefault.jpg", "https://i.ytimg.com/vi/1ofJgtx5kGs/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-_cdhjIdFXU0", "youtubeId": "_cdhjIdFXU0", "collection": "gameday", "headline": "That's three for D-Mo 🏈🏈🏈", "duration": "0:18", "poster": ["https://i.ytimg.com/vi/_cdhjIdFXU0/oardefault.jpg", "https://i.ytimg.com/vi/_cdhjIdFXU0/maxresdefault.jpg", "https://i.ytimg.com/vi/_cdhjIdFXU0/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-3CCZORLOJvI", "youtubeId": "3CCZORLOJvI", "collection": "gameday", "headline": "C.J. finds Nico for 6", "duration": "0:27", "poster": ["https://i.ytimg.com/vi/3CCZORLOJvI/oardefault.jpg", "https://i.ytimg.com/vi/3CCZORLOJvI/maxresdefault.jpg", "https://i.ytimg.com/vi/3CCZORLOJvI/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-jccdnOcYVZ0", "youtubeId": "jccdnOcYVZ0", "collection": "gameday", "headline": "That's 2 TDs 🏈🏈", "duration": "0:30", "poster": ["https://i.ytimg.com/vi/jccdnOcYVZ0/oardefault.jpg", "https://i.ytimg.com/vi/jccdnOcYVZ0/maxresdefault.jpg", "https://i.ytimg.com/vi/jccdnOcYVZ0/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-2z2nCpZLVXM", "youtubeId": "2z2nCpZLVXM", "collection": "gameday", "headline": "POV: D-Mo scores and runs at you", "duration": "0:33", "poster": ["https://i.ytimg.com/vi/2z2nCpZLVXM/oardefault.jpg", "https://i.ytimg.com/vi/2z2nCpZLVXM/maxresdefault.jpg", "https://i.ytimg.com/vi/2z2nCpZLVXM/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-_z_fO3qHk5Q", "youtubeId": "_z_fO3qHk5Q", "collection": "gameday", "headline": "First touchdown celly 🤘", "duration": "0:11", "poster": ["https://i.ytimg.com/vi/_z_fO3qHk5Q/oardefault.jpg", "https://i.ytimg.com/vi/_z_fO3qHk5Q/maxresdefault.jpg", "https://i.ytimg.com/vi/_z_fO3qHk5Q/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-JNTvbU4ntLA", "youtubeId": "JNTvbU4ntLA", "collection": "gameday", "headline": "Montgomery gets in the end zone 🏈", "duration": "0:27", "poster": ["https://i.ytimg.com/vi/JNTvbU4ntLA/oardefault.jpg", "https://i.ytimg.com/vi/JNTvbU4ntLA/maxresdefault.jpg", "https://i.ytimg.com/vi/JNTvbU4ntLA/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-UKhZWYGTbYU", "youtubeId": "UKhZWYGTbYU", "collection": "gameday", "headline": "Stroud finds Marlin for the first down 1️⃣", "duration": "0:16", "poster": ["https://i.ytimg.com/vi/UKhZWYGTbYU/oardefault.jpg", "https://i.ytimg.com/vi/UKhZWYGTbYU/maxresdefault.jpg", "https://i.ytimg.com/vi/UKhZWYGTbYU/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-y92971B7ihI", "youtubeId": "y92971B7ihI", "collection": "gameday", "headline": "Clowney gets the sack 😤", "duration": "0:17", "poster": ["https://i.ytimg.com/vi/y92971B7ihI/oardefault.jpg", "https://i.ytimg.com/vi/y92971B7ihI/maxresdefault.jpg", "https://i.ytimg.com/vi/y92971B7ihI/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-lywpBHKpULk", "youtubeId": "lywpBHKpULk", "collection": "gameday", "headline": "Azeez Al-Shaair pregame speech | Texans vs. Bills", "duration": "0:26", "poster": ["https://i.ytimg.com/vi/lywpBHKpULk/oardefault.jpg", "https://i.ytimg.com/vi/lywpBHKpULk/maxresdefault.jpg", "https://i.ytimg.com/vi/lywpBHKpULk/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-CQX5rQBGzYo", "youtubeId": "CQX5rQBGzYo", "collection": "gameday", "headline": "Kamari gets the 4th down stop ✋", "duration": "0:26", "poster": ["https://i.ytimg.com/vi/CQX5rQBGzYo/oardefault.jpg", "https://i.ytimg.com/vi/CQX5rQBGzYo/maxresdefault.jpg", "https://i.ytimg.com/vi/CQX5rQBGzYo/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-N8KIjv5S2jw", "youtubeId": "N8KIjv5S2jw", "collection": "gameday", "headline": "IF THEY AIN'T GOT WHITE ON...", "duration": "0:26", "poster": ["https://i.ytimg.com/vi/N8KIjv5S2jw/oardefault.jpg", "https://i.ytimg.com/vi/N8KIjv5S2jw/maxresdefault.jpg", "https://i.ytimg.com/vi/N8KIjv5S2jw/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-x1JK-LYKwzQ", "youtubeId": "x1JK-LYKwzQ", "collection": "gameday", "headline": "Things we love to see", "duration": "0:20", "poster": ["https://i.ytimg.com/vi/x1JK-LYKwzQ/oardefault.jpg", "https://i.ytimg.com/vi/x1JK-LYKwzQ/maxresdefault.jpg", "https://i.ytimg.com/vi/x1JK-LYKwzQ/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-SdtjvT0ouSg", "youtubeId": "SdtjvT0ouSg", "collection": "gameday", "headline": "C.J. Stroud pregame interview with Evan Washburn", "duration": "0:44", "poster": ["https://i.ytimg.com/vi/SdtjvT0ouSg/oardefault.jpg", "https://i.ytimg.com/vi/SdtjvT0ouSg/maxresdefault.jpg", "https://i.ytimg.com/vi/SdtjvT0ouSg/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-PoR2ew7lY5o", "youtubeId": "PoR2ew7lY5o", "collection": "gameday", "headline": "They ready y’all!!!", "duration": "0:15", "poster": ["https://i.ytimg.com/vi/PoR2ew7lY5o/oardefault.jpg", "https://i.ytimg.com/vi/PoR2ew7lY5o/maxresdefault.jpg", "https://i.ytimg.com/vi/PoR2ew7lY5o/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt--9XFmXGamF4", "youtubeId": "-9XFmXGamF4", "collection": "gameday", "headline": "Boutte is ready 😤", "duration": "0:12", "poster": ["https://i.ytimg.com/vi/-9XFmXGamF4/oardefault.jpg", "https://i.ytimg.com/vi/-9XFmXGamF4/maxresdefault.jpg", "https://i.ytimg.com/vi/-9XFmXGamF4/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-H-9LJdBhWeU", "youtubeId": "H-9LJdBhWeU", "collection": "gameday", "headline": "🔜", "duration": "0:10", "poster": ["https://i.ytimg.com/vi/H-9LJdBhWeU/oardefault.jpg", "https://i.ytimg.com/vi/H-9LJdBhWeU/maxresdefault.jpg", "https://i.ytimg.com/vi/H-9LJdBhWeU/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-9_UwWHmXbGk", "youtubeId": "9_UwWHmXbGk", "collection": "series", "headline": "That's our brand of ball 😤", "duration": "0:20", "poster": ["https://i.ytimg.com/vi/9_UwWHmXbGk/oardefault.jpg", "https://i.ytimg.com/vi/9_UwWHmXbGk/maxresdefault.jpg", "https://i.ytimg.com/vi/9_UwWHmXbGk/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-BXoC17LKlCI", "youtubeId": "BXoC17LKlCI", "collection": "series", "headline": "WE’RE SO BACK‼️", "duration": "0:17", "poster": ["https://i.ytimg.com/vi/BXoC17LKlCI/oardefault.jpg", "https://i.ytimg.com/vi/BXoC17LKlCI/maxresdefault.jpg", "https://i.ytimg.com/vi/BXoC17LKlCI/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-vJec2UIHHH0", "youtubeId": "vJec2UIHHH0", "collection": "series", "headline": "Family time 🫶 | ISI ep. 2", "duration": "0:21", "poster": ["https://i.ytimg.com/vi/vJec2UIHHH0/oardefault.jpg", "https://i.ytimg.com/vi/vJec2UIHHH0/maxresdefault.jpg", "https://i.ytimg.com/vi/vJec2UIHHH0/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-i1N9oycTR2c", "youtubeId": "i1N9oycTR2c", "collection": "series", "headline": "Fishing, family, and football | ISI ep. 2", "duration": "1:04", "poster": ["https://i.ytimg.com/vi/i1N9oycTR2c/oardefault.jpg", "https://i.ytimg.com/vi/i1N9oycTR2c/maxresdefault.jpg", "https://i.ytimg.com/vi/i1N9oycTR2c/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-sfm3JrpVzAw", "youtubeId": "sfm3JrpVzAw", "collection": "series", "headline": "It's special 🤩 | Mic'd Up", "duration": "0:13", "poster": ["https://i.ytimg.com/vi/sfm3JrpVzAw/oardefault.jpg", "https://i.ytimg.com/vi/sfm3JrpVzAw/maxresdefault.jpg", "https://i.ytimg.com/vi/sfm3JrpVzAw/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-1Iwrtxpo1sc", "youtubeId": "1Iwrtxpo1sc", "collection": "radio", "headline": "Woody Marks on Studying Defenses and the Texans Offense | Texans Radio", "duration": "2:28", "poster": ["https://i.ytimg.com/vi/1Iwrtxpo1sc/oardefault.jpg", "https://i.ytimg.com/vi/1Iwrtxpo1sc/maxresdefault.jpg", "https://i.ytimg.com/vi/1Iwrtxpo1sc/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-ZOeD9_wGdc4", "youtubeId": "ZOeD9_wGdc4", "collection": "players", "headline": "Welcome to the land where it just don't stop.", "duration": "0:15", "poster": ["https://i.ytimg.com/vi/ZOeD9_wGdc4/oardefault.jpg", "https://i.ytimg.com/vi/ZOeD9_wGdc4/maxresdefault.jpg", "https://i.ytimg.com/vi/ZOeD9_wGdc4/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-DQuZFlZ46ns", "youtubeId": "DQuZFlZ46ns", "collection": "series", "headline": "Take a look behind the scenes with Nico 👀", "duration": "0:08", "poster": ["https://i.ytimg.com/vi/DQuZFlZ46ns/oardefault.jpg", "https://i.ytimg.com/vi/DQuZFlZ46ns/maxresdefault.jpg", "https://i.ytimg.com/vi/DQuZFlZ46ns/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-Kuf2WLJqgTI", "youtubeId": "Kuf2WLJqgTI", "collection": "series", "headline": "From the 8th round to the NFL", "duration": "0:13", "poster": ["https://i.ytimg.com/vi/Kuf2WLJqgTI/oardefault.jpg", "https://i.ytimg.com/vi/Kuf2WLJqgTI/maxresdefault.jpg", "https://i.ytimg.com/vi/Kuf2WLJqgTI/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-a6J0NufBeas", "youtubeId": "a6J0NufBeas", "collection": "series", "headline": "Reed 🤝 TORO", "duration": "0:14", "poster": ["https://i.ytimg.com/vi/a6J0NufBeas/oardefault.jpg", "https://i.ytimg.com/vi/a6J0NufBeas/maxresdefault.jpg", "https://i.ytimg.com/vi/a6J0NufBeas/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-JOWt03aVWbc", "youtubeId": "JOWt03aVWbc", "collection": "series", "headline": "Teller knows his BBQ 🍖", "duration": "1:15", "poster": ["https://i.ytimg.com/vi/JOWt03aVWbc/oardefault.jpg", "https://i.ytimg.com/vi/JOWt03aVWbc/maxresdefault.jpg", "https://i.ytimg.com/vi/JOWt03aVWbc/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-wNDEZ3o3OuY", "youtubeId": "wNDEZ3o3OuY", "collection": "series", "headline": "Back at camp 🏈", "duration": "1:27", "poster": ["https://i.ytimg.com/vi/wNDEZ3o3OuY/oardefault.jpg", "https://i.ytimg.com/vi/wNDEZ3o3OuY/maxresdefault.jpg", "https://i.ytimg.com/vi/wNDEZ3o3OuY/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-W7N6gvfkZHY", "youtubeId": "W7N6gvfkZHY", "collection": "series", "headline": "Texans Camp, Trents ranch and a BBQ stop 🤘", "duration": "1:03", "poster": ["https://i.ytimg.com/vi/W7N6gvfkZHY/oardefault.jpg", "https://i.ytimg.com/vi/W7N6gvfkZHY/maxresdefault.jpg", "https://i.ytimg.com/vi/W7N6gvfkZHY/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-fFWWLZaL8LA", "youtubeId": "fFWWLZaL8LA", "collection": "series", "headline": "Trent Brown Trades the Trenches for the Ranch 🤠", "duration": "0:27", "poster": ["https://i.ytimg.com/vi/fFWWLZaL8LA/oardefault.jpg", "https://i.ytimg.com/vi/fFWWLZaL8LA/maxresdefault.jpg", "https://i.ytimg.com/vi/fFWWLZaL8LA/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-J4cLdTzqEBk", "youtubeId": "J4cLdTzqEBk", "collection": "players", "headline": "Best draft call of all time?? 👀", "duration": "0:38", "poster": ["https://i.ytimg.com/vi/J4cLdTzqEBk/oardefault.jpg", "https://i.ytimg.com/vi/J4cLdTzqEBk/maxresdefault.jpg", "https://i.ytimg.com/vi/J4cLdTzqEBk/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}, {"id": "yt-CIcc9hAqPTQ", "youtubeId": "CIcc9hAqPTQ", "collection": "radio", "headline": "Keylan Rutledge on Center Reps, C.J. Stroud and Rookie Camp | Texans Radio", "duration": "2:58", "poster": ["https://i.ytimg.com/vi/CIcc9hAqPTQ/oardefault.jpg", "https://i.ytimg.com/vi/CIcc9hAqPTQ/maxresdefault.jpg", "https://i.ytimg.com/vi/CIcc9hAqPTQ/hqdefault.jpg"], "mediaType": "youtube", "flags": {"isShort": true, "embeddable": true, "public": true, "hasCaptions": false, "licensedContent": true}}];
+const FALLBACK_COLLS=[{"key": "gameday", "name": "Gameday"}, {"key": "series", "name": "Series"}, {"key": "players", "name": "Players"}, {"key": "radio", "name": "Texans Radio"}, {"key": "community", "name": "Community & Foundation"}, {"key": "flag", "name": "Girls Flag & Youth Football"}];
 const RAW_T={
   player:"f_auto,q_auto,c_fill,g_auto,ar_9:16",
   poster:"so_1.5,f_auto,q_auto,c_fill,g_auto,ar_9:16,w_720",
@@ -447,6 +563,8 @@ async function loadManifest(){
           dur:x.duration||"", h:180+((i*47)%190), seed:(i+1)*17, spon:!!x.sponsor
         }));
       }
+      if(Array.isArray(m.longForm))LONG=m.longForm;
+      if(m.sourceStats)STATS=m.sourceStats;
       REAL=true; return true;
     }catch(e){}
   }
@@ -546,7 +664,32 @@ const io=new IntersectionObserver(es=>es.forEach(e=>{
 const observeSlides=()=>document.querySelectorAll(".slide").forEach(s=>io.observe(s));
 const _bf=buildFeed; buildFeed=function(){_bf();observeSlides();};
 
-loadManifest().finally(()=>{buildChips();buildFeed();buildRail();});feed.scrollTop=0};
+function fillStats(){
+  if(!STATS)return;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const lf=STATS.longFormByCollection||{};
+  const pressers=lf.presser||0;
+  set("ng-count",STATS.nonGamedayVertical);
+  set("lf-count",STATS.longFormOver3min);
+  set("pr-count",pressers);
+  const per=3, total=pressers*per;
+  set("y-src",pressers); set("y-per",per); set("y-total",total);
+  set("y-week",(total/52).toFixed(1));
+  set("y-vs",(STATS.nonGamedayVertical/39).toFixed(1));
+}
+loadManifest().then(ok=>{
+  if(!ok){
+    STATS=FALLBACK_STATS; LONG=FALLBACK_LONG;
+    COLLS.splice(1,COLLS.length-1,...FALLBACK_COLLS.map(x=>({k:x.key,n:x.name})));
+    CLIPS.length=0;
+    FALLBACK_CLIPS.forEach((x,i)=>CLIPS.push({
+      id:x.id, pid:null, mediaType:"placeholder", coll:x.collection,
+      headline:x.headline, caption:null, action:null, poster:null,
+      yt:x.youtubeId, flags:x.flags||{}, dur:x.duration,
+      h:180+((i*47)%190), seed:(i+1)*17, spon:false}));
+    REAL=true;
+  }
+}).finally(()=>{fillStats();buildChips();buildFeed();buildRail();});feed.scrollTop=0};
     chips.appendChild(b);
   });
 }
@@ -609,13 +752,94 @@ function buildRealness(){
   const el=document.getElementById("realness");
   el.innerHTML=[
     ["Collections","Your five strands, exactly as named."],
-    ["Clip count",`${CLIPS.length} items mapped to your ten Shorts IDs.`],
+    ["Clip count",STATS?`${CLIPS.length} shown, drawn from ${STATS.verticalNative} vertical clips in a ${STATS.harvested}-video harvest.`:`${CLIPS.length} items.`],
     ["Aspect","9:16 player, 4:5 tile — both derived from one master."],
     ["Interaction","Scroll-snap, keyboard, like, captions, action button."],
-    ["Frames",REAL?"Real YouTube posters. Mostly 16:9 — centre-cropped here, g_auto would do it properly.":"Generated stand-ins."],
-    ["Copy",REAL?"Real titles from the YouTube API. Descriptions were boilerplate, so stripped.":"Placeholder."],
-    ["Captions",REAL?"0 of 10 clips have a caption track on YouTube.":"—"]
+    ["Frames",CDN?"Real YouTube posters. Mostly 16:9 — centre-cropped here; g_auto does it properly.":"Generated stand-ins — this sandbox blocks YouTube's image host. Titles and counts are real."],
+    ["Copy","Real titles from the YouTube API. Descriptions were boilerplate, so stripped."],
+    ["Captions",STATS?`${STATS.withCaptions} of ${STATS.harvested} channel videos carry a caption track.`:"—"]
   ].map(([k,v])=>`<li><span class="k">${k}</span><span class="v">${v}</span></li>`).join("");
+}
+
+/* ---------- clipping ---------- */
+let LONG=[], sIdx=0, cIn=0, cOut=0;
+const fmt=s=>`${Math.floor(s/60)}:${String(Math.round(s%60)).padStart(2,"0")}`;
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+function clipUrl(id,a,b){
+  const trim=`so_${Math.round(a)},eo_${Math.round(b)}`;
+  const base=(CDN&&CDN.origin)||"https://static.clubs.nfl.com";
+  return {base:`${base}/video/upload/`,trim,
+          rest:"f_auto,q_auto,c_fill,g_auto,ar_9:16",sp:"/sp_auto",
+          id:`/texans/pressers/${id}`,ext:".m3u8"};
+}
+function paintClip(){
+  const s=LONG[sIdx]; if(!s)return;
+  const dur=s.durationSeconds||600;
+  document.getElementById("sel-title").textContent=s.headline;
+  document.getElementById("tick-end").textContent=fmt(dur);
+  document.getElementById("tick-mid").textContent=fmt(dur/2);
+  const pI=(cIn/dur)*100, pO=(cOut/dur)*100;
+  const sel=document.getElementById("sel");
+  sel.style.left=pI+"%"; sel.style.width=Math.max(0.6,pO-pI)+"%";
+  document.getElementById("h-in").style.left=pI+"%";
+  document.getElementById("h-out").style.left=pO+"%";
+  document.getElementById("r-in").textContent=fmt(cIn);
+  document.getElementById("r-out").textContent=fmt(cOut);
+  const len=cOut-cIn;
+  const rl=document.getElementById("r-len");
+  rl.textContent=fmt(len); rl.className=(len<5||len>90)?"warn":"";
+  const u=clipUrl(s.youtubeId,cIn,cOut);
+  document.getElementById("clip-url").innerHTML=
+    `${esc(u.base)}<b>${esc(u.trim)}</b>,<i>${esc(u.rest)}</i><i>${esc(u.sp)}</i>${esc(u.id)}${esc(u.ext)}`;
+}
+function selectSrc(i){
+  sIdx=i; const s=LONG[i]; const d=s.durationSeconds||600;
+  cIn=Math.round(d*0.28); cOut=Math.min(d,cIn+22);
+  document.querySelectorAll(".src").forEach((b,j)=>b.setAttribute("aria-pressed",j===i));
+  paintClip();
+}
+function buildClipping(){
+  if(!LONG.length)return;
+  const wrap=document.getElementById("srcs"); wrap.innerHTML="";
+  LONG.slice(0,40).forEach((s,i)=>{
+    const b=document.createElement("button");
+    b.className="src"; b.type="button"; b.setAttribute("aria-pressed",i===sIdx);
+    b.innerHTML=`<span class="d">${s.duration}</span><span class="t">${esc(s.headline)}</span>`;
+    b.onclick=()=>selectSrc(i);
+    wrap.appendChild(b);
+  });
+  const wave=document.getElementById("wave");
+  wave.innerHTML=Array.from({length:110},(_,i)=>
+    `<i style="height:${18+Math.abs(Math.sin(i*0.7))*30+Math.abs(Math.cos(i*2.3))*14}%"></i>`).join("");
+  selectSrc(0);
+  drag("h-in"); drag("h-out");
+}
+function drag(id){
+  const el=document.getElementById(id), track=document.getElementById("track");
+  const set=clientX=>{
+    const r=track.getBoundingClientRect();
+    const d=LONG[sIdx].durationSeconds||600;
+    let t=Math.max(0,Math.min(1,(clientX-r.left)/r.width))*d;
+    if(id==="h-in")cIn=Math.min(t,cOut-2); else cOut=Math.max(t,cIn+2);
+    paintClip();
+  };
+  el.addEventListener("pointerdown",e=>{
+    e.preventDefault(); el.setPointerCapture(e.pointerId);
+    const mv=ev=>set(ev.clientX);
+    const up=()=>{el.removeEventListener("pointermove",mv);el.removeEventListener("pointerup",up);};
+    el.addEventListener("pointermove",mv); el.addEventListener("pointerup",up);
+  });
+  el.addEventListener("keydown",e=>{
+    const step=e.shiftKey?10:1;
+    if(e.key==="ArrowLeft"||e.key==="ArrowRight"){
+      e.preventDefault(); const d=(e.key==="ArrowRight"?step:-step);
+      const dur=LONG[sIdx].durationSeconds||600;
+      if(id==="h-in")cIn=Math.max(0,Math.min(cIn+d,cOut-2));
+      else cOut=Math.min(dur,Math.max(cOut+d,cIn+2));
+      paintClip();
+    }
+  });
 }
 
 /* tabs */
@@ -625,6 +849,7 @@ function go(id){
     document.getElementById(t.getAttribute("aria-controls")).hidden=!on;
   });
   if(id==="t-web")buildRail();
+  if(id==="t-clip")buildClipping();
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>go(t.id));
 
@@ -643,7 +868,32 @@ const io=new IntersectionObserver(es=>es.forEach(e=>{
 const observeSlides=()=>document.querySelectorAll(".slide").forEach(s=>io.observe(s));
 const _bf=buildFeed; buildFeed=function(){_bf();observeSlides();};
 
-loadManifest().finally(()=>{buildChips();buildFeed();buildRail();});
+function fillStats(){
+  if(!STATS)return;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const lf=STATS.longFormByCollection||{};
+  const pressers=lf.presser||0;
+  set("ng-count",STATS.nonGamedayVertical);
+  set("lf-count",STATS.longFormOver3min);
+  set("pr-count",pressers);
+  const per=3, total=pressers*per;
+  set("y-src",pressers); set("y-per",per); set("y-total",total);
+  set("y-week",(total/52).toFixed(1));
+  set("y-vs",(STATS.nonGamedayVertical/39).toFixed(1));
+}
+loadManifest().then(ok=>{
+  if(!ok){
+    STATS=FALLBACK_STATS; LONG=FALLBACK_LONG;
+    COLLS.splice(1,COLLS.length-1,...FALLBACK_COLLS.map(x=>({k:x.key,n:x.name})));
+    CLIPS.length=0;
+    FALLBACK_CLIPS.forEach((x,i)=>CLIPS.push({
+      id:x.id, pid:null, mediaType:"placeholder", coll:x.collection,
+      headline:x.headline, caption:null, action:null, poster:null,
+      yt:x.youtubeId, flags:x.flags||{}, dur:x.duration,
+      h:180+((i*47)%190), seed:(i+1)*17, spon:false}));
+    REAL=true;
+  }
+}).finally(()=>{fillStats();buildChips();buildFeed();buildRail();});
 window.addEventListener("resize",()=>{
   document.querySelectorAll(".slide canvas").forEach((c,i)=>paint(c,list()[i]));
 },{passive:true});

@@ -64,6 +64,42 @@ export function builder({ baseUrl, cloud, named = false } = {}) {
     imageTile: (id) => at('image', t('tile'), id, 'jpg'),
     imagePoster: (id) => at('image', t('poster'), id, 'jpg'),
 
+    /**
+     * A vertical clip cut out of a long-form master — the core mechanic of the clipping
+     * workflow (docs/research/13-the-supply-picture.md §4).
+     *
+     * `so_`/`eo_` trim, `g_auto` reframes 16:9 to 9:16 tracking the speaker. Entirely
+     * URL-expressed: no render job, no queue, no credentials. Cloudinary generates the
+     * derivative on first request and caches it, so a clip costs one transformation.
+     *
+     * Always emits the raw transform even when `named` is set: a named transformation is a
+     * fixed string and cannot carry per-clip offsets. Safe here because raw transforms are
+     * confirmed working on this account (docs/research/11-first-real-data.md §1).
+     *
+     *   clip('texans/pressers/w03-stroud', 124, 146)
+     *   → …/video/upload/so_124,eo_146,f_auto,q_auto,c_fill,g_auto,ar_9:16/sp_auto/….m3u8
+     */
+    clip: (id, startSeconds, endSeconds, { ext = 'm3u8' } = {}) => {
+      const s = Math.max(0, Number(startSeconds) || 0);
+      const e = Number(endSeconds);
+      if (!(e > s)) throw new Error('cloudinary.clip: endSeconds must exceed startSeconds');
+      const trim = `so_${s.toFixed(2).replace(/\.00$/, '')},eo_${e.toFixed(2).replace(/\.00$/, '')}`;
+      const sp = ext === 'm3u8' ? '/sp_auto' : '';
+      return `${origin}/video/upload/${trim},${RAW.player}${sp}/${id}.${ext}`;
+    },
+
+    /**
+     * Poster for a clip — a frame a third of the way in reads better than the first, which
+     * is often mid-blink or mid-cut. Strips the default `so_` off the poster transform so
+     * the offset isn't specified twice.
+     */
+    clipPoster: (id, startSeconds, endSeconds) => {
+      const s = Math.max(0, Number(startSeconds) || 0);
+      const at = s + (Math.max(Number(endSeconds), s) - s) / 3;
+      const rest = (named ? NAMED.poster : RAW.poster).replace(/^so_[\d.]+,/, '');
+      return `${origin}/video/upload/so_${at.toFixed(2).replace(/\.00$/, '')},${rest}/${id}.jpg`;
+    },
+
     /** Caption track, if transcription ran at upload. */
     vtt: (id) => `${origin}/raw/upload/${id}.transcript.vtt`,
 
