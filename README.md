@@ -22,6 +22,7 @@ Start here: [`docs/research/00-executive-summary.md`](docs/research/00-executive
 | [05 — What's still needed](docs/research/05-open-questions.md) | Outstanding asks |
 | [06 — Decisions](docs/research/06-decisions.md) | Stakeholder answers, dated — **overrides 01–05** |
 | [07 — No-credentials path](docs/research/07-no-credentials-path.md) | What we ship if Cloudinary / Meta / TikTok access never lands |
+| [08 — Cloudinary, URL only](docs/research/08-cloudinary-url-only.md) | **Current plan** — delivery URLs need no credentials and recover the full design |
 
 ## Research method / confidence
 
