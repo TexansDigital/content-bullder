@@ -28,7 +28,8 @@ Start here: [`docs/research/00-executive-summary.md`](docs/research/00-executive
 | [11 — First real data](docs/research/11-first-real-data.md) | Measured results, and the rights issue that became blocking |
 | [12 — What the channel publishes](docs/research/12-content-mix.md) | First look at the content mix (superseded in part by 13) |
 | [13 — The supply picture](docs/research/13-the-supply-picture.md) | 1,000 uploads measured, and what the product actually is |
-| [14 — Where presser video lives](docs/research/14-where-presser-video-lives.md) | **Latest** — NFL Media Content Platform, and what that changes |
+| [14 — Where presser video lives](docs/research/14-where-presser-video-lives.md) | NFL Media Content Platform, and what that changes |
+| [15 — Transcript-first clipping](docs/research/15-transcript-first-clipping.md) | **Latest** — why the tool is a highlighter, not a scrubber |
 
 Run [`tools/hunt.sh`](tools/hunt.sh) to settle the open questions in one pass
 (or [`tools/cloudinary-probe.html`](tools/cloudinary-probe.html) for the browser version).

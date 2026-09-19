@@ -182,3 +182,11 @@ preroll frequency 3. Reduces the monetization build.
 
 **D23 — Video analytics currently report to Adobe** (`nflclubstexans`), not Parse.ly. Needs a
 deliberate decision so feed metrics stay comparable to existing video benchmarks.
+
+**D24 — Pressers carry no burned-in captions.** The 2% caption coverage is a real accessibility
+gap. A transcription path is needed, not optional.
+
+**D25 — Someone already sits through every presser.** The expensive part of clipping — watching —
+is already being paid for. See [doc 15](15-transcript-first-clipping.md): the tool should be a
+transcript highlighter with an optional live "mark" key, not a video scrubber, and transcription
+solves the captions gap and the clipping interface with one capability.
