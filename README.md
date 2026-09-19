@@ -23,10 +23,11 @@ Start here: [`docs/research/00-executive-summary.md`](docs/research/00-executive
 | [06 — Decisions](docs/research/06-decisions.md) | Stakeholder answers, dated — **overrides 01–05** |
 | [07 — No-credentials path](docs/research/07-no-credentials-path.md) | What we ship if Cloudinary / Meta / TikTok access never lands |
 | [08 — Cloudinary, URL only](docs/research/08-cloudinary-url-only.md) | Delivery URLs need no credentials and recover the full design |
-| [09 — NFL Cloudinary findings](docs/research/09-nfl-cloudinary-findings.md) | **Read this** — it's a private CDN, and it may be images-only |
+| [09 — NFL Cloudinary findings](docs/research/09-nfl-cloudinary-findings.md) | It's a private CDN, and it may be images-only |
+| [10 — Where the video comes from](docs/research/10-video-home.md) | **Open decision** — YouTube playback vs. a feed-owned store |
 
-Run [`tools/cloudinary-probe.html`](tools/cloudinary-probe.html) locally to settle the open
-Cloudinary questions in one pass.
+Run [`tools/hunt.sh`](tools/hunt.sh) to settle the open questions in one pass
+(or [`tools/cloudinary-probe.html`](tools/cloudinary-probe.html) for the browser version).
 
 ## Research method / confidence
 
