@@ -44,3 +44,66 @@ system to within a rounding error — Deep Steel `#021118`, Battle Red `#eb0028`
 `#0080c6`, Liberty White `#ffffff`. We'll build against the Houston Texans design system
 tokens (colors, Helvetica Neue LT Extended, logos, motion), which is already available to
 this project. Dropping former question #13.
+
+## 2026-09-19 (second round)
+
+**D6 — Identifiers confirmed.**
+
+| | Value | How |
+| --- | --- | --- |
+| Facebook Page ID | `51931216313` | Verified via Meta Ads API — the ID supplied was the **Page**, not Instagram |
+| Instagram Business ID | `17841400218010511` | Supplied; 17-digit shape is correct for an IG Business account |
+| Meta Business ID | `1138355532867254` | "Houston Texans" |
+| Ad account (digital/social) | `943504639671091` | "HT Digital/Social" — the one to attribute feed media spend to |
+
+> **Finding:** querying linked Instagram accounts through the Meta connection returned empty.
+> Per Meta's own error semantics that means either no IG account is linked to that ad account
+> for advertising, or **the app has not been granted `instagram_basic`** — which is the same
+> permission our ingestion needs. Worth checking before we assume Graph API access works.
+
+**D7 — Source access, actual state.**
+- **YouTube: we have API access.** Data API v3 is the one platform where harvest is unblocked
+  today. Still no file download — owner export from Studio (doc 02).
+- **Instagram/TikTok: API access unconfirmed.** We own the accounts; the developer apps and
+  grants are the open item.
+- **RSS: confirmed available.** New input, and a useful one — see D8.
+
+**D8 — RSS is a first-class source.**
+FORGE exposes RSS. That gives us article and video metadata with no API negotiation, no App
+Review and no quota. Use it for: the editorial join (which article does this clip belong to →
+becomes the clip's action button), publish scheduling, and a same-day fallback when a platform
+API is rate-limited or down. Added to the pipeline as source #3.
+
+**D9 — Taxonomy is settled.** Five collections:
+`gameday` · `players` · `series` · `community-and-foundation` · `girls-flag-and-youth-football`
+
+**D10 — Fan identity is the Ticketmaster ID**, surfaced through FanReach. That's the key for
+likes, follows and watch history. Web-only visitors get a device-scoped anonymous identity that
+merges on sign-in.
+
+**D11 — The FanReach webview bridge exposes deep links etc.** Webview-first build is viable
+(doc 03 §1 path B).
+
+**D12 — houstontexans.com is on Deltatre FORGE.** Confirmed. Iframe-embeddable build stands.
+
+**D13 — No Storyteller account, and no current partner obligations — but we will sell.**
+Two consequences:
+1. Storyteller moves from "configure" to "procure." Since nothing is bought yet, the
+   build-our-own-player option is genuinely open, and the hybrid (doc 04 §6) is now the
+   cheapest path to something shippable.
+2. **Sponsor attribution goes into the data model in Phase 1, not later.** No obligations today
+   means no constraints today — which is exactly when it's free to build in. Per-sponsor
+   impression and completion reporting is the expensive thing to retrofit.
+
+**D14 — Analytics: Parse.ly.** Confirmed as the events destination.
+
+## Open after this round
+
+- Cloudinary credentials, and confirmation that AI video crop (`g_auto` on video), `sp_auto`
+  ABR and auto-transcription are enabled on the plan.
+- Whether the Meta app has `instagram_basic` (see D6 finding).
+- A TikTok for Developers app, if TikTok is in scope for v1.
+- **The actual video files.** Ten YouTube Shorts IDs were supplied, but this environment has no
+  network route to YouTube — the footage has not been seen. Design work is proceeding on
+  generated placeholder frames. Real posters need either Cloudinary access or the files.
+- NFL game-footage rights in a persistent, monetizable club feed.
