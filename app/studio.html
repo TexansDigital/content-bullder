@@ -59,9 +59,15 @@ button.sm{padding:5px 9px;font-size:10px}
 button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
 .row{display:flex;gap:7px;flex-wrap:wrap}
 
-.card{display:grid;grid-template-columns:52px minmax(0,1fr);gap:11px;padding:10px 16px;
+.card{display:grid;grid-template-columns:12px 52px minmax(0,1fr);gap:11px;padding:10px 16px 10px 8px;
  border-bottom:1px solid var(--line);cursor:pointer;align-items:start}
 .card:hover{background:rgba(255,255,255,.04)}
+.card.dragging{opacity:.4}
+.card .grip{align-self:center;color:var(--s3);cursor:grab;font-size:12px;line-height:1;
+ user-select:none;text-align:center}
+.card:hover .grip,.card:focus-visible .grip{color:var(--dim)}
+.card.dragging .grip{cursor:grabbing}
+#list.reordering .card{transition:none}
 .card[aria-selected="true"]{background:rgba(235,0,40,.14);box-shadow:inset 3px 0 0 var(--red)}
 .card .th{aspect-ratio:4/5;background:var(--s3);overflow:hidden;position:relative}
 .card .th img{width:100%;height:100%;object-fit:cover;display:block}
@@ -376,8 +382,13 @@ async function initAdapters() {
 }
 
 /* ---------- list ---------- */
+/** The feed's own comparator. The queue has to agree with it, or dragging means nothing. */
+const feedOrder = (a, b) => (a.sortIndex !== b.sortIndex
+  ? a.sortIndex - b.sortIndex
+  : String(b.publishedAt).localeCompare(String(a.publishedAt)));
+
 function renderList() {
-  const rows = STATE.items.filter((i) => i.status === status);
+  const rows = STATE.items.filter((i) => i.status === status).sort(feedOrder);
   const el = $('#list');
   if (!rows.length) {
     const other = Object.entries(STATE.counts || {})
@@ -402,9 +413,10 @@ function renderList() {
               v.warnings.length > 1 ? 's' : ''}</span>`
         : '<span class="tag ok">ready</span>',
     ].filter(Boolean).join('');
-    return `<article class="card" data-id="${esc(i.id)}" tabindex="0" role="option"
+    return `<article class="card" data-id="${esc(i.id)}" tabindex="0" role="option" draggable="true"
       aria-selected="${selected === i.id}"
       aria-label="${esc(i.headline)} — ${esc(i.collection)}${v.errors.length ? ', has blocking issues' : ''}">
+      <span class="grip" aria-hidden="true" title="Drag to reorder — or alt + arrow keys">⣿</span>
       <div class="th">${i.poster[0]
         ? `<img src="${esc(safeUrl(i.poster[0]))}" alt="" loading="lazy" onerror="this.remove()">`
         : `<span>no art</span>`}</div>
@@ -420,17 +432,68 @@ function renderList() {
     // Landing mid-form on the previous item's scroll offset hides the canvas entirely.
     $('#editor').parentElement.scrollTop = 0;
   };
+  // Reordering is a save, not an edit, so it never trips the unsaved-changes guard: the
+  // DOM order after the drop is the running order, and the server ranks it 0..n.
+  const commitOrder = async () => {
+    const ids = [...el.querySelectorAll('.card')].map((c) => c.dataset.id);
+    ids.forEach((id, n) => {
+      const it = STATE.items.find((x) => x.id === id);
+      if (it) it.sortIndex = n;
+    });
+    try {
+      await api('/api/reorder', { method: 'POST', body: JSON.stringify({ ids }) });
+      STATE.updatedAt = new Date().toISOString();
+      if (!dirty) markDirty(false);
+    } catch (e) { toast(e.message); await refresh(); }
+  };
+
   el.querySelectorAll('.card').forEach((c) => {
     c.onclick = () => choose(c);
-    c.onkeydown = (e) => {
+
+    c.ondragstart = (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      // Firefox ignores a drag with no payload set.
+      e.dataTransfer.setData('text/plain', c.dataset.id);
+      el.classList.add('reordering');
+      requestAnimationFrame(() => c.classList.add('dragging'));
+    };
+    c.ondragend = async () => {
+      c.classList.remove('dragging');
+      el.classList.remove('reordering');
+      await commitOrder();
+    };
+
+    c.onkeydown = async (e) => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(c); return; }
       if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
       e.preventDefault();
       const all = [...el.querySelectorAll('.card')];
-      const next = all[all.indexOf(c) + (e.key === 'ArrowDown' ? 1 : -1)];
-      next?.focus();
+      const at = all.indexOf(c);
+      const to = at + (e.key === 'ArrowDown' ? 1 : -1);
+      // Plain arrows walk the list; alt-arrow carries the card with you, so reordering
+      // does not require a mouse.
+      if (!e.altKey) { all[to]?.focus(); return; }
+      if (to < 0 || to >= all.length) return;
+      if (e.key === 'ArrowDown') el.insertBefore(all[to], c); else el.insertBefore(c, all[to]);
+      c.focus();
+      await commitOrder();
     };
   });
+
+  // Live reflow while dragging: the card being dragged is moved into place under the
+  // cursor, so the list you see mid-drag is the list you get.
+  el.ondragover = (e) => {
+    const moving = el.querySelector('.dragging');
+    if (!moving) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const before = [...el.querySelectorAll('.card:not(.dragging)')].find((o) => {
+      const r = o.getBoundingClientRect();
+      return e.clientY < r.top + r.height / 2;
+    });
+    if (before) el.insertBefore(moving, before); else el.appendChild(moving);
+  };
+  el.ondrop = (e) => e.preventDefault();
 }
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

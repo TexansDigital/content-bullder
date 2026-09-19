@@ -31,6 +31,11 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
   '.webp': 'image/webp', '.avif': 'image/avif', '.gif': 'image/gif', '.mp4': 'video/mp4',
   '.webm': 'video/webm', '.m3u8': 'application/vnd.apple.mpegurl', '.otf': 'font/otf' };
 
+// GA4 is opt-in and off by default: with no id configured the feed loads no third-party
+// script at all. The embedder can override per placement with ?ga= on the feed URL.
+const GA4 = /^G-[A-Z0-9]{4,20}$/i.test(process.env.GA_MEASUREMENT_ID || '')
+  ? process.env.GA_MEASUREMENT_ID : null;
+
 const UPLOADS = join(ROOT, 'content/uploads');
 const MAX_UPLOAD = 12 * 1024 * 1024;
 // A base64 data URL is ~1.37x the binary, plus JSON overhead. Below this the body cap
@@ -323,6 +328,7 @@ const server = createServer(async (req, res) => {
       const only = url.searchParams.get('collection');
       return json(res, 200, {
         generatedAt: new Date().toISOString(),
+        analytics: { ga4: GA4 },
         collections: liveCollections(items),
         clips: only ? live.filter((i) => i.collection === only) : live,
       }, { public: true });
@@ -356,6 +362,24 @@ const server = createServer(async (req, res) => {
           return next;
         });
         return { updated: n, ...(rejected.length ? { rejected } : {}) };
+      }));
+    }
+
+    if (p === '/api/reorder' && req.method === 'POST') {
+      const { ids } = await readBody(req);
+      if (!Array.isArray(ids) || !ids.length)
+        throw new HttpError(400, 'reorder needs an ordered list of ids');
+      return json(res, 200, await withStore((state) => {
+        // Rank only what was sent. The studio sends one tab at a time, so dragging in
+        // Published cannot silently renumber drafts the editor is not looking at.
+        const rank = new Map(ids.map((id, n) => [id, n]));
+        let n = 0;
+        state.items = state.items.map((i) => {
+          if (!rank.has(i.id) || i.sortIndex === rank.get(i.id)) return i;
+          n++;
+          return makeItem({ ...i, sortIndex: rank.get(i.id) });
+        });
+        return { reordered: n };
       }));
     }
 

@@ -158,6 +158,83 @@ const likes = {
   write(v){ try { localStorage.setItem('txfeed.likes', JSON.stringify(v)); } catch {} },
 };
 let DATA = { clips: [], collections: [] }, active = 'all', liked = likes.read();
+
+/* ---------- analytics ----------------------------------------------------------
+ * Two sinks, both optional, neither load-bearing. GA4 fires only when a measurement
+ * id is configured — with none, no third-party script is fetched at all. Every event
+ * is also posted to the parent frame, so the page embedding this feed can bridge it
+ * into whatever it already runs (Adobe, Parse.ly) without us knowing which.
+ *
+ * Nothing here carries personal data: card ids, collections, positions and durations.
+ * That is deliberate — postMessage goes to '*', because an embed cannot know its host.
+ */
+/**
+ * Resolved after the feed loads, not at parse time: the server's id arrives with the
+ * data. ?ga= wins, so one deployment can report into different properties per placement.
+ */
+function resolveGA() {
+  const id = new URLSearchParams(location.search).get('ga') || DATA.analytics?.ga4 || '';
+  // This value reaches a script src, so it is matched, never interpolated on trust.
+  return /^G-[A-Z0-9]{4,20}$/i.test(id) ? id : null;
+}
+
+function loadGA(id) {
+  if (!id || window.gtag) return;
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function () { window.dataLayer.push(arguments); };
+  gtag('js', new Date());
+  // The feed is an iframe. An automatic page_view here would double-count against the
+  // page that frames it, so measurement is events only.
+  gtag('config', id, { send_page_view: false, transport_type: 'beacon' });
+  const sc = document.createElement('script');
+  sc.async = true;
+  sc.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id)}`;
+  document.head.appendChild(sc);
+}
+
+function track(event, params = {}) {
+  const payload = { feed_collection: active, ...params };
+  try { window.gtag?.('event', event, payload); } catch { /* never break the feed */ }
+  try {
+    // Framed, this reaches the host page. Unframed, it reaches this page — so anyone
+    // integrating can open /feed directly, listen for 'message', and watch the stream
+    // without standing up an embedder first.
+    (window.parent !== window ? window.parent : window)
+      .postMessage({ source: 'txfeed', event, params: payload }, '*');
+  } catch { /* a cross-origin parent that refuses messages is not our problem */ }
+}
+
+/** The card dimensions every event carries, so any one of them can be sliced alike. */
+const cardParams = (c, i) => ({
+  card_id: c.id, card_collection: c.collection, card_source: c.source,
+  card_kind: c.media?.kind || 'none', card_position: (i ?? 0) + 1,
+  ...(c.clip ? { card_is_clip: true } : {}),
+  ...(c.sponsor?.name ? { card_sponsor: c.sponsor.name } : {}),
+});
+
+// A card counts as seen once it has held the screen for a second — otherwise scrolling
+// past ten cards to reach the eleventh reports as ten views.
+//
+// The open time lives on the slide, not in one shared variable. Both slides of a swipe
+// arrive in the same observer callback, so a shared one was overwritten by the incoming
+// card before the outgoing card's dwell had been read, and every exit was dropped.
+const VIEW_AFTER_MS = 1000;
+
+function cardOpened(slide, c, i) {
+  if (slide._seenAt) return;
+  slide._seenAt = Date.now();
+  clearTimeout(slide._seenTimer);
+  slide._seenTimer = setTimeout(() => track('card_view', cardParams(c, i)), VIEW_AFTER_MS);
+}
+function cardClosed(slide, c, i, complete) {
+  clearTimeout(slide._seenTimer);
+  if (!slide._seenAt) return;
+  const dwell = Date.now() - slide._seenAt;
+  slide._seenAt = 0;
+  if (dwell < VIEW_AFTER_MS) return;
+  track(complete ? 'card_complete' : 'card_exit',
+    { ...cardParams(c, i), card_dwell_ms: dwell });
+}
 // Autoplay requires muted, so the feed starts silent — but a presser clip is carried by
 // what is said, and without a control nothing suggests there is audio at all.
 let soundOn = false;
@@ -234,6 +311,7 @@ function mediaFor(c) {
 
 function render() {
   const rows = active === 'all' ? DATA.clips : DATA.clips.filter((c) => c.collection === active);
+  ROWS = rows;
   const feed = $('#feed');
   if (!rows.length) { feed.innerHTML = `<p class="msg">Nothing published yet.<br>
     Publish items in the studio and they appear here.</p>`; return; }
@@ -279,11 +357,23 @@ function render() {
 
   feed.querySelectorAll('.slide').forEach((s) => {
     const id = s.dataset.id;
+    const at = Number(s.dataset.index) || 0;
+    const card = rows[at];
     s.querySelector('.like').onclick = (e) => {
       const b = e.currentTarget, on = b.getAttribute('aria-pressed') !== 'true';
       b.setAttribute('aria-pressed', on); liked[id] = on; likes.write(liked);
+      track(on ? 'card_like' : 'card_unlike', cardParams(card, at));
     };
-    s.querySelector('.sound').onclick = () => { soundOn = !soundOn; applySound(); };
+    s.querySelector('.sound').onclick = () => {
+      soundOn = !soundOn; applySound();
+      track('sound_toggle', { ...cardParams(card, at), sound_on: soundOn });
+    };
+    s.querySelector('.cta')?.addEventListener('click', () =>
+      track('card_action', { ...cardParams(card, at), action_label: card.action?.label || '' }));
+    s.querySelectorAll('.ovl a').forEach((a) => a.addEventListener('click', () =>
+      track('overlay_link', { ...cardParams(card, at), link_text: a.textContent.slice(0, 60) })));
+    s.querySelector('.rail a')?.addEventListener('click', () =>
+      track('card_source_open', cardParams(card, at)));
     s.querySelector('.share').onclick = async () => {
       const c = rows.find((x) => x.id === id);
       const url = c.action?.url || Object.values(c.links || {})[0] || location.href;
@@ -293,12 +383,22 @@ function render() {
         clearTimeout(el._t); el._t = setTimeout(() => (el.hidden = true), 2200);
       };
       if (navigator.share) {
-        try { await navigator.share({ title: c.headline, url }); return; } catch { /* dismissed */ }
+        try {
+          await navigator.share({ title: c.headline, url });
+          track('card_share', { ...cardParams(c, at), share_method: 'native' });
+          return;
+        } catch { /* dismissed */ }
       }
       // writeText rejects on an insecure origin or without permission, and silently doing
       // nothing reads as a broken button.
-      try { await navigator.clipboard.writeText(url); say('Link copied'); }
-      catch { say(url); }
+      try {
+        await navigator.clipboard.writeText(url);
+        say('Link copied');
+        track('card_share', { ...cardParams(c, at), share_method: 'clipboard' });
+      } catch {
+        say(url);
+        track('card_share', { ...cardParams(c, at), share_method: 'fallback' });
+      }
     };
   });
   activeIdx = 0; paintSegs(rows.length);
@@ -325,12 +425,21 @@ function paintSegs(total) {
   $('#pos').textContent = total > MAX_SEGS ? `${activeIdx + 1}/${total}` : '';
 }
 /** Static cards behave like a story: hold, fill the segment, advance. Video just plays. */
+/** The card each slide renders, for event params. Set once per render. */
+let ROWS = [];
+const cardOf = (slide) => ROWS[Number(slide.dataset.index) || 0];
+
 const io = new IntersectionObserver((es) => es.forEach((e) => {
   const slide = e.target;
   const v = slide.querySelector('video');
+  const idxOf = Number(slide.dataset.index) || 0;
 
   if (e.isIntersecting) {
-    const idx = Number(slide.dataset.index) || 0;
+    const idx = idxOf;
+    // Outside the index check: the first card is index 0 and activeIdx starts at 0, so
+    // gating this on a change meant the opening card of every session went unrecorded.
+    // cardOpened is idempotent per slide, so calling it on re-entry costs nothing.
+    if (cardOf(slide)) cardOpened(slide, cardOf(slide), idx);
     if (idx !== activeIdx) {
       activeIdx = idx;
       paintSegs(Number(slide.dataset.total) || 1);
@@ -345,6 +454,10 @@ const io = new IntersectionObserver((es) => es.forEach((e) => {
   const fill = $('#segs .fill');
 
   if (!e.isIntersecting) {
+    // Completion is recorded where it happens — the video's out-point, or the static
+    // card's hold timer. Anything else leaving the screen is an exit.
+    if (cardOf(slide)) cardClosed(slide, cardOf(slide), idxOf, slide._done === true);
+    slide._done = false;
     v?.pause();
     if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
     if (slide._t) { clearTimeout(slide._t); slide._t = null; }
@@ -353,8 +466,11 @@ const io = new IntersectionObserver((es) => es.forEach((e) => {
   const auto = slide.dataset.advance !== 'manual'
     && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const next = () => {
+    slide._done = true;
     const feed = $('#feed');
     if (slide.nextElementSibling) feed.scrollBy({ top: feed.clientHeight, behavior: 'smooth' });
+    // On the last card nothing scrolls, so the completion would never be flushed.
+    else if (cardOf(slide)) cardClosed(slide, cardOf(slide), idxOf, true);
   };
 
   if (v) {
@@ -409,6 +525,7 @@ function chips() {
     `<button class="chip" aria-pressed="${c.key === active}" data-k="${esc(c.key)}">${esc(c.name)}</button>`).join('');
   $('#bar').querySelectorAll('.chip').forEach((b) => (b.onclick = () => {
     active = b.dataset.k; chips(); render(); $('#feed').scrollTop = 0;
+    track('collection_filter', { feed_cards: ROWS.length });
   }));
 }
 
@@ -425,7 +542,15 @@ $('#feed').addEventListener('keydown', (e) => {
 
 try {
   DATA = await (await fetch('/api/feed')).json();
+  loadGA(resolveGA());
   chips(); render(); applySound();
+  track('feed_load', { feed_cards: ROWS.length, feed_collections: DATA.collections.length });
+  // A tab switch or a close ends the session without the observer ever firing again.
+  addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'hidden') return;
+    const slide = $('#feed').querySelector(`.slide[data-index="${activeIdx}"]`);
+    if (slide && cardOf(slide)) cardClosed(slide, cardOf(slide), activeIdx, slide._done === true);
+  });
 } catch (e) {
   $('#feed').innerHTML = `<p class="msg">Couldn't load the feed.<br>${esc(e.message)}</p>`;
 }

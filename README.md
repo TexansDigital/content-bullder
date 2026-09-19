@@ -110,7 +110,7 @@ it competes with what you composed. Override with Show or Hide.
 
 ## Verification
 
-Four browser-driven suites under [`test/`](test/), 71 assertions, each reproducing a specific
+Five browser-driven suites under [`test/`](test/), 97 assertions, each reproducing a specific
 reported failure so a regression names the thing that broke.
 
 ```sh
@@ -122,6 +122,66 @@ cd /tmp && node <repo>/test/verify-fixes.mjs
 ```
 
 Run against an empty store — delete `content/store.json` between suites.
+
+## Running order
+
+The queue is shown in the order the feed will play, and dragging a card is how you change
+it. Grab the handle at the left edge, or focus a card and hold **alt** with the arrow keys —
+the same move without a mouse. The new order saves on drop; there is no Save to press.
+
+Order is set per tab, so dragging in **Published** never renumbers drafts you are not
+looking at. A draft takes its place when you publish it, and you drag it from there.
+
+## Analytics
+
+Off by default. Nothing third-party loads until a measurement ID is configured.
+
+```bash
+GA_MEASUREMENT_ID=G-XXXXXXXXXX node server.mjs
+```
+
+An embedder can override it per placement, which is how one deployment reports into
+different properties:
+
+```
+/feed?ga=G-YYYYYYYYYY
+```
+
+The ID reaches a script `src`, so it is matched against `G-[A-Z0-9]{4,20}` and refused
+otherwise rather than interpolated on trust. The framed feed sends no `page_view` of its
+own — that would double-count against the page holding it — so measurement is events only.
+
+**Every event is also posted to the parent frame**, whether or not GA is on:
+
+```js
+window.addEventListener('message', (e) => {
+  if (e.data?.source !== 'txfeed') return;
+  myAnalytics.track(e.data.event, e.data.params);
+});
+```
+
+That is the hook for Adobe, Parse.ly, or the app's own bridge — we don't have to know which.
+Open `/feed` unframed and it posts to itself, so you can watch the stream in the console
+before writing any integration.
+
+| Event | Fires when |
+| --- | --- |
+| `feed_load` | the feed has rendered |
+| `card_view` | a card has held the screen for a second — scrolling past does not count |
+| `card_complete` | a video reached its end or out-point, or a static card held its full time |
+| `card_exit` | a card left the screen before completing |
+| `card_like` / `card_unlike` | the like button |
+| `card_share` | a share resolved, with `share_method` of native, clipboard or fallback |
+| `card_action` | the CTA button |
+| `overlay_link` | a link block on the card |
+| `card_source_open` | the Source link in the rail |
+| `sound_toggle` | the sound button, carrying its new state |
+| `collection_filter` | a collection chip |
+
+Every card event carries `card_id`, `card_collection`, `card_source`, `card_kind` and
+`card_position`, plus `card_is_clip` and `card_sponsor` where they apply. `card_complete`
+and `card_exit` add `card_dwell_ms`. **No personal data is in any of it** — which is why
+the postMessage target origin can be `*`, as an embed cannot know its host.
 
 ## Research
 
