@@ -147,3 +147,26 @@ Two ways to actually settle it:
 2. **The `X-Cld-Error` response header**, compared against a control request for a
    deliberately-missing image. Identical errors mean "asset not found"; a different error on the
    video path means the resource type itself is unavailable. Added to `tools/hunt.sh` as §2b.
+
+## 2026-09-19 (fourth round)
+
+**D18 — Pressers are rights-clean.** Confirmed. This is the unlock: pressers are 110 of the 283
+long-form videos on the channel, and clipping them is the only path to a feed that doesn't wait
+on the NFL game-footage answer ([doc 13 §4](13-the-supply-picture.md)).
+
+**D19 — Pressers are already uploaded to houstontexans.com.** They go through the club site and
+come back as FORGE video pages.
+
+> **This may remove the master-first workflow change entirely.** Every plan so far assumed
+> someone would have to start uploading masters to Cloudinary. If presser video already lands in
+> the same Cloudinary account that serves `static.clubs.nfl.com`, the assets we want to clip
+> **already exist**, and the clipping tool can run against them today — no upload step, no
+> preset, no behaviour change, nothing to procure.
+>
+> Unresolved: whether FORGE stores that video in Cloudinary (addressable as
+> `/video/upload/texans/<id>`) or in a separate video platform. `tools/find-video-source.sh`
+> settles it. **This is now the last blocking unknown for the clipping build.**
+
+**D20 — `licensedContent` retired as a rights signal.** See [doc 13 §1](13-the-supply-picture.md).
+Rights classification is by content type; the API field is channel-level and carries no
+information about a specific clip.
