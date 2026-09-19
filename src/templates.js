@@ -77,11 +77,45 @@ export const TEMPLATES = [
   },
 ];
 
-export const findTemplate = (key) => TEMPLATES.find((t) => t.key === key) || null;
+export const findTemplate = (key, custom = []) =>
+  [...TEMPLATES, ...custom].find((t) => t.key === key) || null;
 
 /** Presets, stripped of ids so each application makes fresh blocks. */
-export function templatePatch(key) {
-  const t = findTemplate(key);
+export function templatePatch(key, custom = []) {
+  const t = findTemplate(key, custom);
   if (!t) return null;
-  return JSON.parse(JSON.stringify(t.apply));
+  const patch = JSON.parse(JSON.stringify(t.apply));
+  // Ids are regenerated on makeItem, but strip them so two cards from one layout never
+  // share a block id.
+  patch.overlays = (patch.overlays || []).map(({ id, ...rest }) => rest);
+  return patch;
+}
+
+const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-|-$/g, '').slice(0, 40);
+
+/**
+ * Turns a card into a reusable layout. Only the presentation travels — media, headline,
+ * collection and links stay with the card it came from, since those are what change between
+ * uses. Block text is kept, because a saved layout's wording is usually most of its value.
+ */
+export function templateFromItem(item, name) {
+  const key = `custom-${slug(name) || Date.now().toString(36)}`;
+  return {
+    key,
+    name: String(name).slice(0, 40) || 'Untitled layout',
+    note: `Saved from "${String(item.headline).slice(0, 40)}"`,
+    custom: true,
+    apply: {
+      fit: item.fit,
+      chrome: item.chrome,
+      advance: { ...item.advance },
+      overlays: (item.overlays || []).map(({ id, ...o }) => ({
+        ...o,
+        // A saved link keeps its wording but drops the destination — the next card it is
+        // applied to is going somewhere else, and a stale URL is worse than an empty one.
+        url: o.type === 'link' ? '' : null,
+      })),
+    },
+  };
 }

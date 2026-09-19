@@ -115,6 +115,9 @@ button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
  border:1px solid var(--line);font-weight:700}
 .mini button:hover{background:var(--s3);border-color:var(--line2)}
 .mini button[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
+.mini button[data-custom] span{opacity:.5;padding-left:3px;font-weight:400}
+.mini button[data-custom] span:hover{opacity:1;color:var(--red)}
+.mini button[data-custom]{border-style:dashed}
 .sect{border-top:1px solid var(--line);margin-top:14px;padding-top:13px}
 .sect>h4{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
  color:var(--mute);margin:0 0 9px;font-weight:400}
@@ -345,6 +348,10 @@ function renderEditor() {
       <div class="mini" id="tpl"></div>
       <p class="hint" id="tpl-note">Applying a layout replaces this card's blocks and pacing.
         The media stays.</p>
+      <div class="row" style="margin-top:9px">
+        <input id="tpl-name" placeholder="Name this layout" style="flex:1;min-width:0">
+        <button class="ghost sm" id="tpl-save">Save as layout</button>
+      </div>
     </div>
 
     <div id="ov-panel"></div>
@@ -425,18 +432,40 @@ async function loadTemplates() {
 function renderTemplates(item) {
   const el = $('#tpl'); if (!el) return;
   el.innerHTML = TEMPLATES.map((t) =>
-    `<button data-tpl="${t.key}" title="${esc(t.note)}">${esc(t.name)}</button>`).join('');
+    `<button data-tpl="${t.key}" title="${esc(t.note)}"${t.custom ? ' data-custom="1"' : ''}
+      >${esc(t.name)}${t.custom ? ' <span aria-hidden="true">×</span>' : ''}</button>`).join('');
+
   el.querySelectorAll('[data-tpl]').forEach((b) => {
     b.onmouseenter = () => {
       const t = TEMPLATES.find((x) => x.key === b.dataset.tpl);
       $('#tpl-note').textContent = t ? t.note : '';
     };
-    b.onclick = async () => {
+    b.onclick = async (ev) => {
+      // The × on a saved layout removes it; anywhere else applies it.
+      if (b.dataset.custom && ev.target.tagName === 'SPAN') {
+        if (!confirm(`Delete the layout "${b.textContent.replace(/\s*×$/, '')}"?`)) return;
+        await api('/api/templates', { method: 'DELETE',
+          body: JSON.stringify({ key: b.dataset.tpl }) });
+        await loadTemplates(); renderTemplates(item); toast('Layout deleted');
+        return;
+      }
       await api('/api/apply-template', { method: 'POST',
         body: JSON.stringify({ id: item.id, template: b.dataset.tpl }) });
-      selOv = null; await refresh(); toast(`Applied ${b.textContent}`);
+      selOv = null; await refresh();
+      toast(`Applied ${b.textContent.replace(/\s*×$/, '')}`);
     };
   });
+
+  $('#tpl-save').onclick = async () => {
+    const name = $('#tpl-name').value.trim();
+    if (!name) { $('#tpl-name').focus(); return toast('Name the layout first'); }
+    try {
+      await api('/api/templates', { method: 'POST',
+        body: JSON.stringify({ id: item.id, name }) });
+      $('#tpl-name').value = '';
+      await loadTemplates(); renderTemplates(item); toast(`Saved "${name}"`);
+    } catch (e) { toast(e.message); }
+  };
 }
 
 function canvasMedia(i) {

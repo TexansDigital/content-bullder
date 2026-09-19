@@ -18,7 +18,7 @@ import { extname, join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listAdapters, pull } from './src/adapters/index.js';
 import { makeItem, validate, feedSort, liveCollections, STATUS, COLLECTIONS } from './src/content.js';
-import { TEMPLATES, templatePatch } from './src/templates.js';
+import { TEMPLATES, templatePatch, templateFromItem } from './src/templates.js';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 4400);
@@ -91,15 +91,43 @@ const server = createServer(async (req, res) => {
     // ---- API -------------------------------------------------------------
     if (p === '/api/adapters') return json(res, 200, { adapters: listAdapters() });
 
-    if (p === '/api/templates') return json(res, 200, {
-      templates: TEMPLATES.map(({ key, name, note, apply }) => ({
-        key, name, note, blocks: apply.overlays.length, fit: apply.fit, advance: apply.advance.mode,
-      })),
-    });
+    if (p === '/api/templates' && req.method === 'GET') {
+      const { templates = [] } = await load();
+      return json(res, 200, {
+        templates: [...TEMPLATES, ...templates].map(({ key, name, note, custom, apply }) => ({
+          key, name, note, custom: !!custom, blocks: apply.overlays.length,
+          fit: apply.fit, advance: apply.advance.mode,
+        })),
+      });
+    }
+
+    if (p === '/api/templates' && req.method === 'POST') {
+      const { id, name } = await readBody(req);
+      if (!String(name || '').trim()) return json(res, 400, { error: 'needs a name' });
+      const state = await load();
+      const item = state.items.find((i) => i.id === id);
+      if (!item) return json(res, 404, { error: 'no such item' });
+      if (!item.overlays?.length)
+        return json(res, 400, { error: 'nothing to save — this card has no blocks' });
+      const t = templateFromItem(item, name);
+      state.templates = [...(state.templates || []).filter((x) => x.key !== t.key), t];
+      await save(state);
+      return json(res, 200, { saved: t.key, name: t.name });
+    }
+
+    if (p === '/api/templates' && req.method === 'DELETE') {
+      const { key } = await readBody(req);
+      const state = await load();
+      const before = (state.templates || []).length;
+      state.templates = (state.templates || []).filter((t) => t.key !== key);
+      await save(state);
+      return json(res, 200, { removed: before - state.templates.length });
+    }
 
     if (p === '/api/apply-template' && req.method === 'POST') {
       const { id, template } = await readBody(req);
-      const patch = templatePatch(template);
+      const { templates: custom = [] } = await load();
+      const patch = templatePatch(template, custom);
       if (!patch) return json(res, 404, { error: `no such template: ${template}` });
       const state = await load();
       let hit = false;
