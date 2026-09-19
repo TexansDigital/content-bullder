@@ -80,7 +80,7 @@ h1,h2,h3{font-family:var(--font-d);font-weight:900;text-transform:uppercase;
 .feed::-webkit-scrollbar{display:none}
 .slide{position:relative;height:100%;scroll-snap-align:start;scroll-snap-stop:always;
   overflow:hidden;display:block}
-.slide canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.slide canvas,.slide .vid{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover;background:#000}
 .scrim-t{position:absolute;inset:0 0 auto;height:34%;
   background:linear-gradient(180deg,rgba(2,17,24,.85),transparent);pointer-events:none}
 .scrim-b{position:absolute;inset:auto 0 0;height:56%;
@@ -176,7 +176,7 @@ h1,h2,h3{font-family:var(--font-d);font-weight:900;text-transform:uppercase;
 .tile:focus-visible{outline:2px solid var(--red);outline-offset:3px}
 .tile-art{position:relative;aspect-ratio:4/5;overflow:hidden;background:#000;
   border:1px solid var(--line)}
-.tile-art canvas{position:absolute;inset:0;width:100%;height:100%}
+.tile-art canvas,.tile-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .tile:hover .tile-art{border-color:var(--red)}
 .tile-dur{position:absolute;right:6px;bottom:6px;font-family:var(--font-m);font-size:9px;
   letter-spacing:.06em;background:rgba(2,17,24,.85);padding:2px 5px;color:#fff}
@@ -383,6 +383,62 @@ footer .mono{font-size:10px}
 </footer>
 
 <script>
+/* ---------- manifest ----------
+   Drop a real content/manifest.json next to this file (or one level up) and the feed
+   renders real Cloudinary media. Absent or unconfigured, it falls back to generated
+   on-brand frames. The published artifact always falls back: its sandbox CSP blocks
+   res.cloudinary.com. See docs/research/08-cloudinary-url-only.md. */
+let CDN=null, REAL=false;
+const RAW_T={
+  player:"f_auto,q_auto,c_fill,g_auto,ar_9:16",
+  poster:"so_1.5,f_auto,q_auto,c_fill,g_auto,ar_9:16,w_720",
+  tile:"so_1.5,f_auto,q_auto,c_fill,g_auto,ar_4:5,w_400"
+};
+const NAMED_T={player:"t_tx_feed_player",poster:"t_tx_feed_poster",tile:"t_tx_feed_tile"};
+function cldPublicId(v){
+  if(!v)return null; const s=String(v).trim();
+  if(!s.includes("res.cloudinary.com"))return s.replace(/^\/+|\.[a-z0-9]+$/gi,"");
+  const a=s.split("/upload/")[1]; if(!a)return null;
+  return a.split("/").filter(x=>!/^(v\d+|[a-z]{1,3}_[^/]*|t_[^/]*|sp_auto)$/i.test(x))
+          .join("/").replace(/\.[a-z0-9]+$/i,"");
+}
+function cldUrl(kind,id,ext){
+  const t=(CDN.named?NAMED_T:RAW_T)[kind];
+  const sp=kind==="player"&&ext==="m3u8"?"/sp_auto":"";
+  return `https://res.cloudinary.com/${CDN.cloud}/video/upload/${t}${sp}/${id}.${ext}`;
+}
+function media(c){
+  if(!REAL||!c.pid)return '<canvas></canvas>';
+  return `<video class="vid" playsinline muted loop preload="none"
+    poster="${cldUrl("poster",c.pid,"jpg")}" src="${cldUrl("player",c.pid,"mp4")}"></video>`;
+}
+function tileArt(c){
+  if(!REAL||!c.pid)return '<canvas></canvas>';
+  return `<img src="${cldUrl("tile",c.pid,"jpg")}" alt="" loading="lazy">`;
+}
+async function loadManifest(){
+  for(const u of ["../content/manifest.json","content/manifest.json","./manifest.json"]){
+    try{
+      const r=await fetch(u); if(!r.ok)continue;
+      const m=await r.json();
+      if(!m.cloud||/^REPLACE/.test(m.cloud))continue;
+      CDN={cloud:m.cloud,named:!!m.namedTransformations};
+      if(Array.isArray(m.collections)&&m.collections.length)
+        COLLS.splice(1,COLLS.length-1,...m.collections.map(x=>({k:x.key,n:x.name})));
+      if(Array.isArray(m.clips)&&m.clips.length){
+        CLIPS.length=0;
+        m.clips.forEach((x,i)=>CLIPS.push({
+          id:x.id||`clip-${i}`, pid:cldPublicId(x.media), coll:x.collection||"gameday",
+          headline:x.headline, caption:x.caption, action:x.action,
+          dur:x.duration||"", h:180+((i*47)%190), seed:(i+1)*17, spon:!!x.sponsor
+        }));
+      }
+      REAL=true; return true;
+    }catch(e){}
+  }
+  return false;
+}
+
 const CLIPS=[
  {id:"m6gOqjDBXxo",coll:"gameday",  t:"Gameday",              dur:"0:34",h:206,seed:11},
  {id:"5f7d3ssRsvc",coll:"players",  t:"Players",              dur:"0:48",h:352,seed:27},
@@ -468,18 +524,26 @@ function buildChips(){
     const b=document.createElement("button");
     b.className="chip";b.type="button";b.textContent=c.n;
     b.setAttribute("aria-pressed",c.k===active);
-    b.onclick=()=>{active=c.k;buildChips();buildFeed();buildRail();feed.scrollTop=0};
+    b.onclick=()=>{active=c.k;/* autoplay the slide in view, pause the rest */
+const io=new IntersectionObserver(es=>es.forEach(e=>{
+  const v=e.target.querySelector("video"); if(!v)return;
+  if(e.isIntersecting){v.play().catch(()=>{});}else{v.pause();}
+}),{root:feed,threshold:.6});
+const observeSlides=()=>document.querySelectorAll(".slide").forEach(s=>io.observe(s));
+const _bf=buildFeed; buildFeed=function(){_bf();observeSlides();};
+
+loadManifest().finally(()=>{buildChips();buildFeed();buildRail();});feed.scrollTop=0};
     chips.appendChild(b);
   });
 }
 
-function buildFeed(){
+let buildFeed=function(){
   const items=list();
   feed.innerHTML="";
   items.forEach((c,i)=>{
     const s=document.createElement("article");
     s.className="slide";
-    s.innerHTML=`<canvas></canvas><div class="scrim-t"></div><div class="scrim-b"></div>
+    s.innerHTML=`${media(c)}<div class="scrim-t"></div><div class="scrim-b"></div>
       <div class="segs">${items.map((_,j)=>`<i class="seg${j<=i?" on":""}"></i>`).join("")}</div>
       <div class="s-top">
         <span class="coll${c.spon?" spon":""}">${c.spon?"Presented by":label(c.coll)}</span>
@@ -487,9 +551,9 @@ function buildFeed(){
       </div>
       <p class="cc" ${ccOn?"":"hidden"}>Caption track renders here &mdash; auto-transcribed by Cloudinary.</p>
       <div class="s-bot">
-        <h3>${label(c.coll)}<br>${String(i+1).padStart(2,"0")}</h3>
-        <p class="s-cap">Headline and caption come from the post metadata once harvest is wired. Structure is final; copy is not.</p>
-        <button class="cta" type="button">${c.spon?"Learn more":CTA[c.coll]}</button>
+        <h3>${c.headline||(label(c.coll)+"<br>"+String(i+1).padStart(2,"0"))}</h3>
+        <p class="s-cap">${c.caption||"Headline and caption come from the post metadata once harvest is wired. Structure is final; copy is not."}</p>
+        <button class="cta" type="button">${(c.action&&c.action.label)||(c.spon?"Learn more":CTA[c.coll])}</button>
       </div>
       <div class="rail">
         <button class="rbtn like" type="button" aria-pressed="${!!likes[c.id]}" aria-label="Like">
@@ -500,7 +564,7 @@ function buildFeed(){
         <button class="rbtn" type="button" aria-label="Open original post">${IC.src}<span>Source</span></button>
       </div>`;
     feed.appendChild(s);
-    requestAnimationFrame(()=>paint(s.querySelector("canvas"),c));
+    const cv=s.querySelector("canvas"); if(cv)requestAnimationFrame(()=>paint(cv,c));
     s.querySelector(".like").onclick=e=>{
       const b=e.currentTarget, on=b.getAttribute("aria-pressed")!=="true";
       b.setAttribute("aria-pressed",on);likes[c.id]=on;store.set(likes);
@@ -509,20 +573,20 @@ function buildFeed(){
     s.querySelector(".cc-t").onclick=()=>{ccOn=!ccOn;buildFeed();};
   });
   buildRealness();
-}
+};
 
 function buildRail(){
   rail.innerHTML="";
   list().forEach((c,i)=>{
     const b=document.createElement("button");
     b.className="tile";b.type="button";
-    b.innerHTML=`<div class="tile-art"><canvas></canvas>
+    b.innerHTML=`<div class="tile-art">${tileArt(c)}
         <span class="tile-badge${c.spon?" spon":""}">${c.spon?"Presented by":label(c.coll)}</span>
         <span class="tile-dur">${c.dur}</span></div>
       <h4>${label(c.coll)} ${String(i+1).padStart(2,"0")}</h4>
       <span class="mono">4:5 &nbsp;·&nbsp; ${c.id}</span>`;
     rail.appendChild(b);
-    requestAnimationFrame(()=>paint(b.querySelector("canvas"),c));
+    const tc=b.querySelector("canvas"); if(tc)requestAnimationFrame(()=>paint(tc,c));
     b.onclick=()=>{go("t-app");feed.scrollTo({top:i*feed.clientHeight,behavior:"smooth"})};
   });
 }
@@ -534,7 +598,7 @@ function buildRealness(){
     ["Clip count",`${CLIPS.length} items mapped to your ten Shorts IDs.`],
     ["Aspect","9:16 player, 4:5 tile — both derived from one master."],
     ["Interaction","Scroll-snap, keyboard, like, captions, action button."],
-    ["Frames","Generated stand-ins. Real posters land with Cloudinary."],
+    ["Frames",REAL?"Live Cloudinary media — reframed from one master.":"Generated stand-ins. Real posters land with Cloudinary."],
     ["Copy","Placeholder. Real headlines come from post metadata."]
   ].map(([k,v])=>`<li><span class="k">${k}</span><span class="v">${v}</span></li>`).join("");
 }
@@ -556,8 +620,16 @@ feed.addEventListener("keydown",e=>{
   feed.scrollBy({top:(e.key==="ArrowDown"?1:-1)*feed.clientHeight,behavior:"smooth"});
 });
 
-buildChips();buildFeed();buildRail();
+/* autoplay the slide in view, pause the rest */
+const io=new IntersectionObserver(es=>es.forEach(e=>{
+  const v=e.target.querySelector("video"); if(!v)return;
+  if(e.isIntersecting){v.play().catch(()=>{});}else{v.pause();}
+}),{root:feed,threshold:.6});
+const observeSlides=()=>document.querySelectorAll(".slide").forEach(s=>io.observe(s));
+const _bf=buildFeed; buildFeed=function(){_bf();observeSlides();};
+
+loadManifest().finally(()=>{buildChips();buildFeed();buildRail();});
 window.addEventListener("resize",()=>{
-  document.querySelectorAll(".slide").forEach((s,i)=>paint(s.querySelector("canvas"),list()[i]));
+  document.querySelectorAll(".slide canvas").forEach((c,i)=>paint(c,list()[i]));
 },{passive:true});
 </script>

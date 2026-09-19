@@ -1,0 +1,32 @@
+{
+  "$comment": "Editorial fills this in. Paste a Cloudinary delivery URL or a bare public ID into `media` — both work. Everything else is optional; the feed degrades gracefully.",
+  "cloud": "REPLACE_WITH_CLOUD_NAME",
+  "namedTransformations": false,
+  "collections": [
+    { "key": "gameday",   "name": "Gameday" },
+    { "key": "players",   "name": "Players" },
+    { "key": "series",    "name": "Series" },
+    { "key": "community", "name": "Community & Foundation" },
+    { "key": "flag",      "name": "Girls Flag & Youth Football" }
+  ],
+  "clips": [
+    {
+      "id": "2026-w03-gameday-walkout",
+      "media": "https://res.cloudinary.com/CLOUD/video/upload/v1/texans/feed/w03-walkout.mp4",
+      "collection": "gameday",
+      "headline": "Walkout",
+      "caption": "Tunnel to turf, week three.",
+      "publishedAt": "2026-09-21T17:05:00Z",
+      "action": { "label": "Get tickets", "url": "https://www.houstontexans.com/tickets" },
+      "sources": {
+        "youtube": "m6gOqjDBXxo",
+        "instagram": null,
+        "tiktok": null
+      },
+      "focalPoint": null,
+      "sponsor": null,
+      "audioSource": "owned",
+      "captions": true
+    }
+  ]
+}
