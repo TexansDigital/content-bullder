@@ -26,7 +26,8 @@ Start here: [`docs/research/00-executive-summary.md`](docs/research/00-executive
 | [09 — NFL Cloudinary findings](docs/research/09-nfl-cloudinary-findings.md) | It's a private CDN, and it may be images-only |
 | [10 — Where the video comes from](docs/research/10-video-home.md) | YouTube playback vs. a feed-owned store |
 | [11 — First real data](docs/research/11-first-real-data.md) | Measured results, and the rights issue that became blocking |
-| [12 — What the channel publishes](docs/research/12-content-mix.md) | **Start here** — the vertical content and the usable content don't overlap |
+| [12 — What the channel publishes](docs/research/12-content-mix.md) | First look at the content mix (superseded in part by 13) |
+| [13 — The supply picture](docs/research/13-the-supply-picture.md) | **Start here** — 1,000 uploads measured, and what the product actually is |
 
 Run [`tools/hunt.sh`](tools/hunt.sh) to settle the open questions in one pass
 (or [`tools/cloudinary-probe.html`](tools/cloudinary-probe.html) for the browser version).

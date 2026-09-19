@@ -29,8 +29,13 @@ distribution, using infrastructure already paid for.
 All ten Shorts are in-game highlights. Touchdowns, sacks, first downs, a fourth-down stop. Not
 one is a player feature, a series episode, community, or girls flag.
 
-And every one carries **`licensedContent: true`** — YouTube's flag for content claimed in its
-rights-management system. For NFL club channels, game footage is claimed by the league.
+And every one carries **`licensedContent: true`**.
+
+> **Corrected 2026-09-19 — see [doc 13 §1](13-the-supply-picture.md).** That flag turned out to
+> be ~100% across *every* category on this channel, including pressers, radio and girls flag
+> football. It is a channel-level content-partner flag, not evidence that a given clip is
+> league-claimed game footage. Rights classification must come from content type instead. The
+> rest of this section stands: all ten are game highlights, by content.
 
 That collides head-on with the question left open since doc 02: *can NFL game footage live in a
 persistent, monetizable, club-owned feed?* It has been the lowest-priority open item on the list.
