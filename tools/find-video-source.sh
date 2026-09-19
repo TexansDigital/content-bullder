@@ -44,8 +44,8 @@ done
 
 hr; echo "5. PLATFORM FINGERPRINTS"
 for k in cloudinary clubs.nfl.com brightcove jwplayer mux vimeo kaltura akamaized theoplayer videojs bitmovin hls.js dash.js deltatre forge; do
-  n=$(printf '%s' "$PAGE" | grep -oic -- "$k" 2>/dev/null || echo 0)
-  [ "${n:-0}" -gt 0 ] && printf '  %-16s %s\n' "$k" "$n"
+  n=$(printf '%s' "$PAGE" | grep -oi -- "$k" 2>/dev/null | wc -l | tr -d ' ')
+  [ "${n:-0}" -gt 0 ] 2>/dev/null && printf '  %-16s %s\n' "$k" "$n"
 done
 
 hr; echo "6. EMBEDDED JSON BLOBS (keys only)"
