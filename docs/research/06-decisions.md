@@ -107,3 +107,43 @@ Two consequences:
   network route to YouTube — the footage has not been seen. Design work is proceeding on
   generated placeholder frames. Real posters need either Cloudinary access or the files.
 - NFL game-footage rights in a persistent, monetizable club feed.
+
+## 2026-09-19 (third round) — measured, not assumed
+
+**D15 — Video home: YouTube for club video, Cloudinary for images.**
+Raises a product question rather than a technical one, written up in
+[doc 10](10-video-home.md): YouTube's terms mean its video plays only in YouTube's own iframe,
+un-overlaid, so feed chrome can't sit on top of it. Three shapes follow; recommendation is a
+feed-owned store with YouTube as distribution if Cloudinary video is available, otherwise
+"browse ours, playback YouTube's" for v1.
+
+**D16 — Strict Transformations is NOT blocking us. ✅ Measured.**
+
+```
+GET static.clubs.nfl.com/image/upload/w_200/texans/bodufcw8x4wotk4q7ses.jpg  →  HTTP/2 200
+```
+
+Raw transformation URLs deliver. No named-transformation registration needed, no console action,
+no dependency on anyone else. `manifest.sample.json` now defaults to
+`namedTransformations: false`. This resolves the ambiguity flagged in doc 09 §3 — "transformations
+are on" meant available, not strict.
+
+> Still unmeasured: whether **`g_auto`** specifically works. `w_200` is a plain resize; the AI
+> content-aware crop is a separate capability and can be absent from a plan while simple
+> transforms succeed. Test the real 4:5 crop before relying on it.
+
+**D17 — The video 404 is INCONCLUSIVE, not a negative.**
+
+```
+GET static.clubs.nfl.com/video/upload/texans/bodufcw8x4wotk4q7ses.mp4  →  HTTP/2 404
+```
+
+That public ID is an **image**. A 404 for it under `/video/upload/` is the expected result
+whether or not Cloudinary video is enabled — it tests nothing. Do not read this as "video is
+unavailable."
+
+Two ways to actually settle it:
+1. **A real video public ID** from the Cloudinary Media Library. Definitive, takes a moment.
+2. **The `X-Cld-Error` response header**, compared against a control request for a
+   deliberately-missing image. Identical errors mean "asset not found"; a different error on the
+   video path means the resource type itself is unavailable. Added to `tools/hunt.sh` as §2b.

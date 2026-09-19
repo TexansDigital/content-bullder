@@ -4,8 +4,8 @@
   "baseUrl": "https://static.clubs.nfl.com",
   "$baseUrl_note": "The NFL runs a private-CDN Cloudinary, so there is no cloud name in the path. For a shared res.cloudinary.com account use \"cloud\": \"<name>\" instead.",
 
-  "namedTransformations": true,
-  "$namedTransformations_note": "true when the account has Strict Transformations enabled and tx_feed_* have been registered in the console. Run tools/cloudinary-probe.html to find out which.",
+  "namedTransformations": false,
+  "$namedTransformations_note": "Confirmed 2026-09-19: raw transformation URLs return 200 on static.clubs.nfl.com, so Strict Transformations is NOT blocking us and no console registration is needed. Set true only if that changes.",
 
   "collections": [
     { "key": "gameday",   "name": "Gameday" },

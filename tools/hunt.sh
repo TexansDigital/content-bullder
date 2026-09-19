@@ -43,6 +43,14 @@ chk "video raw 9:16 + g_auto"     "$BASE/video/upload/$RAW_9x16/$VID_ID.mp4"
 chk "video poster .jpg"           "$BASE/video/upload/$RAW_POST/$VID_ID.jpg"
 chk "video HLS sp_auto .m3u8"     "$BASE/video/upload/$RAW_9x16/sp_auto/$VID_ID.m3u8"
 
+hr; echo "2b. CLOUDINARY — WHY did video 404?  (X-Cld-Error is the real answer)"
+for u in "$BASE/video/upload/$VID_ID.mp4" "$BASE/image/upload/$IMG_ID-definitely-not-real.jpg"; do
+  echo "  $u"
+  curl -sSI -m 25 "$u" 2>/dev/null | grep -iE '^(HTTP/|x-cld-error)' | sed 's/^/    /'
+done
+echo "  Compare the two: identical errors = the asset is just missing."
+echo "  A different error on the video = the resource type itself is unavailable."
+
 hr; echo "3. FORGE VIDEO PAGE — is a stream addressable?"
 PAGE="$(curl -sS -m 40 -A 'Mozilla/5.0' -L "$FORGE_URL" 2>/dev/null)"
 if [ -z "$PAGE" ]; then echo "  ⚠️  page fetch failed"; else
@@ -59,8 +67,11 @@ fi
 
 hr; echo "4. YOUTUBE — the ten Shorts"
 if [ -z "${YT_API_KEY:-}" ]; then
-  echo "  (skipped — re-run with YT_API_KEY=... to get real titles, durations and embeddability)"
+  echo "  SKIPPED — no YT_API_KEY in the environment."
+  echo "  Re-run as:  YT_API_KEY=<your real key> ./hunt.sh"
+  echo "  (a literal 'AIza...' with dots is not a key — paste the whole thing)"
 else
+  echo "  key present (${#YT_API_KEY} chars). Querying ${#SHORTS[@]} video ids…"
   IDS=$(IFS=,; echo "${SHORTS[*]}")
   R="$(curl -sS -m 40 "https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,status,statistics&id=$IDS&key=$YT_API_KEY")"
   if printf '%s' "$R" | grep -q '"error"'; then
@@ -82,7 +93,11 @@ for v in d.get("items",[]):
 ch={v["snippet"]["channelId"] for v in d.get("items",[])}
 print("\n  channelId:", ", ".join(ch) or "-")
 print("  returned %d of 10"%len(d.get("items",[])))
-' 2>/dev/null || echo "    (parse failed — paste the raw JSON instead)"
+'
+    if [ $? -ne 0 ]; then
+      echo "    (could not parse — raw response follows, paste it back as-is)"
+      printf '%s' "$R" | head -c 4000
+    fi
   fi
 fi
 
