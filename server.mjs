@@ -14,7 +14,7 @@
 import { createServer } from 'node:http';
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { existsSync, statSync, createReadStream } from 'node:fs';
-import { extname, join, dirname, resolve } from 'node:path';
+import { extname, join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listAdapters, pull } from './src/adapters/index.js';
 import { makeItem, validate, feedSort, liveCollections, STATUS, COLLECTIONS } from './src/content.js';
@@ -36,8 +36,15 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 const GA4 = /^G-[A-Z0-9]{4,20}$/i.test(process.env.GA_MEASUREMENT_ID || '')
   ? process.env.GA_MEASUREMENT_ID : null;
 
-const UPLOADS = join(ROOT, 'content/uploads');
+// Beside the store, not beside the repo: pointing STORE at a scratch file and still
+// writing uploads into content/uploads/ meant a throwaway instance left files behind.
+const UPLOADS = join(dirname(STORE), 'uploads');
+// The one URL prefix uploads are reachable under, and the only path served out of UPLOADS.
+const UPLOAD_PREFIX = '/content/uploads/';
 const MAX_UPLOAD = 12 * 1024 * 1024;
+// A clip longer than this is not a clip. The cap exists so a mistyped out-point is refused
+// rather than published as a card claiming "16:15" that never reaches its own end.
+const MAX_CLIP_SECONDS = 20 * 60;
 // A base64 data URL is ~1.37x the binary, plus JSON overhead. Below this the body cap
 // would reject inside the advertised limit, and do it by resetting the connection.
 const MAX_BODY = Math.ceil(MAX_UPLOAD * 1.5) + 65536;
@@ -55,7 +62,9 @@ async function loadRaw() {
   catch (e) {
     // Swallowing this would return an empty store, and the next write would persist that
     // over the real file. Refuse instead, and say where the damaged copy went.
-    const aside = `${STORE}.corrupt-${Date.now()}`;
+    // Named for the file, not the clock: this runs on every request until someone
+    // intervenes, and a new timestamped copy each time filled the disk from one bad byte.
+    const aside = `${STORE}.corrupt`;
     await writeFile(aside, text).catch(() => {});
     throw new Error(`store is not valid JSON (${e.message}). Moved a copy to ${aside} — `
       + 'fix or delete the store file before continuing.');
@@ -148,19 +157,28 @@ const readBody = (req) => new Promise((ok, no) => {
   req.on('error', no);
 });
 
-async function serveFile(req, res, rel) {
-  const path = join(ROOT, rel);
+/**
+ * `base` is the only directory this call may read out of, so an uploads request cannot walk
+ * into the app, and neither can reach the store. Uploads live beside the store, which is
+ * configurable, so they are not always under ROOT.
+ */
+async function serveFile(req, res, rel, base = ROOT) {
+  const path = join(base, rel);
   // A directory here used to reach readFile and throw EISDIR from an unawaited promise,
   // which took the whole process down on one unauthenticated request.
   let stat;
   try { stat = statSync(path); } catch { stat = null; }
-  if (!path.startsWith(ROOT) || !stat?.isFile()) { res.writeHead(404); return res.end('not found'); }
-  const uploaded = rel.startsWith('content/uploads/');
+  if (!path.startsWith(base + sep) || !stat?.isFile()) {
+    res.writeHead(404); return res.end('not found');
+  }
+  const uploaded = base === UPLOADS;
   const head = {
     'content-type': MIME[extname(path)] || 'application/octet-stream',
     'cache-control': 'no-store',
-    // The feed is meant to be framed by houstontexans.com and the app webview.
-    'access-control-allow-origin': '*',
+    // No blanket access-control-allow-origin. It used to be set on everything served here,
+    // which let any site read the store — every inbox, draft and archived card. Framing is
+    // governed by frame-ancestors, not CORS, so the feed never needed it; the one documented
+    // cross-origin surface is the /api/feed JSON, which sets it itself.
     // Uploaded files are attacker-influenced content on our own origin, so deny them any
     // script execution and stop the browser sniffing a type we didn't set.
     'x-content-type-options': 'nosniff',
@@ -207,7 +225,7 @@ const server = createServer(async (req, res) => {
       return res.end();
     }
 
-    if (req.method !== 'GET' && !mutationAllowed(req))
+    if (req.method !== 'GET' && req.method !== 'HEAD' && !mutationAllowed(req))
       return json(res, 403, { error: 'cross-origin or unauthenticated write refused' });
 
     // ---- API -------------------------------------------------------------
@@ -257,12 +275,26 @@ const server = createServer(async (req, res) => {
      */
     if (p === '/api/clip' && req.method === 'POST') {
       const { id, start, end, headline } = await readBody(req);
-      const s0 = Number(start), e0 = Number(end);
+      // Whole seconds, because the clip id carries them and a 0.4-0.6 cut used to round to
+      // the same id as a 0-1 cut and be refused as a duplicate.
+      const s0 = Math.round(Number(start)), e0 = Math.round(Number(end));
       if (!Number.isFinite(s0) || !Number.isFinite(e0) || e0 <= s0)
         throw new HttpError(400, 'clip needs a start and an end, with end after start');
+      if (s0 < 0) throw new HttpError(400, 'a clip cannot start before the asset does');
+      if (e0 - s0 > MAX_CLIP_SECONDS)
+        throw new HttpError(400, `that clip is ${Math.round((e0 - s0) / 60)} min — the cap is `
+          + `${MAX_CLIP_SECONDS / 60} min. Cut it shorter.`);
       return json(res, 200, await withStore((state) => {
         const src = state.items.find((i) => i.id === id);
         if (!src) throw new HttpError(404, 'no such item');
+        // The scrubber counts from the start of whatever is selected, so cutting a clip out
+        // of a clip needs the parent's in-point added back to reach the asset's timeline.
+        const base0 = src.clip ? src.clip.start : 0;
+        const span = src.clip ? src.clip.end - src.clip.start : src.durationSeconds;
+        if (span > 0 && e0 > span)
+          throw new HttpError(400,
+            `the out-point is ${e0}s but ${src.clip ? 'this clip' : 'the asset'} is only `
+            + `${Math.round(span)}s long`);
         const kind = src.media?.kind;
         if (kind !== 'cloudinary' && kind !== 'file')
           throw new HttpError(400,
@@ -281,31 +313,40 @@ const server = createServer(async (req, res) => {
         if (kind === 'cloudinary') {
           // Cloudinary can cut the clip server-side, which also reframes it to 9:16.
           const pid = src.clip?.of || src.media.publicId || publicId(src.media.url);
+          // Re-based onto the original asset, so the offsets have to be re-based too: the
+          // scrubber counts from the start of the clip you are looking at, and 2s into a
+          // clip that begins at 124s is second 126 of the presser, not second 2.
+          const s1 = s0 + base0, e1 = e0 + base0;
           if (!pid) throw new HttpError(400, 'could not resolve the asset id');
           const origin = (src.media.mp4 || '').split('/video/upload/')[0] || undefined;
           const b = builder({ baseUrl: origin });
-          const id2 = `cld-${pid}-${Math.round(s0)}-${Math.round(e0)}`;
+          const id2 = `cld-${pid}-${s1}-${e1}`;
           if (state.items.some((i) => i.id === id2))
             throw new HttpError(409, 'that exact clip already exists');
           state.items.push(makeItem({ ...base, id: id2, source: 'cloudinary',
             media: { kind: 'cloudinary', publicId: pid,
-              hls: b.clip(pid, s0, e0), mp4: b.clip(pid, s0, e0, { ext: 'mp4' }), tile: b.tile(pid) },
-            poster: [b.clipPoster(pid, s0, e0)],
-            clip: { of: pid, start: s0, end: e0 } }));
-          return { created: id2, seconds: Math.round(e0 - s0), mode: 'transform' };
+              hls: b.clip(pid, s1, e1), mp4: b.clip(pid, s1, e1, { ext: 'mp4' }), tile: b.tile(pid) },
+            poster: [b.clipPoster(pid, s1, e1)],
+            clip: { of: pid, start: s1, end: e1 } }));
+          return { created: id2, seconds: Math.round(e1 - s1), mode: 'transform' };
         }
 
         // Anything else playable is clipped at playback: the card carries the source plus
         // in/out, and the player seeks and stops. No transformation service needed, which
         // means a plain uploaded file can be clipped today.
-        const id2 = `clip-${Math.round(s0)}-${Math.round(e0)}-${src.id}`.slice(0, 90);
+        // Same re-basing as above, and onto the original file rather than the parent clip:
+        // a clip of a clip of a clip stays one seek, not a chain of them.
+        const of = src.clip?.of && state.items.some((i) => i.id === src.clip.of)
+          ? src.clip.of : src.id;
+        const s1 = s0 + base0, e1 = e0 + base0;
+        const id2 = `clip-${s1}-${e1}-${of}`.slice(0, 90);
         if (state.items.some((i) => i.id === id2))
           throw new HttpError(409, 'that exact clip already exists');
         state.items.push(makeItem({ ...base, id: id2, source: src.source,
           media: { ...src.media },
           poster: src.poster,
-          clip: { of: src.id, start: s0, end: e0, playback: true } }));
-        return { created: id2, seconds: Math.round(e0 - s0), mode: 'playback' };
+          clip: { of, start: s1, end: e1, playback: true } }));
+        return { created: id2, seconds: Math.round(e1 - s1), mode: 'playback' };
       }));
     }
 
@@ -403,6 +444,9 @@ const server = createServer(async (req, res) => {
       if (!ext) throw new HttpError(415,
         `unsupported type: ${contentType}. Allowed: ${[...new Set(Object.values(EXT_OF))].join(' ')}`);
       const bytes = Buffer.from(b64, 'base64');
+      // Buffer.from is lenient: garbage decoded to zero bytes and was stored as a card with
+      // a broken image and no error anywhere.
+      if (!bytes.length) throw new HttpError(400, 'that data URL decoded to nothing');
       if (bytes.length > MAX_UPLOAD)
         throw new HttpError(413,
           `too large: ${(bytes.length / 1048576).toFixed(1)}MB, max ${MAX_UPLOAD / 1048576}MB`);
@@ -441,7 +485,11 @@ const server = createServer(async (req, res) => {
     // ---- static ----------------------------------------------------------
     if (p === '/' || p === '/studio') return await serveFile(req, res, 'app/studio.html');
     if (p === '/feed') return await serveFile(req, res, 'app/feed.html');
-    if (p.startsWith('/app/') || p.startsWith('/content/')) return await serveFile(req, res, p.slice(1));
+    // Deliberately uploads only. `content/` also holds the store and the manifest, and
+    // serving the whole directory published every unreleased card to anyone who asked.
+    if (p.startsWith('/app/')) return await serveFile(req, res, p.slice(1));
+    if (p.startsWith(UPLOAD_PREFIX))
+      return await serveFile(req, res, p.slice(UPLOAD_PREFIX.length), UPLOADS);
 
     res.writeHead(404); res.end('not found');
   } catch (e) {

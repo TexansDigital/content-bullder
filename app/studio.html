@@ -376,7 +376,9 @@ async function initAdapters() {
       markDirty(false); await refresh();
       toast(r.added ? `Pulled ${r.added} new item${r.added > 1 ? 's' : ''}` : 'Nothing new');
     } catch (e) {
-      $('#pull-out').innerHTML = `<span style="color:var(--red)">${e.message}</span>`;
+      // Escaped like every other error sink on the page: this one carries a server message,
+      // and an adapter relays text from an upstream API it does not control.
+      $('#pull-out').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`;
     } finally { btn.disabled = false; btn.textContent = 'Pull'; }
   };
 }
@@ -577,8 +579,6 @@ function renderEditor() {
     </div>
     <div class="field"><label for="e-sp">Sponsor (blank for none)</label>
       <input id="e-sp" value="${esc(i.sponsor?.name || '')}"></div>
-    <div class="field"><label for="e-si">Sort index</label>
-      <input id="e-si" type="number" value="${i.sortIndex}"></div>
 
     ${v.errors.length ? `<p class="blocking"><b>Can't publish yet</b>${
       v.errors.map((e) => esc(e)).join('<br>')}</p>` : ''}
@@ -600,7 +600,7 @@ function renderEditor() {
     <p class="mono" style="letter-spacing:.04em;text-transform:none;font-size:11px;line-height:1.7">
       <b style="color:var(--w)">${esc(i.id)}</b><br>
       source ${esc(i.source)} · ${esc(i.media.kind)}${i.clip
-        ? ` · clip ${i.clip.start}–${i.clip.end}s` : ''}<br>
+        ? ` · clip ${esc(i.clip.start)}–${esc(i.clip.end)}s` : ''}<br>
       ${Object.entries(i.links).filter(([, u]) => safeUrl(u)).map(([k, u]) =>
         `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(k)} ↗</a>`).join(' · ') || ''}
     </p></div>`;
@@ -621,7 +621,9 @@ function renderEditor() {
     caption: $('#e-cap').value || null,
     action: $('#e-au').value ? { label: $('#e-al').value || 'Watch', url: $('#e-au').value } : null,
     sponsor: $('#e-sp').value ? { name: $('#e-sp').value, label: 'Presented by' } : null,
-    sortIndex: Number($('#e-si').value) || 0,
+    // Deliberately absent. Running order is owned by dragging, which writes it server-side
+    // without re-rendering the editor — so a number field rendered at select time went
+    // stale the moment a card moved, and Save wrote the old position straight back.
   });
   const patch = async (extra, msg) => {
     await api('/api/items', { method: 'PATCH',
@@ -638,8 +640,12 @@ function renderEditor() {
 
 /* ---------- clipping ---------- */
 const hhmmss = (n) => {
-  const t = Math.max(0, Math.round(n));
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  const t = Math.max(0, Math.round(Number(n) || 0));
+  const pad = (v) => String(v).padStart(2, '0');
+  // It was mm:ss despite the name, so the Length readout on a two-hour asset said "122:05".
+  return t >= 3600
+    ? `${Math.floor(t / 3600)}:${pad(Math.floor((t % 3600) / 60))}:${pad(t % 60)}`
+    : `${Math.floor(t / 60)}:${pad(t % 60)}`;
 };
 
 /**
@@ -848,7 +854,7 @@ function canvasMedia(i) {
                                    : `left:${o.x}%;top:${o.y}%;text-align:${o.align}`;
     const tag = o.type === 'link' ? 'span' : 'p';
     return `<${tag} class="ov ${o.style} ${o.size} c-${o.color}" style="${pos}"
-      data-ov="${o.id}" data-sel="${selOv === o.id ? 1 : 0}" tabindex="0" role="button"
+      data-ov="${esc(o.id)}" data-sel="${selOv === o.id ? 1 : 0}" tabindex="0" role="button"
       aria-label="${o.type === 'link' ? 'Link' : 'Text'} block: ${esc(o.text || 'empty')}">${
       esc(o.text || (o.type === 'link' ? 'Link text' : 'Text'))
     }</${tag}>`;

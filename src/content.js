@@ -33,9 +33,17 @@ export const OVERLAY_COLORS = ['white', 'red', 'steel', 'blue'];
  */
 export const SAFE_URL = /^(https?:\/\/|\/)/i;
 
+/**
+ * Block ids reach an HTML attribute in the studio canvas, and every other overlay field is
+ * whitelisted or clamped — this one was not, so a client-supplied id could close the
+ * attribute and add a handler. Ids are ours to generate; only our shape is accepted.
+ */
+const SAFE_ID = /^[A-Za-z0-9_-]{1,40}$/;
+const newId = () => `ov-${Math.random().toString(36).slice(2, 8)}`;
+
 export function makeOverlay(o = {}) {
   return {
-    id: o.id || `ov-${Math.random().toString(36).slice(2, 8)}`,
+    id: SAFE_ID.test(String(o.id ?? '')) ? String(o.id) : newId(),
     type: o.type === 'link' ? 'link' : 'text',
     text: String(o.text ?? '').slice(0, 220),
     // `javascript:` must never reach an href, and escaping does not stop a scheme.
@@ -75,12 +83,34 @@ const clampPct = (v, fallback) => {
  * @property {number}  sortIndex     Editorial order within a collection.
  */
 
+/**
+ * A clip is a source plus two numbers, and those numbers are printed into an HTML attribute
+ * on the public feed. They arrived unchecked, so a string could break out of the attribute.
+ * Coerce here rather than escape at each sink: there is one model and many sinks.
+ */
+export function makeClip(c) {
+  if (!c || typeof c !== 'object' || Array.isArray(c)) return null;
+  const start = Number(c.start);
+  const end = Number(c.end);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  const s = Math.max(0, start);
+  if (!(end > s)) return null;
+  const of = String(c.of ?? '').slice(0, 200);
+  return { of, start: s, end, ...(c.playback === true ? { playback: true } : {}) };
+}
+
 const MAX_TEXT = 300;
 const clean = (s, max = MAX_TEXT) =>
   (s == null ? null : String(s).trim().slice(0, max) || null);
 
+/** A day is longer than any asset we will ever hold, and Infinity round-trips to null. */
+const MAX_SECONDS = 86400;
+
 export function makeItem(partial = {}) {
-  const secs = Number(partial.durationSeconds) || 0;
+  const raw = Number(partial.durationSeconds);
+  // `1e400` is Infinity: it produced an "Infinity:NaN" badge that persisted while the
+  // numeric field serialised back to null, so a card disagreed with itself forever.
+  const secs = Number.isFinite(raw) ? Math.min(MAX_SECONDS, Math.max(0, raw)) : 0;
   return {
     id: partial.id || `item-${Math.random().toString(36).slice(2, 10)}`,
     source: partial.source || 'manual',
@@ -97,7 +127,7 @@ export function makeItem(partial = {}) {
       ? { label: clean(partial.action.label, 60) || 'Watch', url: String(partial.action.url).trim() }
       : null,
     sponsor: partial.sponsor || null,
-    clip: partial.clip || null,
+    clip: makeClip(partial.clip),
     /**
      * `cover` fills the 9:16 frame and crops. `contain` letterboxes the graphic so there is
      * deliberate empty space above and below it for text to sit in — which is what "a text
@@ -134,7 +164,12 @@ export function makeItem(partial = {}) {
 export const mmss = (n) => {
   // Round first: rounding the seconds separately turned 59.6 into "0:60".
   const t = Math.round(Number(n) || 0);
-  return t > 0 ? `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}` : '';
+  if (!(t > 0) || !Number.isFinite(t)) return '';
+  const pad = (v) => String(v).padStart(2, '0');
+  // An hour of presser used to read "60:00", and a day read "1439:59".
+  return t >= 3600
+    ? `${Math.floor(t / 3600)}:${pad(Math.floor((t % 3600) / 60))}:${pad(t % 60)}`
+    : `${Math.floor(t / 60)}:${pad(t % 60)}`;
 };
 
 /** Problems worth blocking a publish on, and problems worth only flagging. */
@@ -144,12 +179,14 @@ export function validate(item) {
   if (!item.headline || item.headline === 'Untitled') errors.push('needs a headline');
   if (!item.media || item.media.kind === 'none') errors.push('no playable media');
   if (!COLLECTIONS.some((c) => c.key === item.collection)) errors.push('unknown collection');
-  if (item.flags.embeddable === false) errors.push('source forbids embedding');
-  if (!item.poster.length) warnings.push('no poster — will fall back to a generated frame');
-  if (!item.flags.hasCaptions) warnings.push('no caption track');
+  // Optional chaining throughout: the store is a file someone can hand-edit, and an item
+  // missing `flags` used to take /api/items down with a 500 while /api/feed served it.
+  if (item.flags?.embeddable === false) errors.push('source forbids embedding');
+  if (!item.poster?.length) warnings.push('no poster — will fall back to a generated frame');
+  if (!item.flags?.hasCaptions) warnings.push('no caption track');
   if (item.durationSeconds > 180) warnings.push('over 3 min — clip it before publishing');
   if (!item.action && showsChrome(item)) warnings.push('no action button');
-  for (const o of item.overlays) {
+  for (const o of item.overlays || []) {
     if (!o.text.trim()) errors.push('an overlay has no text');
     if (o.type === 'link' && !o.url) errors.push(`overlay "${o.text.slice(0, 20)}" has no URL`);
   }

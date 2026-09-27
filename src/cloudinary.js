@@ -83,6 +83,9 @@ export function builder({ baseUrl, cloud, named = false } = {}) {
       const s = Math.max(0, Number(startSeconds) || 0);
       const e = Number(endSeconds);
       if (!(e > s)) throw new Error('cloudinary.clip: endSeconds must exceed startSeconds');
+      // toFixed(2) renders 1e21 as "1e+21", which is not a number Cloudinary will parse.
+      // Refuse to build a transform we know is malformed rather than emit one that 400s.
+      if (e >= 1e15) throw new Error('cloudinary.clip: endSeconds is out of range');
       const trim = `so_${s.toFixed(2).replace(/\.00$/, '')},eo_${e.toFixed(2).replace(/\.00$/, '')}`;
       const sp = ext === 'm3u8' ? '/sp_auto' : '';
       return `${origin}/video/upload/${trim},${RAW.player}${sp}/${id}.${ext}`;
@@ -150,6 +153,13 @@ export function parseClip(input) {
 
 /** Infers the delivery origin from a pasted URL, so editorial never has to state it. */
 export function originOf(input) {
-  const m = String(input || '').match(/^(https?:\/\/[^/]+)\/(?:image|video|raw)\/upload\//i);
+  // Two delivery shapes. A private CDN puts the resource type first — host/video/upload/… —
+  // while the shared one carries the cloud name as a path segment first:
+  // res.cloudinary.com/<cloud>/video/upload/…. Only the private shape used to match, so a
+  // pasted res.cloudinary.com URL had its origin discarded and was silently rewritten onto
+  // whatever baseUrl the studio had prefilled. The cloud segment comes back as part of the
+  // origin, which is what lets one builder serve both.
+  const m = String(input || '')
+    .match(/^(https?:\/\/[^/]+(?:\/[^/]+)?)\/(?:image|video|raw)\/upload\//i);
   return m ? m[1] : null;
 }

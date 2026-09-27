@@ -283,7 +283,10 @@ function mediaFor(c) {
   const m = c.media || {};
   const fit = c.fit === 'contain' ? ' class="contain"' : '';
   if (m.kind === 'image')
-    return `<img${fit} src="${esc(safeUrl(m.url))}" alt="${esc(c.headline)}" loading="lazy">`;
+    // data-fallback, empty, so the handler wired below removes a broken graphic and lets the
+    // generated ground show through instead of the browser's broken-image glyph.
+    return generated(c.id) + `<img${fit} src="${esc(safeUrl(m.url))}"
+      alt="${esc(c.headline)}" loading="lazy" data-fallback="[]">`;
   if (m.kind === 'cloudinary' || m.kind === 'file') {
     const src = m.kind === 'cloudinary' ? m.mp4 : m.url;
     // The generated ground sits behind every video, so a slow or failed source still reads
@@ -311,8 +314,19 @@ function mediaFor(c) {
 
 function render() {
   const rows = active === 'all' ? DATA.clips : DATA.clips.filter((c) => c.collection === active);
-  ROWS = rows;
   const feed = $('#feed');
+  // Replacing innerHTML detaches the slides but leaves their timers armed. An orphaned hold
+  // timer then fired next(), found no sibling, and flushed a completion — which cardOf()
+  // resolved against the NEW rows at the old index, so one card's view produced two
+  // completions, the second attributed to whatever now sat in that position.
+  io.disconnect();
+  feed.querySelectorAll('.slide').forEach((s) => {
+    clearTimeout(s._t); clearTimeout(s._seenTimer);
+    s._t = null; s._seenAt = 0; s._done = false;
+    const v = s.querySelector('video');
+    if (v) { v.ontimeupdate = null; v.onended = null; v.onloadedmetadata = null; v.pause(); }
+  });
+  ROWS = rows;
   if (!rows.length) { feed.innerHTML = `<p class="msg">Nothing published yet.<br>
     Publish items in the studio and they appear here.</p>`; return; }
   const name = (k) => (DATA.collections.find((c) => c.key === k) || {}).name || k;
@@ -320,7 +334,7 @@ function render() {
   feed.innerHTML = rows.map((c, i) => `<article class="slide" data-id="${esc(c.id)}"
     data-hold="${c.advance?.seconds || 6}" data-advance="${c.advance?.mode || 'auto'}"
     data-index="${i}" data-total="${rows.length}" role="article"
-    ${c.clip?.playback ? `data-in="${c.clip.start}" data-out="${c.clip.end}"` : ''}
+    ${c.clip?.playback ? `data-in="${esc(c.clip.start)}" data-out="${esc(c.clip.end)}"` : ''}
     aria-posinset="${i + 1}" aria-setsize="${rows.length}"
     aria-label="${esc(c.headline)}">
     ${mediaFor(c)}<div class="st"></div>${
@@ -402,7 +416,6 @@ function render() {
     };
   });
   activeIdx = 0; paintSegs(rows.length);
-  io.disconnect();
   feed.querySelectorAll('.slide').forEach((s, j) => {
     if (j > 1) s.setAttribute('inert', '');
     io.observe(s);

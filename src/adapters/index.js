@@ -18,7 +18,9 @@ export const listAdapters = () =>
   Object.values(ADAPTERS).map(({ key, label, needs, notes }) => ({ key, label, needs, notes }));
 
 export async function pull(key, config = {}) {
-  const a = ADAPTERS[key];
+  // hasOwn, not a truthiness check: `pull('toString')` resolved Object.prototype.toString
+  // and failed later as "a.fetch is not a function" with a 500.
+  const a = Object.hasOwn(ADAPTERS, String(key)) ? ADAPTERS[key] : null;
   if (!a) throw new Error(`no such adapter: ${key}`);
   const missing = (a.needs || []).filter((n) => !config[n]);
   if (missing.length) throw new Error(`${key}: missing ${missing.join(', ')}`);

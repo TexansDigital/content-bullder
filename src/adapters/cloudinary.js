@@ -25,10 +25,13 @@ export default {
       ? assets.split('\n').map((s) => s.trim()).filter(Boolean).map((media) => ({ media }))
       : assets;
 
-    const origin = baseUrl || originOf(rows[0]?.media) || undefined;
-    const b = builder({ baseUrl: origin, cloud, named });
+    // Per row, not per batch. Taking row 0's origin for everything put a mixed paste — one
+    // private-CDN asset and one res.cloudinary.com asset — entirely on whichever CDN came
+    // first, so half the cards looked right in the queue and 404'd at delivery.
+    const fallback = baseUrl || originOf(rows[0]?.media) || undefined;
 
     return rows.map((r) => {
+      const b = builder({ baseUrl: baseUrl || originOf(r.media) || fallback, cloud, named });
       const pid = publicId(r.media);
       // A row we cannot resolve has no usable id; returning one anyway made several rows
       // share `cld-null`, so a single edit rewrote all of them.
