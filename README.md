@@ -110,7 +110,7 @@ it competes with what you composed. Override with Show or Hide.
 
 ## Verification
 
-Five browser-driven suites under [`test/`](test/), 97 assertions, each reproducing a specific
+Seven browser-driven suites under [`test/`](test/), 161 assertions, each reproducing a specific
 reported failure so a regression names the thing that broke.
 
 ```sh
@@ -122,6 +122,16 @@ cd /tmp && node <repo>/test/verify-fixes.mjs
 ```
 
 Run against an empty store — delete `content/store.json` between suites.
+
+## Where things live in the studio
+
+The Item pane is ordered by how often something is touched, not by how a card is modelled.
+Canvas and block controls first, then the selected block's editor, then the fields that get
+filled on every card, then clipping. **Pacing & chrome** and **Layout** are disclosures —
+set once a card and then left alone. Save and Publish are pinned to the foot of the pane, so
+the terminal action is visible while you compose rather than 2,000px down a scroll.
+
+Below 1100px the three panes stack and the page becomes the single scroller.
 
 ## Running order
 

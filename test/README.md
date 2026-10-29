@@ -34,6 +34,14 @@ cd /tmp && node /path/to/test/verify-playback-clip.mjs
 cd /tmp && node /path/to/test/verify-analytics-order.mjs
 ```
 
+```sh
+cd /tmp && node /path/to/test/verify-hardening.mjs
+```
+
+```sh
+cd /tmp && node /path/to/test/verify-ux.mjs
+```
+
 | Suite | Covers | Assertions |
 | --- | --- | --- |
 | `verify-fixes.mjs` | the store, the API and the studio | 26 |
@@ -41,10 +49,18 @@ cd /tmp && node /path/to/test/verify-analytics-order.mjs
 | `verify-clip.mjs` | Cloudinary clipping, cut in the delivery URL | 13 |
 | `verify-playback-clip.mjs` | clipping an uploaded file, enforced by the player | 20 |
 | `verify-analytics-order.mjs` | drag-to-reorder, and the analytics event stream | 26 |
+| `verify-hardening.mjs` | the September debug audit — escaping, bounds, exposure | 27 |
+| `verify-ux.mjs` | the September UX audit — false success, dead controls, layout | 37 |
 
-The first three expect an empty store — delete `content/store.json` between runs.
-`verify-playback-clip.mjs` and `verify-analytics-order.mjs` clear the store themselves,
-because they assert on feed order and on card positions, which a leftover card changes.
+The first three expect an empty store — delete `content/store.json` between runs. The
+later suites clear the store themselves, because they assert on feed order and on card
+positions, which a leftover card changes.
+
+The security assertions check for **execution in a real browser**, not for markup: an
+escaping change that looks right and isn't would still pass a string comparison. The UX
+suite leans the same way — it is weighted towards failures that lie (a Publish that reports
+success and changes nothing, a Save that fails silently, a button that looks live and is
+dead), because none of those show up in a screenshot.
 
 `verify-analytics-order.mjs` reads the event stream at the postMessage sink rather than
 at GA, so it sees exactly what a real embedder would with no network and no third-party
