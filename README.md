@@ -110,7 +110,7 @@ it competes with what you composed. Override with Show or Hide.
 
 ## Verification
 
-Eight browser-driven suites under [`test/`](test/), 179 assertions, each reproducing a specific
+Eight browser-driven suites under [`test/`](test/), 184 assertions, each reproducing a specific
 reported failure so a regression names the thing that broke.
 
 ```sh
@@ -167,6 +167,13 @@ window.addEventListener('message', (e) => {
 Events are held for up to 1.2 seconds so `feed_load` and the first `card_view` are not sent
 anonymous, then flushed regardless — a host that never answers must not cost us the session.
 An `identity` event records which route the id arrived by: `url`, `host-message` or `device`.
+
+**Consent is the host's to report.** Minting our own `device_id` is the same act the site
+gates behind OneTrust performance consent — a different origin does not make it a different
+act. A host that replies `consent: false` leaves the feed measuring nothing at all: no
+events, and no identifier minted. The host block is the only party that can see OneTrust, so
+it has to say so explicitly; "no reply" cannot be read as "declined", because it also means
+"no id yet" and "handshake not installed".
 
 **`device_id`** is ours, minted here, used when no host id arrives: a standalone `/feed`, an
 app webview, a host that has not wired the handshake. Without it the first sessions of any

@@ -98,65 +98,30 @@ durations — no names, no addresses, no ticketing data.
 
 ---
 
-## Questions
+## Answered, 2026-10-29
 
-Answers to these change what gets built, so they are worth more than they look.
+| Question | Answer |
+| --- | --- |
+| Cookie? | **No.** `session-attribution` writes pocketID to localStorage only, so the subdomain shortcut is unavailable and the Safari seven-day cap applies |
+| Key | `pocket_session_id` |
+| Format | `sess_<ms timestamp>_<9 random>`, e.g. `sess_1792089626000_k3j9xq2ab` — ~28 chars, passes the feed's check unchanged |
+| Rotation | Created only when absent, never rotated. Lost on cleared storage, Safari's cap, or private browsing |
+| Consent | **Gated on OneTrust performance consent (C0002).** A visitor who has not consented has no pocketID |
+| App | The iOS app's webview has separate storage, so an app visitor gets a different pocketID. Stitching goes through the app's Ticketmaster login |
+| Profile store | `ht-attribution` already has a `site_sessions` table keyed on this id |
+| Race | Header scripts run before page content, so the listener is ready before the feed's `hello` |
 
-### 1. Is pocketID also in a cookie?
+## Where the block lives
 
-**This is the big one.** If pocketID is written to a cookie on `.houstontexans.com`, *and*
-the feed is served from a subdomain of `houstontexans.com`, then the feed reads it directly —
-no script, no handshake, no race, working the moment it is embedded. That would make
-everything above unnecessary.
+Its own Html Content module in the `integrations` slot of `~/_libraries/_header`, alongside
+`elq-loader-fix` and `session-attribution`. Inline script runs from that slot, so the
+`?pid=` fallback is not needed. The shipped block is [`txfeed-handshake.html`](txfeed-handshake.html).
 
-If it is a cookie: what's the name, the domain, and is it set by the server or by JavaScript?
+## Still open
 
-### 2. What is the exact `localStorage` key, and what does a value look like?
-
-One real sample is enough. The feed refuses anything that doesn't match
-`[A-Za-z0-9._:-]{6,128}`, so a braced UUID (`{a1b2-…}`), a base64 value containing `+` or
-`/`, or anything shorter than six characters would be **silently rejected** and fall back to
-a device id. Better to widen the check than to discover that in production.
-
-### 3. When is pocketID minted, and is it ever rotated or reset?
-
-Specifically: is it created on first visit and then left alone, or regenerated on login,
-logout, consent change, or a new session? If it rotates, the affinity profile it keys has to
-survive the rotation.
-
-### 4. Is the same pocketID used on the Texans app?
-
-The app authenticates fans through Ticketmaster via FanReach, so it may already have a
-stronger identity and no need for pocketID at all. Knowing whether the two identifier spaces
-overlap decides whether app and web sessions can be stitched before an email exists.
-
-### 5. What origin will the feed be served from?
-
-Needed for `FEED_ORIGIN` above, and it decides whether question 1's shortcut is available at
-all. A subdomain of `houstontexans.com` is worth a lot here; an unrelated domain is not.
-
-### 6. Does FORGE allow a script tag on the page?
-
-Decides between Option A and Option B. If the answer is "iframe only", say so early.
-
-### 7. Who owns the privacy sign-off?
-
-Not needed for anything above — the pseudonymous layer carries no personal data. It *is*
-needed before the first email address is captured, because a purpose statement written after
-you already hold the data is the expensive version. Worth identifying the person now.
-
----
-
-## One thing to know about durability
-
-If pocketID lives only in `localStorage`, Safari's Intelligent Tracking Prevention caps
-script-written storage at **seven days** for sites without recent first-party interaction. A
-fan who visits monthly therefore arrives as a new pocketID every time, and any profile keyed
-to it starts over.
-
-That is survivable, and it is why the profile should live server-side with pocketID as the
-lookup rather than in the browser. But it does mean the ladder — anonymous signal, then an
-email once someone has shown what they like — has real urgency. The durable identifier has
-to be captured before the pseudonymous one evaporates.
-
-A server-set cookie does not have this problem, which is a second reason question 1 matters.
+1. **The feed's origin.** `FEED_ORIGIN` must be set or the block does nothing.
+2. **Whether a page body slot also accepts an Html Content module.** The header slot proves
+   inline script runs; it does not prove an iframe can be placed in a content page. Different
+   slot, different question.
+3. **Privacy sign-off owner.** Not needed for the pseudonymous layer, which carries no
+   personal data. Needed before the first email address is captured.

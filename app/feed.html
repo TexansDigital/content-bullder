@@ -220,7 +220,18 @@ function loadGA(id) {
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
 
 let pocketId = null;
-const deviceId = (() => {
+
+/**
+ * Minting our own id is the same act the host site gates behind OneTrust performance
+ * consent (C0002) — a different origin does not make it a different act. So it is lazy, and
+ * a host that tells us consent was declined gets no identifier minted at all. Declining
+ * measurement on houstontexans.com has to mean declining it in the feed embedded there.
+ */
+let measuring = true;
+let deviceId = null;
+
+function mintDevice() {
+  if (!measuring || deviceId) return deviceId;
   try {
     const k = 'txfeed.device';
     let v = localStorage.getItem(k);
@@ -229,9 +240,10 @@ const deviceId = (() => {
       v = `dv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
       localStorage.setItem(k, v);
     }
-    return v;
-  } catch { return null; }   // private window, blocked storage — the feed still works
-})();
+    deviceId = v;
+  } catch { deviceId = null; }   // private window, blocked storage — the feed still works
+  return deviceId;
+}
 
 /**
  * Events raised before identity resolves would go out anonymous, and feed_load and the
@@ -254,7 +266,7 @@ function setPocketId(value, how) {
 const payloadFor = (params) => ({
   feed_collection: active,
   ...(pocketId ? { pocket_id: pocketId } : {}),
-  ...(deviceId ? { device_id: deviceId } : {}),
+  ...(mintDevice() ? { device_id: deviceId } : {}),
   ...params,
 });
 
@@ -269,6 +281,9 @@ function flush(how) {
 }
 
 function emit(event, payload) {
+  // `hello` is the one message that must go out regardless: it is how we learn whether we
+  // are allowed to measure at all, and it carries nothing.
+  if (!measuring && event !== 'hello') return;
   try { window.gtag?.('event', event, payload); } catch { /* never break the feed */ }
   try {
     // Framed, this reaches the host page. Unframed, it reaches this page — so anyone
@@ -307,6 +322,15 @@ function track(event, params = {}) {
 addEventListener('message', (e) => {
   const d = e.data;
   if (!d || d.source !== 'txfeed-host') return;
+  // An explicit `consent: false` is the host saying this visitor declined measurement. Act
+  // on it before anything else: stop measuring, and drop anything already queued.
+  if (d.consent === false) {
+    measuring = false;
+    pending = [];
+    identified = true;
+    return;
+  }
+  if (d.pocketId == null) { flush('device'); return; }
   setPocketId(d.pocketId, 'host-message');
 });
 

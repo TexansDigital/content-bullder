@@ -124,6 +124,43 @@ t('a malformed ?pid= falls back rather than propagating', await (async () => {
   return !e.find((x) => x.event === 'feed_load')?.pocket_id;
 })());
 
+/* ---------- consent, which the host is the only one who knows ---------- */
+
+// Minting our own id is the same act the host gates behind OneTrust C0002. A host that
+// says the visitor declined must leave us measuring nothing — a different origin does not
+// make it a different act.
+const consentHost = (consent, id) => `
+  <script>
+    window.__ev = [];
+    addEventListener('message', function (e) {
+      if (!e.data || e.data.source !== 'txfeed') return;
+      window.__ev.push(e.data);
+      if (e.data.event !== 'hello') return;
+      e.source.postMessage({ source: 'txfeed-host',
+        pocketId: ${JSON.stringify(id)}, consent: ${consent} }, '*');
+    });
+  <\/script>
+  <iframe id="x" src="${B}/feed" style="width:430px;height:820px;border:0"></iframe>`;
+
+const declined = await openHost(consentHost(false, 'sess_1792089626000_k3j9xq2ab'));
+const declinedEv = await evsOf(declined);
+t('a declining host stops measurement dead',
+  declinedEv.filter((e) => e.event !== 'hello').length === 0);
+t('and no pocket id leaves the page even though one exists',
+  !declinedEv.some((e) => e.params?.pocket_id));
+t('and the feed mints no identifier of its own', await (async () => {
+  const fr = declined.frames().find((f) => f.url().includes('/feed'));
+  return (await fr.evaluate(() => { try { return localStorage.getItem('txfeed.device'); }
+    catch { return 'blocked'; } })) === null;
+})());
+
+const consented = await openHost(consentHost(true, null));
+const consentedEv = await evsOf(consented);
+t('a consenting host with no id yet still gets measured',
+  !!consentedEv.find((e) => e.event === 'feed_load'));
+t('on a device id, which consent permits',
+  /^dv-/.test(consentedEv.find((e) => e.event === 'feed_load')?.params.device_id || ''));
+
 /* ---------- unframed, and across a reload ---------- */
 
 const d1 = await u.evaluate(() => localStorage.getItem('txfeed.device'));

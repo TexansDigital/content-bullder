@@ -1,0 +1,54 @@
+<script data-hou-module="txfeed-handshake" data-hou-v="2" data-hou-owner="DSaC" data-hou-expires="evergreen">
+(function () {
+  'use strict';
+
+  // Answers the preference feed's "hello" with the visitor's pocketID, and with whether
+  // performance consent (C0002) is on. Reads one localStorage key, sends only to
+  // FEED_ORIGIN, only to the frame that asked. Does nothing on pages without the embed.
+  // No cookies, no other keys.
+  //
+  // The consent flag matters: without it the feed cannot tell "declined measurement" from
+  // "no pocketID yet", and would mint its own identifier for someone who said no.
+
+  if (window._houTxfeedHandshake) return;
+  window._houTxfeedHandshake = true;
+
+  var FEED_ORIGIN = 'FEED_ORIGIN_PLACEHOLDER';
+  var POCKET_KEY  = 'pocket_session_id';
+  var ID_PATTERN  = /^[A-Za-z0-9._:-]{6,128}$/;
+  var CONSENT_GROUP = 'C0002';
+
+  window.houModules = window.houModules || {};
+  var state = window.houModules['txfeed-handshake'] = {
+    v: 2, owner: 'DSaC', block: 'js', expires: 'evergreen',
+    hellos: 0, answered: 0, declined: 0
+  };
+
+  function hasConsent() {
+    var g = window.OnetrustActiveGroups || window.OptanonActiveGroups;
+    if (typeof g !== 'string' || !g) return null;
+    return g.indexOf(CONSENT_GROUP) !== -1;
+  }
+
+  window.addEventListener('message', function (e) {
+    if (e.origin !== FEED_ORIGIN) return;
+    if (!e.data || e.data.source !== 'txfeed' || e.data.event !== 'hello') return;
+    if (!e.source || typeof e.source.postMessage !== 'function') return;
+    state.hellos++;
+
+    var consent = hasConsent();
+    if (consent === false) {
+      e.source.postMessage({ source: 'txfeed-host', pocketId: null, consent: false }, FEED_ORIGIN);
+      state.declined++;
+      return;
+    }
+
+    var id = null;
+    try { id = window.localStorage.getItem(POCKET_KEY); } catch (err) { id = null; }
+    if (id && !ID_PATTERN.test(id)) id = null;
+
+    e.source.postMessage({ source: 'txfeed-host', pocketId: id, consent: true }, FEED_ORIGIN);
+    state.answered++;
+  });
+}());
+</script>
