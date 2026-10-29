@@ -110,7 +110,7 @@ it competes with what you composed. Override with Show or Hide.
 
 ## Verification
 
-Seven browser-driven suites under [`test/`](test/), 161 assertions, each reproducing a specific
+Eight browser-driven suites under [`test/`](test/), 179 assertions, each reproducing a specific
 reported failure so a regression names the thing that broke.
 
 ```sh
@@ -141,6 +141,41 @@ the same move without a mouse. The new order saves on drop; there is no Save to 
 
 Order is set per tab, so dragging in **Published** never renumbers drafts you are not
 looking at. A draft takes its place when you publish it, and you drag it from there.
+
+## Who is watching
+
+Two pseudonymous identifiers travel with every event. Neither is an account, and nothing
+here resolves to a person.
+
+**`pocket_id`** is the host site's own anonymous id. It lives in localStorage on
+houstontexans.com, and this feed is served from a different origin — so it cannot read that
+drawer and **the host has to hand it over**. Either form works:
+
+```
+/feed?pid=<pocketId>
+```
+
+Or a reply to the `hello` this page posts on boot, for a host that can run script:
+
+```js
+window.addEventListener('message', (e) => {
+  if (e.data?.source !== 'txfeed' || e.data.event !== 'hello') return;
+  e.source.postMessage({ source: 'txfeed-host', pocketId: myPocketId }, '*');
+});
+```
+
+Events are held for up to 1.2 seconds so `feed_load` and the first `card_view` are not sent
+anonymous, then flushed regardless — a host that never answers must not cost us the session.
+An `identity` event records which route the id arrived by: `url`, `host-message` or `device`.
+
+**`device_id`** is ours, minted here, used when no host id arrives: a standalone `/feed`, an
+app webview, a host that has not wired the handshake. Without it the first sessions of any
+new placement would carry no identity at all.
+
+The id arrives from a frame we do not control, so it is shape-checked against
+`[A-Za-z0-9._:-]{6,128}`, treated as a pseudonym, and **never used on its own to reach an
+account**. Resolving one to a person needs a signed token and a stated purpose, and is a
+deliberate later step rather than something this does quietly.
 
 ## Analytics
 

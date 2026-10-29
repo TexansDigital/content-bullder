@@ -4,6 +4,9 @@ Browser-driven checks for the defects found in the September 2026 audits, plus t
 behaviours those audits would not have caught. Each assertion reproduces a specific
 reported failure, so a regression here names the thing that broke.
 
+Chromium is found by [`browser.mjs`](browser.mjs) rather than hardcoded — the install's
+version, directory layout and binary name have all changed under us once already.
+
 Needs a running server and playwright:
 
 ```sh
@@ -42,6 +45,10 @@ cd /tmp && node /path/to/test/verify-hardening.mjs
 cd /tmp && node /path/to/test/verify-ux.mjs
 ```
 
+```sh
+cd /tmp && node /path/to/test/verify-identity.mjs
+```
+
 | Suite | Covers | Assertions |
 | --- | --- | --- |
 | `verify-fixes.mjs` | the store, the API and the studio | 26 |
@@ -51,6 +58,7 @@ cd /tmp && node /path/to/test/verify-ux.mjs
 | `verify-analytics-order.mjs` | drag-to-reorder, and the analytics event stream | 26 |
 | `verify-hardening.mjs` | the September debug audit — escaping, bounds, exposure | 27 |
 | `verify-ux.mjs` | the September UX audit — false success, dead controls, layout | 37 |
+| `verify-identity.mjs` | the pocketId handshake, and what happens when a host doesn't answer | 18 |
 
 The first three expect an empty store — delete `content/store.json` between runs. The
 later suites clear the store themselves, because they assert on feed order and on card
