@@ -16,8 +16,8 @@ body{margin:0;background:var(--steel);color:var(--w);font:15px/1.5 var(--sans);o
  padding-top:calc(12px + env(safe-area-inset-top,0px))}
 .bar::-webkit-scrollbar{display:none}
 .chip{flex:none;background:transparent;border:1px solid var(--line);color:var(--body);
- font:700 11px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;padding:8px 12px;
- cursor:pointer;transition:all .14s var(--ease)}
+ font:700 11px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;padding:8px 13px;
+ min-height:40px;cursor:pointer;transition:all .14s var(--ease)}
 .chip:hover{border-color:var(--red);color:var(--w)}
 .chip[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
 .chip:focus-visible{outline:2px solid var(--red);outline-offset:2px}
@@ -38,6 +38,7 @@ body{margin:0;background:var(--steel);color:var(--w);font:15px/1.5 var(--sans);o
 .st,.sb{position:absolute;left:0;right:0;pointer-events:none}
 .st{top:0;height:32%;background:linear-gradient(180deg,rgba(2,17,24,.8),transparent)}
 .sb{bottom:0;height:54%;background:linear-gradient(0deg,rgba(2,17,24,.95) 8%,rgba(2,17,24,.5) 46%,transparent)}
+.sb.rail{height:30%;background:linear-gradient(0deg,rgba(2,17,24,.88) 4%,rgba(2,17,24,.34) 54%,transparent)}
 .segs{position:absolute;top:9px;left:9px;right:9px;display:flex;gap:3px;z-index:6;
  pointer-events:none}
 .pos{position:absolute;top:19px;right:11px;z-index:6;margin:0;font-size:9.5px;
@@ -67,8 +68,10 @@ body{margin:0;background:var(--steel);color:var(--w);font:15px/1.5 var(--sans);o
  border:1px solid var(--line);padding:7px 10px;word-break:break-all}
 .rail{position:absolute;right:7px;bottom:calc(15px + env(safe-area-inset-bottom,0px));z-index:4;display:flex;flex-direction:column;
  gap:13px;align-items:center}
-.rb{background:none;border:0;padding:0;cursor:pointer;color:#fff;display:flex;
- flex-direction:column;align-items:center;gap:3px}
+.rb{background:none;border:0;padding:4px 2px;cursor:pointer;color:#fff;display:flex;
+ flex-direction:column;align-items:center;justify-content:center;gap:3px;
+ /* 24x37 cleared WCAG 2.5.8 by nothing and missed the 44pt practical minimum. */
+ min-width:44px;min-height:44px}
 .rb svg{width:24px;height:24px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.85))}
 .rb span{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;
  text-shadow:0 1px 3px rgba(0,0,0,.9)}
@@ -107,8 +110,16 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .nav button:hover{background:var(--red);border-color:var(--red)}
 .nav button:focus-visible{outline:2px solid #fff;outline-offset:2px}
 @media(hover:none){.nav{display:none}}
-.msg{display:flex;align-items:center;justify-content:center;height:100%;color:var(--mute);
- font-size:14px;text-align:center;padding:24px}
+/* A wide-but-short module is a plausible placement, and there the arrows landed directly
+   on the Like button. The scroll and the keyboard both still work without them. */
+@media(max-height:520px){.nav{display:none}}
+.msg{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;
+ color:var(--mute);font-size:14px;text-align:center;padding:24px;gap:4px;line-height:1.6}
+.msg b{color:var(--w);font-size:15px}
+.msg .retry{margin-top:12px;background:var(--red);border:0;color:#fff;padding:11px 20px;
+ min-height:44px;font:700 11px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;
+ cursor:pointer}
+.msg .retry:focus-visible{outline:2px solid #fff;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}.feed{scroll-behavior:auto}}
 
 /* ---- responsive overrides live last so they win over the base rules ---- */
@@ -192,8 +203,72 @@ function loadGA(id) {
   document.head.appendChild(sc);
 }
 
-function track(event, params = {}) {
-  const payload = { feed_collection: active, ...params };
+/* ---------- who is watching --------------------------------------------------
+ * Two identifiers, both pseudonymous, neither personal.
+ *
+ * `pocket_id` is the host site's own anonymous id. It lives in localStorage on
+ * houstontexans.com, and this feed is served from a different origin — so it cannot read
+ * that drawer and the host has to hand it over. Two ways in, both below.
+ *
+ * `device_id` is ours, minted here, used when no host id arrives: a standalone /feed, an
+ * app webview, a host that has not wired the handshake yet. Without it the first sessions
+ * of any new placement would carry no identity at all.
+ *
+ * Neither is an account. Nothing here resolves to a person — that happens later, elsewhere,
+ * and only with an address someone chose to give.
+ */
+const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
+
+let pocketId = null;
+const deviceId = (() => {
+  try {
+    const k = 'txfeed.device';
+    let v = localStorage.getItem(k);
+    // Self-minted and per-origin, so it survives a republish and reaches nobody else.
+    if (!ID_SHAPE.test(v || '')) {
+      v = `dv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem(k, v);
+    }
+    return v;
+  } catch { return null; }   // private window, blocked storage — the feed still works
+})();
+
+/**
+ * Events raised before identity resolves would go out anonymous, and feed_load and the
+ * first card_view are the two most valuable in the stream. Hold them briefly, then give up
+ * — a host that never answers must not cost us the session.
+ */
+const HANDSHAKE_MS = 1200;
+let identified = false;
+let pending = [];
+
+function setPocketId(value, how) {
+  if (identified) return;
+  if (!ID_SHAPE.test(String(value ?? ''))) return;
+  pocketId = String(value);
+  identified = true;
+  flush(how);
+}
+
+/** Built at send time, never at queue time — see the note in track(). */
+const payloadFor = (params) => ({
+  feed_collection: active,
+  ...(pocketId ? { pocket_id: pocketId } : {}),
+  ...(deviceId ? { device_id: deviceId } : {}),
+  ...params,
+});
+
+function flush(how) {
+  identified = true;
+  const queued = pending;
+  pending = [];
+  // Identity first, so a consumer knows who the events that follow belong to. It goes
+  // through payloadFor like everything else; emitted raw, it carried no ids at all.
+  if (how) emit('identity', payloadFor({ identity_source: how }));
+  for (const [event, params] of queued) emit(event, payloadFor(params));
+}
+
+function emit(event, payload) {
   try { window.gtag?.('event', event, payload); } catch { /* never break the feed */ }
   try {
     // Framed, this reaches the host page. Unframed, it reaches this page — so anyone
@@ -203,6 +278,37 @@ function track(event, params = {}) {
       .postMessage({ source: 'txfeed', event, params: payload }, '*');
   } catch { /* a cross-origin parent that refuses messages is not our problem */ }
 }
+
+function track(event, params = {}) {
+  // Queue the raw params, not a finished payload: building it here froze the ids as they
+  // were at queue time, so a host that replied 400ms in still had feed_load go out
+  // anonymous while the very next event carried the id.
+  if (!identified) { pending.push([event, params]); return; }
+  emit(event, payloadFor(params));
+}
+
+/**
+ * The host's half of the handshake. Either is enough:
+ *
+ *   1. `?pid=` on the iframe src — one attribute, nothing to script. Best for a CMS that
+ *      can interpolate a value into a URL and not much else.
+ *   2. A reply to the `txfeed-hello` this page posts on boot:
+ *
+ *        window.addEventListener('message', (e) => {
+ *          if (e.data?.source !== 'txfeed' || e.data.event !== 'hello') return;
+ *          e.source.postMessage({ source: 'txfeed-host', pocketId: myPocketId }, '*');
+ *        });
+ *
+ * The id is treated as a pseudonym and nothing more. It arrives from a frame we do not
+ * control, so it is shape-checked, never trusted as proof of who anyone is, and never used
+ * on its own to reach an account. Resolving it to a person needs a signed token, which is a
+ * deliberate later step and not this.
+ */
+addEventListener('message', (e) => {
+  const d = e.data;
+  if (!d || d.source !== 'txfeed-host') return;
+  setPocketId(d.pocketId, 'host-message');
+});
 
 /** The card dimensions every event carries, so any one of them can be sliced alike. */
 const cardParams = (c, i) => ({
@@ -242,6 +348,8 @@ function applySound() {
   document.querySelectorAll('#feed video').forEach((v) => (v.muted = !soundOn));
   document.querySelectorAll('.rb.sound').forEach((b) => {
     b.setAttribute('aria-pressed', soundOn);
+    // The label was set once at render and stayed "Unmute" after unmuting.
+    b.setAttribute('aria-label', soundOn ? 'Mute' : 'Unmute');
     b.innerHTML = (soundOn ? IC.sound : IC.muted) + `<span>${soundOn ? 'Sound' : 'Muted'}</span>`;
   });
 }
@@ -338,7 +446,13 @@ function render() {
     aria-posinset="${i + 1}" aria-setsize="${rows.length}"
     aria-label="${esc(c.headline)}">
     ${mediaFor(c)}<div class="st"></div>${
-      (c.chrome === 'on' || (c.chrome !== 'off' && !(c.overlays?.length))) ? '<div class="sb"></div>' : ''
+      // The scrim is not decoration for the default headline — the like/share/sound rail
+      // sits on it. Suppressing it on composed cards put those controls on bare video at
+      // 2.5:1, and composed cards are the ones most likely to be bright. Always render it;
+      // a card carrying its own blocks gets the shorter version, enough for the rail
+      // without dimming the composition.
+      (c.chrome === 'on' || (c.chrome !== 'off' && !(c.overlays?.length)))
+        ? '<div class="sb"></div>' : '<div class="sb rail"></div>'
     }${overlaysFor(c)}
 
     <div class="top">
@@ -436,6 +550,8 @@ function paintSegs(total) {
     return `<i class="${idx < activeIdx ? 'on' : ''}"></i>`;
   }).join('');
   $('#pos').textContent = total > MAX_SEGS ? `${activeIdx + 1}/${total}` : '';
+  // One card, one full-width segment — chrome that carries no information.
+  $('#segs').hidden = total < 2;
 }
 /** Static cards behave like a story: hold, fill the segment, advance. Video just plays. */
 /** The card each slide renders, for event params. Set once per render. */
@@ -554,6 +670,14 @@ $('#feed').addEventListener('keydown', (e) => {
 });
 
 try {
+  // The URL form wins and needs no handshake at all; otherwise announce and wait briefly.
+  const fromUrl = new URLSearchParams(location.search).get('pid');
+  if (ID_SHAPE.test(fromUrl || '')) setPocketId(fromUrl, 'url');
+  else if (window.parent !== window) {
+    emit('hello', {});
+    setTimeout(() => { if (!identified) flush('device'); }, HANDSHAKE_MS);
+  } else flush('device');
+
   DATA = await (await fetch('/api/feed')).json();
   loadGA(resolveGA());
   chips(); render(); applySound();
@@ -565,6 +689,12 @@ try {
     if (slide && cardOf(slide)) cardClosed(slide, cardOf(slide), activeIdx, slide._done === true);
   });
 } catch (e) {
-  $('#feed').innerHTML = `<p class="msg">Couldn't load the feed.<br>${esc(e.message)}</p>`;
+  // This renders on houstontexans.com. A CDN error page or a bad deploy used to surface
+  // "DATA.collections is not iterable" to a fan, in grey on black, with no way out.
+  $('#feed').innerHTML = `<p class="msg"><b>This feed isn't available right now.</b><br>
+    Check back in a moment.<br>
+    <button class="retry" type="button">Try again</button></p>`;
+  $('#feed').querySelector('.retry').onclick = () => location.reload();
+  console.error('feed load failed:', e);
 }
 </script></body></html>

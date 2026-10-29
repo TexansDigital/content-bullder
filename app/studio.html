@@ -4,6 +4,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;700&display=swap">
 <style>
 :root{--steel:#021118;--s2:#0a1d27;--s3:#13303d;--red:#eb0028;--red2:#ff123a;--blue:#0080c6;
+ /* White on brand blue measures 4.28:1 — under AA for an 8.5px chip. The brand blue
+    stays as the border; the label uses a lighter tint of it, 5.9:1 on the chip. */
+ --blue-lt:#4fb3e3;
  --w:#fff;--body:rgba(255,255,255,.84);--mute:rgba(255,255,255,.52);--line:rgba(255,255,255,.14);
  --line2:rgba(255,255,255,.3);--ok:#1fae5a;--warn:#f5a623;
  --mono:"Azeret Mono",ui-monospace,Menlo,monospace;
@@ -59,7 +62,7 @@ button.sm{padding:5px 9px;font-size:10px}
 button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
 .row{display:flex;gap:7px;flex-wrap:wrap}
 
-.card{display:grid;grid-template-columns:12px 52px minmax(0,1fr);gap:11px;padding:10px 16px 10px 8px;
+.card{display:grid;grid-template-columns:24px 52px minmax(0,1fr);gap:9px;padding:10px 16px 10px 4px;
  border-bottom:1px solid var(--line);cursor:pointer;align-items:start}
 .card:hover{background:rgba(255,255,255,.04)}
 .card.dragging{opacity:.4}
@@ -77,7 +80,7 @@ button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
 .card .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .tag{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
  padding:2px 5px;background:var(--s3);color:var(--body)}
-.tag.src{background:var(--blue);color:#fff}
+.tag.src{background:rgba(0,128,198,.16);border:1px solid var(--blue);color:var(--blue-lt)}
 .tag.err{background:var(--red);color:#fff}
 .tag.warn{background:var(--warn);color:#2a1a00}
 .tag.ok{background:var(--ok);color:#00170a}
@@ -90,12 +93,38 @@ button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
 .tabs button:hover{color:var(--w);background:none}
 .count{font-family:var(--mono);font-size:9px;opacity:.7;margin-left:4px}
 
+/* Queue cards and the header links had no focus-visible rule, so the browser default
+   resolved to a 1px near-black ring on a near-black background — 1.01:1, invisible. */
+.card:focus-visible,header a:focus-visible{outline:2px solid var(--w);outline-offset:-2px}
+/* A failed Save or Publish reports here, next to the button that failed. */
+.acted{border-left:3px solid var(--red);background:rgba(235,0,40,.12);padding:8px 11px;
+ font-size:12px;margin:0 0 10px;color:var(--w)}
+button.danger{border-color:rgba(235,0,40,.5);color:#ff8d9f}
+button.danger:hover{background:rgba(235,0,40,.16);border-color:var(--red)}
+button[disabled]{opacity:.4;cursor:not-allowed}
+button[disabled]:hover{background:none}
+/* 12x12 failed WCAG 2.5.8; the column is padded for it rather than the glyph grown. */
+.card .grip{min-width:24px;min-height:24px;display:flex;align-items:center;justify-content:center}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+ clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
 @media(max-width:1100px){
   /* Stacked, the per-pane scrollers cut panels off mid-control with no visible scrollbar,
      so "Add to inbox" simply disappeared. Let the page be the only scroller. */
-  .cols{grid-template-columns:1fr;overflow-y:auto}
-  .pane{overflow:visible;border-right:0;border-bottom:1px solid var(--line)}
+  /* align-content defaults to stretch, which redistributes a definite-height grid's rows
+     across its auto tracks — so three stacked panes still computed as 288/288/144 and each
+     pane's ~1000px of content painted over the next. start is the load-bearing word. */
+  .cols{grid-template-columns:1fr;grid-auto-rows:min-content;align-content:start;
+    overflow-y:auto}
+  .pane{overflow:visible;border-right:0;border-bottom:1px solid var(--line);min-height:auto}
   .pane h2,.tabs{position:static}
+  .app{grid-template-rows:auto minmax(0,1fr)}
+  /* A bar stuck to the bottom of the scroller makes sense beside a column, not below it. */
+  .actbar{position:static}
+  /* min-height:100% is measured against the pane in the side-by-side layout; stacked, it
+     fought min-content sizing and clipped the last 37px of the Item pane. */
+  #editor{min-height:0}
+  .canvas{max-width:264px}
 }
 
 .warnlist{margin:9px 0 0;padding:0;list-style:none}
@@ -134,7 +163,32 @@ button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
 /* Side by side, a canvas big enough to position on left the controls a sliver wide and
    their button grids wrapped to one per row. Stack instead: both get full width. */
 .canvas-wrap{display:grid;gap:12px;margin-bottom:14px;justify-items:stretch}
-.canvas{max-width:232px;width:100%;margin:0 auto}
+/* 232px in a 392px column left room unused, and a 9:16 card is the thing being judged.
+   Not larger: a 300px canvas is 533px tall, which squeezed the scrolling fields between it
+   and the pinned action bar down to a sliver. */
+.canvas{max-width:264px;width:100%;margin:0 auto}
+.canvas-wrap{padding-bottom:10px;margin-bottom:4px;border-bottom:1px solid var(--line)}
+/* Publish pinned to the foot of the pane. */
+#editor{display:flex;flex-direction:column;min-height:100%}
+#editor .pad{flex:1}
+.actbar{position:sticky;bottom:0;background:var(--steel);border-top:1px solid var(--line);
+ padding:11px 16px 13px;z-index:3}
+.actbar .blocking,.actbar .warnlist{margin-bottom:9px}
+.actbar .warnlist{max-height:74px;overflow-y:auto}
+/* Layout and pacing are set once a card and then left alone; they were above the fields
+   that get touched on every card. */
+.fold{border-top:1px solid var(--line);margin:0 0 4px}
+.fold>summary{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+ cursor:pointer;padding:11px 0;font-family:var(--mono);font-size:10px;letter-spacing:.14em;
+ text-transform:uppercase;color:var(--mute);list-style:none}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::after{content:"+";font-size:13px;color:var(--mute);order:3;margin-left:2px}
+.fold[open]>summary::after{content:"–"}
+.fold>summary:hover{color:var(--w)}
+.fold>summary:focus-visible{outline:2px solid var(--w);outline-offset:2px}
+.fold>summary span{font-size:9.5px;letter-spacing:.06em;text-transform:none;opacity:.8;
+ margin-left:auto}
+.fold[open]{padding-bottom:9px}
 .canvas{position:relative;aspect-ratio:9/16;background:#000;border:1px solid var(--line);
  overflow:hidden;container-type:inline-size;touch-action:none;user-select:none}
 .canvas-ctl{display:grid;gap:9px}
@@ -145,8 +199,11 @@ button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
  letter-spacing:.05em;padding:8px 4px}
 .canvas-ctl .row2 button:hover{background:var(--s3);border-color:var(--line2)}
 .canvas-ctl .row2 button[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
-.canvas-ctl .row2 button[data-add]{background:var(--red);border-color:var(--red)}
-.canvas-ctl .row2 button[data-add]:hover{background:var(--red2)}
+/* Red carries one meaning per pane: pressed state, and the one primary action. Four
+   stacked red fills next to the canvas made it a texture instead of a signal. */
+.canvas-ctl .row2 button[data-add]{background:transparent;border-color:var(--line2);
+ color:var(--w)}
+.canvas-ctl .row2 button[data-add]:hover{background:var(--s3);border-color:var(--red)}
 .canvas>img,.canvas>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .canvas.contain>img,.canvas.contain>video{object-fit:contain}
 .canvas .ghost{position:absolute;inset:0;background:
@@ -182,7 +239,9 @@ button:focus-visible{outline:2px solid var(--w);outline-offset:2px}
 .hint{font-size:11px;color:var(--mute);line-height:1.5;margin:6px 0 0}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--s3);
  border:1px solid var(--line2);padding:10px 16px;font-size:13px;z-index:50;
- transition:opacity .2s,transform .2s}
+ transition:opacity .2s,transform .2s;display:flex;align-items:center;gap:10px}
+#toast .undo{background:none;border:1px solid var(--w);color:var(--w);padding:3px 10px;
+ font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
 #toast[hidden]{display:none}
 a{color:var(--blue)}
 hr{border:0;border-top:1px solid var(--line);margin:16px 0}
@@ -190,7 +249,7 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
 <div class="app">
 <header>
   <h1>Feed Studio <i>//</i> Texans</h1>
-  <span class="pill" id="store-state">loading</span>
+  <span class="pill" id="store-state" role="status" aria-live="polite">loading</span>
   <div class="sp">
     <a class="pill" href="/feed" target="_blank" rel="noopener">Preview feed ↗</a>
     <a class="pill" href="/api/feed" target="_blank" rel="noopener">API ↗</a>
@@ -210,7 +269,7 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
          text-transform:none;font-size:11px;line-height:1.5"></p>
       <div id="adapter-fields"></div>
       <button id="pull" style="width:100%">Pull</button>
-      <p id="pull-out" style="font-size:12px;color:var(--mute);margin:10px 0 0"></p>
+      <p id="pull-out" role="status" aria-live="polite" style="font-size:12px;color:var(--mute);margin:10px 0 0"></p>
       <hr>
       <h3 class="mono" style="margin:0 0 10px">Make a card</h3>
       <div id="drop" tabindex="0" role="button"
@@ -232,7 +291,7 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
       </div>
       <div class="field"><label for="n-au">Link</label><input id="n-au" placeholder="https://…"></div>
       <button id="n-add" class="ghost" style="width:100%">Add to inbox</button>
-      <p id="n-out" style="font-size:12px;color:var(--mute);margin:9px 0 0"></p>
+      <p id="n-out" role="status" aria-live="polite" style="font-size:12px;color:var(--mute);margin:9px 0 0"></p>
       <hr>
       <p class="mono" style="letter-spacing:.04em;text-transform:none;font-size:11.5px;line-height:1.6">
         Every source normalizes to the same item. A graphic with a link is a card exactly like
@@ -259,6 +318,8 @@ hr{border:0;border-top:1px solid var(--line);margin:16px 0}
 </div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
+<!-- Announcements with no visual counterpart: a reorder, mostly. -->
+<p id="say" role="status" aria-live="polite" class="sr"></p>
 
 <script type="module">
 const $ = (s) => document.querySelector(s);
@@ -293,9 +354,25 @@ window.addEventListener('beforeunload', (e) => {
   e.preventDefault(); e.returnValue = '';
 });
 
-function toast(msg) {
-  const t = $('#toast'); t.textContent = msg; t.hidden = false;
-  clearTimeout(t._t); t._t = setTimeout(() => (t.hidden = true), 2600);
+const announce = (msg) => { const el = $('#say'); if (el) el.textContent = msg; };
+
+/**
+ * `undo` adds one action to the toast. Used where an action destroys work the editor
+ * cannot get back by retyping — applying a layout over composed blocks, mainly.
+ */
+function toast(msg, undo = null) {
+  const t = $('#toast');
+  t.textContent = msg;
+  if (undo) {
+    const btn = document.createElement('button');
+    btn.textContent = 'Undo';
+    btn.className = 'undo';
+    btn.onclick = () => { t.hidden = true; undo(); };
+    t.append(' ', btn);
+  }
+  t.hidden = false;
+  clearTimeout(t._t);
+  t._t = setTimeout(() => (t.hidden = true), undo ? 8000 : 2600);
 }
 
 /** Collections are keys, not labels — typing "Pressers" produced an invalid item. */
@@ -436,7 +513,7 @@ function renderList() {
   };
   // Reordering is a save, not an edit, so it never trips the unsaved-changes guard: the
   // DOM order after the drop is the running order, and the server ranks it 0..n.
-  const commitOrder = async () => {
+  const commitOrder = async (justMoved = null) => {
     const ids = [...el.querySelectorAll('.card')].map((c) => c.dataset.id);
     ids.forEach((id, n) => {
       const it = STATE.items.find((x) => x.id === id);
@@ -446,6 +523,9 @@ function renderList() {
       await api('/api/reorder', { method: 'POST', body: JSON.stringify({ ids }) });
       STATE.updatedAt = new Date().toISOString();
       if (!dirty) markDirty(false);
+      // Dragging is visible; alt+arrow is not, and neither said anything out loud.
+      const moved = ids.indexOf(justMoved);
+      if (moved >= 0) announce(`Moved to position ${moved + 1} of ${ids.length}`);
     } catch (e) { toast(e.message); await refresh(); }
   };
 
@@ -478,7 +558,7 @@ function renderList() {
       if (to < 0 || to >= all.length) return;
       if (e.key === 'ArrowDown') el.insertBefore(all[to], c); else el.insertBefore(c, all[to]);
       c.focus();
-      await commitOrder();
+      await commitOrder(c.dataset.id);
     };
   });
 
@@ -509,6 +589,9 @@ function renderEditor() {
   if (!i || i.id !== renderEditor._last) { selOv = null; renderEditor._last = i?.id; }
   if (!i) { el.innerHTML = '<p class="empty">Select an item.</p>'; return; }
   const v = i.validation || { ok: true, errors: [], warnings: [] };
+  // Order is by how often it is touched, not by how the card is modelled. The pane was a
+  // 2,010px scroll in an 852px column, so adding a block opened its editor 200px below the
+  // viewport while the canvas it changed scrolled out of sight above.
   el.innerHTML = `<div class="pad">
     <div class="canvas-wrap">
       <div class="canvas${i.fit === 'contain' ? ' contain' : ''}" id="cv">${canvasMedia(i)}</div>
@@ -517,52 +600,17 @@ function renderEditor() {
           <button data-add="text">+ Text</button>
           <button data-add="link">+ Link</button>
         </div>
-        <div>
-          <h5 style="font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;
-            text-transform:uppercase;color:var(--mute);margin:0 0 5px;font-weight:400">Graphic</h5>
-          <div class="row2">
-            <button data-fit="cover" aria-pressed="${i.fit !== 'contain'}">Fill</button>
-            <button data-fit="contain" aria-pressed="${i.fit === 'contain'}">Letterbox</button>
-          </div>
-        </div>
-        <p class="hint" style="margin:0">Letterbox leaves room above and below the graphic for text.</p>
-        <div class="sect" style="margin-top:2px;padding-top:11px">
-          <h4>Default headline block</h4>
-          <div class="mini">
-            <button data-chrome="auto" aria-pressed="${i.chrome !== 'on' && i.chrome !== 'off'}">Auto</button>
-            <button data-chrome="on" aria-pressed="${i.chrome === 'on'}">Show</button>
-            <button data-chrome="off" aria-pressed="${i.chrome === 'off'}">Hide</button>
-          </div>
-          <p class="hint">Auto hides it once the card has its own text blocks.</p>
-        </div>
-        <div class="sect" style="margin-top:2px;padding-top:11px">
-          <h4>Advance</h4>
-          <div class="row2">
-            <button data-adv="auto" aria-pressed="${i.advance.mode !== 'manual'}">Auto</button>
-            <button data-adv="manual" aria-pressed="${i.advance.mode === 'manual'}">Swipe</button>
-          </div>
-          <div class="field" id="adv-secs" style="margin-top:9px"
-            ${i.advance.mode === 'manual' ? 'hidden' : ''}>
-            <label for="e-sec">Hold (seconds)</label>
-            <input id="e-sec" type="number" min="2" max="60" value="${i.advance.seconds}">
-          </div>
+        <div class="row2">
+          <button data-fit="cover" aria-pressed="${i.fit !== 'contain'}"
+            aria-label="Graphic: fill the frame">Fill</button>
+          <button data-fit="contain" aria-pressed="${i.fit === 'contain'}"
+            aria-label="Graphic: letterbox">Letterbox</button>
         </div>
       </div>
     </div>
 
-    ${clipPanel(i)}
-
-    <div class="sect" style="margin-top:0;border-top:0;padding-top:0">
-      <h4>Layout</h4>
-      <div class="mini" id="tpl"></div>
-      <p class="hint" id="tpl-note">Applying a layout replaces this card's blocks and pacing.
-        The media stays.</p>
-      <div class="row" style="margin-top:9px">
-        <input id="tpl-name" placeholder="Name this layout" style="flex:1;min-width:0">
-        <button class="ghost sm" id="tpl-save">Save as layout</button>
-      </div>
-    </div>
-
+    <!-- Directly under the canvas: this is the editor for whatever block is selected, and
+         it has to be visible at the same time as the thing it changes. -->
     <div id="ov-panel"></div>
 
     <div class="field"><label for="e-h">Headline</label>
@@ -580,30 +628,81 @@ function renderEditor() {
     <div class="field"><label for="e-sp">Sponsor (blank for none)</label>
       <input id="e-sp" value="${esc(i.sponsor?.name || '')}"></div>
 
-    ${v.errors.length ? `<p class="blocking"><b>Can't publish yet</b>${
-      v.errors.map((e) => esc(e)).join('<br>')}</p>` : ''}
-    ${v.warnings.length ? `<ul class="warnlist" aria-label="Worth checking">
-      ${v.warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
+    ${clipPanel(i)}
 
-    <hr>
-    <div class="row">
-      <button id="e-save">Save</button>
-      ${i.status !== 'published'
-        ? `<button id="e-pub" class="ghost"${v.ok ? '' : ' aria-disabled="true"'}>Publish</button>`
-        : `<button id="e-unpub" class="ghost">Unpublish</button>`}
-      ${i.status === 'archived'
-        ? `<button id="e-inbox" class="ghost">Move to inbox</button>
-           <button id="e-del" class="ghost">Delete</button>`
-        : `<button id="e-arch" class="ghost">Archive</button>`}
-    </div>
-    <hr>
+    <details class="fold"${i.advance.mode === 'manual' || i.chrome !== 'auto' ? ' open' : ''}>
+      <summary>Pacing &amp; chrome<span>${i.advance.mode === 'manual'
+        ? 'waits for a swipe' : `holds ${i.advance.seconds}s`}</span></summary>
+      <div class="sect" style="margin-top:0;border-top:0;padding-top:4px">
+        <h4>Advance</h4>
+        <div class="row2">
+          <button data-adv="auto" aria-label="Advance: auto"
+            aria-pressed="${i.advance.mode !== 'manual'}">Auto</button>
+          <button data-adv="manual" aria-pressed="${i.advance.mode === 'manual'}">Swipe</button>
+        </div>
+        <div class="field" id="adv-secs" style="margin-top:9px"
+          ${i.advance.mode === 'manual' ? 'hidden' : ''}>
+          <label for="e-sec">Hold (seconds)</label>
+          <input id="e-sec" type="number" min="2" max="60" value="${i.advance.seconds}">
+        </div>
+      </div>
+      <div class="sect" style="padding-top:11px">
+        <h4>Default headline block</h4>
+        <div class="mini">
+          <button data-chrome="auto" aria-label="Default headline block: auto"
+            aria-pressed="${i.chrome !== 'on' && i.chrome !== 'off'}">Auto</button>
+          <button data-chrome="on" aria-pressed="${i.chrome === 'on'}">Show</button>
+          <button data-chrome="off" aria-pressed="${i.chrome === 'off'}">Hide</button>
+        </div>
+        <p class="hint">Auto hides it once the card has its own text blocks.
+          Letterbox leaves room above and below the graphic for text.</p>
+      </div>
+    </details>
+
+    <details class="fold">
+      <summary>Layout<span>${i.overlays?.length
+        ? `${i.overlays.length} block${i.overlays.length > 1 ? 's' : ''}` : 'no blocks'}</span></summary>
+      <div class="mini" id="tpl"></div>
+      <p class="hint" id="tpl-note">Applying a layout replaces this card's blocks and pacing.
+        The media stays.</p>
+      <div class="row" style="margin-top:9px">
+        <input id="tpl-name" placeholder="Name this layout" style="flex:1;min-width:0">
+        <button class="ghost sm" id="tpl-save">Save as layout</button>
+      </div>
+    </details>
+
     <p class="mono" style="letter-spacing:.04em;text-transform:none;font-size:11px;line-height:1.7">
       <b style="color:var(--w)">${esc(i.id)}</b><br>
       source ${esc(i.source)} · ${esc(i.media.kind)}${i.clip
         ? ` · clip ${esc(i.clip.start)}–${esc(i.clip.end)}s` : ''}<br>
       ${Object.entries(i.links).filter(([, u]) => safeUrl(u)).map(([k, u]) =>
         `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(k)} ↗</a>`).join(' · ') || ''}
-    </p></div>`;
+    </p>
+    </div>
+
+    <!-- Pinned. Publish is the terminal action and used to sit at the bottom of a 2,010px
+         column, never visible while composing. -->
+    <div class="actbar">
+      ${v.errors.length ? `<p class="blocking"><b>Can't publish yet</b>${
+        v.errors.map((e) => esc(e)).join('<br>')}</p>` : ''}
+      ${v.warnings.length ? `<ul class="warnlist" aria-label="Worth checking">
+        ${v.warnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
+      <!-- Beside the buttons, not in a toast at the other end of the window: this is where
+           someone is looking when an action fails. -->
+      <p class="acted" id="e-err" role="alert" hidden></p>
+      <div class="row">
+        <button id="e-save">Save</button>
+        ${i.status !== 'published'
+          ? `<button id="e-pub" class="ghost"${v.ok
+              ? '' : ' disabled aria-disabled="true" title="Fix the blocking issues above first"'
+            }>Publish</button>`
+          : `<button id="e-unpub" class="ghost">Unpublish</button>`}
+        ${i.status === 'archived'
+          ? `<button id="e-inbox" class="ghost">Move to inbox</button>
+             <button id="e-del" class="ghost danger">Delete</button>`
+          : `<button id="e-arch" class="ghost">Archive</button>`}
+      </div>
+    </div>`;
 
   // The draft carries the whole item so a redraw still has media and poster to paint,
   // but its overlays and advance are copies — nothing is written until Save.
@@ -625,17 +724,55 @@ function renderEditor() {
     // without re-rendering the editor — so a number field rendered at select time went
     // stale the moment a card moved, and Save wrote the old position straight back.
   });
+  const said = (msg) => {
+    const box = $('#e-err');
+    if (!box) return;
+    box.textContent = msg;
+    box.hidden = false;
+  };
   const patch = async (extra, msg) => {
-    await api('/api/items', { method: 'PATCH',
-      body: JSON.stringify({ id: i.id, changes: { ...changes(), ...extra } }) });
-    await refresh(); toast(msg);
+    $('#e-err')?.setAttribute('hidden', '');
+    try {
+      const r = await api('/api/items', { method: 'PATCH',
+        body: JSON.stringify({ id: i.id, changes: { ...changes(), ...extra } }) });
+      // The API refuses a card that would not validate and says why — into a response
+      // nobody read. So the terminal action of the tool reported "Published" and changed
+      // nothing, which is the worst thing this tool could do to someone on deadline.
+      if (r.rejected?.length) {
+        said(`Not published — ${r.rejected[0].errors.join('; ')}`);
+        return;
+      }
+      if (!r.updated) {
+        said('Nothing was changed. This card may have been removed by someone else.');
+        await refresh();
+        return;
+      }
+      markDirty(false);
+      await refresh(); toast(msg);
+    } catch (e) {
+      // A failed save used to be completely silent: no toast, no inline error, and the
+      // pill still read "Unsaved changes", which reads as "you haven't pressed Save yet".
+      said(`${e.message || 'Could not reach the server'} — your changes are still here.`);
+    }
   };
   el.querySelectorAll('input,select,textarea').forEach((f) =>
     f.addEventListener('input', () => markDirty()));
   $('#e-save').onclick = () => patch({}, 'Saved');
   $('#e-pub')?.addEventListener('click', () => patch({ status: 'published' }, 'Published'));
   $('#e-unpub')?.addEventListener('click', () => patch({ status: 'inbox' }, 'Moved to inbox'));
-  $('#e-arch').onclick = () => patch({ status: 'archived' }, 'Archived');
+  // Optional chaining on all three: an archived card renders Move-to-inbox and Delete
+  // instead of Archive, and the bare lookup threw on every archived selection — which is
+  // why an archived card could never be recovered or removed at all.
+  $('#e-arch')?.addEventListener('click', () => patch({ status: 'archived' }, 'Archived'));
+  $('#e-inbox')?.addEventListener('click', () => patch({ status: 'inbox' }, 'Moved to inbox'));
+  $('#e-del')?.addEventListener('click', async () => {
+    if (!confirm(`Delete "${i.headline}"? This cannot be undone.`)) return;
+    $('#e-err')?.setAttribute('hidden', '');
+    try {
+      await api('/api/items', { method: 'DELETE', body: JSON.stringify({ ids: [i.id] }) });
+      selected = null; markDirty(false); await refresh(); toast('Deleted');
+    } catch (e) { said(e.message || 'Could not delete that card'); }
+  });
 }
 
 /* ---------- clipping ---------- */
@@ -671,8 +808,10 @@ function clipPanel(i) {
       : 'Trimmed at playback — the card carries in and out, the player holds the range.'}</p>
     <div class="scrub" id="scrub" role="group" aria-label="Clip range">
       <div class="sel" id="c-sel"></div>
-      <div class="h" id="c-in"  tabindex="0" role="slider" aria-label="Clip start"></div>
-      <div class="h" id="c-out" tabindex="0" role="slider" aria-label="Clip end"></div>
+      <div class="h" id="c-in" tabindex="0" role="slider" aria-label="Clip start"
+           aria-valuemin="0" aria-valuenow="0" aria-valuetext="0:00"></div>
+      <div class="h" id="c-out" tabindex="0" role="slider" aria-label="Clip end"
+           aria-valuemin="0" aria-valuenow="0" aria-valuetext="0:00"></div>
     </div>
     <div class="clip-row">
       <div style="flex:1;min-width:0">
@@ -822,10 +961,21 @@ function renderTemplates(item) {
         await loadTemplates(); renderTemplates(item); toast('Layout deleted');
         return;
       }
+      // confirmDiscard only fires when the card is dirty, so applying a layout over a
+      // SAVED composed card — three blocks, a link, its pacing — was a silent one-click
+      // destruction with no undo. Ask about the blocks themselves, not the dirty state.
+      const had = item.overlays?.length || 0;
+      if (had && !confirm(`Replace ${had} block${had > 1 ? 's' : ''} on this card`
+          + ` with the ${b.textContent.replace(/\s*×$/, '')} layout?`)) return;
+      const before = { overlays: item.overlays, advance: item.advance, chrome: item.chrome };
       await api('/api/apply-template', { method: 'POST',
         body: JSON.stringify({ id: item.id, template: b.dataset.tpl }) });
       selOv = null; markDirty(false); await refresh();
-      toast(`Applied ${b.textContent.replace(/\s*×$/, '')}`);
+      toast(`Applied ${b.textContent.replace(/\s*×$/, '')}`, had ? async () => {
+        await api('/api/items', { method: 'PATCH',
+          body: JSON.stringify({ id: item.id, changes: before }) });
+        await refresh(); toast(`${had} block${had > 1 ? 's' : ''} restored`);
+      } : null);
     };
   });
 
@@ -914,6 +1064,16 @@ function wireCanvas(i, syncDraft) {
       const o = i.overlays.find((x) => x.id === el.dataset.ov);
       if (!o) return;
       if (ev.key === 'Escape') { el.blur(); selOv = null; renderOverlayPanel(i); return; }
+      if (ev.key === 'Delete' || ev.key === 'Backspace') {
+        // Removal used to be reachable only from a button far down the pane, so the
+        // obvious key did nothing at all.
+        ev.preventDefault();
+        i.overlays = i.overlays.filter((x) => x.id !== o.id);
+        selOv = null;
+        redraw(i, syncDraft); syncDraft();
+        $('#cv')?.focus();
+        return;
+      }
       const step = ev.shiftKey ? 10 : 1;
       const moves = { ArrowLeft: [-step, 0], ArrowRight: [step, 0],
                       ArrowUp: [0, -step], ArrowDown: [0, step] };
@@ -927,7 +1087,11 @@ function wireCanvas(i, syncDraft) {
       syncDraft();
     });
     el.addEventListener('pointerdown', (ev) => {
+      // preventDefault is needed to stop the drag selecting text, but it also suppresses
+      // focus — so a block clicked with a mouse was selected but not focused, and the
+      // keyboard handlers on it (nudge, Escape, Delete) did nothing until you tabbed to it.
       ev.preventDefault();
+      el.focus();
       select();
       const o = i.overlays.find((x) => x.id === selOv);
       if (!o) return;

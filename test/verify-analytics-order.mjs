@@ -9,8 +9,9 @@
  * Reordering is checked all the way through: drag in the studio, then read the feed.
  */
 import { chromium } from 'playwright';
+import { headlessShell } from './browser.mjs';
 const B = 'http://localhost:4400';
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell' });
+const b = await chromium.launch({ executablePath: headlessShell() });
 const j = async (p, o) => (await fetch(B + p, { headers: { 'content-type': 'application/json' }, ...o })).json();
 const ok = [], bad = [];
 const t = (n, c) => (c ? ok : bad).push(n);

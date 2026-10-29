@@ -10,6 +10,7 @@
  * would pass even if the seek never reached the decoder.
  */
 import { chromium } from 'playwright';
+import { headlessShell } from './browser.mjs';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
@@ -17,7 +18,7 @@ const B = 'http://localhost:4400';
 const IN = 12, OUT = 16;
 const FIXTURE = fileURLToPath(new URL('./fixtures/bars-30s.webm', import.meta.url));
 
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell' });
+const b = await chromium.launch({ executablePath: headlessShell() });
 const j = async (p, o) => (await fetch(B + p, { headers: { 'content-type': 'application/json' }, ...o })).json();
 const ok = [], bad = [];
 const t = (n, c) => (c ? ok : bad).push(n);

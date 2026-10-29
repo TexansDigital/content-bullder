@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
-const SB='/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell';
+import { headlessShell } from './browser.mjs';
+const SB = headlessShell();
 const B='http://localhost:4400';
 const b = await chromium.launch({ executablePath: SB });
 const ok=[],bad=[];
@@ -62,8 +63,14 @@ t('cloudinary offers a baseUrl field', await st.evaluate(()=>!!document.querySel
 await st.selectOption('#adapter','upload'); await st.waitForTimeout(250);
 t('Pull hidden for the Upload source', await st.evaluate(()=>document.querySelector('#pull')?.hidden===true));
 
+// Layout moved into a disclosure in the Sept 2026 UX pass — it is set once a card, and it
+// was sitting above the fields touched on every card.
+const openFolds = () => st.evaluate(() =>
+  document.querySelectorAll('.fold').forEach((d) => d.setAttribute('open', '')));
+await openFolds(); await st.waitForTimeout(200);
 await st.click('[data-tpl="letterbox"]'); await st.waitForTimeout(900);
 await st.click('.card'); await st.waitForTimeout(500);
+await openFolds(); await st.waitForTimeout(200);
 await st.hover('[data-tpl="quote"]'); await st.hover('#tpl-name'); await st.waitForTimeout(300);
 t('layout warning restored after hover', (await st.textContent('#tpl-note')).includes('replaces'));
 t('blocks focusable', await st.evaluate(()=>!!document.querySelector('#cv .ov[tabindex="0"]')));

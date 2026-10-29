@@ -7,11 +7,12 @@
  * comparison.
  */
 import { chromium } from 'playwright';
+import { headlessShell } from './browser.mjs';
 import { readFile, writeFile, readdir, mkdir, rm } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 
 const B = 'http://localhost:4400';
-const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell' });
+const b = await chromium.launch({ executablePath: headlessShell() });
 const j = async (p, o) => (await fetch(B + p, { headers: { 'content-type': 'application/json' }, ...o })).json();
 const code = async (p, o) => (await fetch(B + p, { headers: { 'content-type': 'application/json' }, ...o })).status;
 const ok = [], bad = [];
