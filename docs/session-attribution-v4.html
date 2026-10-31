@@ -1,0 +1,355 @@
+<script data-hou-module="session-attribution" data-hou-v="4" data-hou-owner="DSaC" data-hou-expires="evergreen">
+(function () {
+  'use strict';
+
+  // Ported from the Launch "3P - GA4 - Global Tag" custom code so the Texans
+  // own it in Pocket. Safe to run alongside the Launch copy until the league
+  // removes it: both read the same localStorage keys, set the same GA4 user
+  // properties, mark internal links with the same data-pocket-rewritten flag,
+  // and the click handler below yields to whichever copy claims a click first.
+
+  if (window._houSessionAttrib) return;
+  window._houSessionAttrib = true;
+
+  var CONFIG = {
+    attributionWindowMs: 7 * 24 * 60 * 60 * 1000,
+    wtMcIdFallback: 'NFL_TEAM_HOU',
+    wtMcIdPrefixRequired: 'NFL_TEAM_HOU_',
+    // Existing ht-attribution endpoint; fills the clicks table /match reads.
+    clickUrl: 'https://ht-attribution.texansdigital.workers.dev/click',
+    // Session/UTM/contact record (site_sessions). The Launch copy posts to a
+    // path on www that 404s; this one goes to ht-attribution.
+    sessionUrl: 'https://ht-attribution.texansdigital.workers.dev/session',
+    consentGroup: 'C0002',
+    consentWaitMs: 15000
+  };
+
+  var Q = String.fromCharCode(63);
+  var AMP = String.fromCharCode(38);
+
+  window.houModules = window.houModules || {};
+  var state = window.houModules['session-attribution'] = {
+    v: 3, owner: 'DSaC', block: 'js', expires: 'evergreen',
+    started: false, clicksSent: 0
+  };
+
+  // ---------- storage (never let a bad value kill the script) ----------
+
+  function lsGet(key) {
+    try { return window.localStorage.getItem(key); } catch (e) { return null; }
+  }
+  function lsSet(key, val) {
+    try { window.localStorage.setItem(key, val); } catch (e) {}
+  }
+  function lsRemove(key) {
+    try { window.localStorage.removeItem(key); } catch (e) {}
+  }
+  function lsJson(key) {
+    var raw = lsGet(key);
+    if (!raw) return {};
+    try {
+      var v = JSON.parse(raw);
+      return v && typeof v === 'object' ? v : {};
+    } catch (e) {
+      lsRemove(key);
+      return {};
+    }
+  }
+
+  function readCookie(name) {
+    var parts = document.cookie ? document.cookie.split('; ') : [];
+    for (var i = 0; i < parts.length; i++) {
+      var eq = parts[i].indexOf('=');
+      if (eq > -1 && parts[i].slice(0, eq) === name) return parts[i].slice(eq + 1);
+    }
+    return '';
+  }
+
+  // ---------- identity and UTMs (same keys as the Launch copy) ----------
+
+  function getOrCreatePocketId() {
+    var id = lsGet('pocket_session_id');
+    if (!id) {
+      id = 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+      lsSet('pocket_session_id', id);
+    }
+    return id;
+  }
+
+  function captureContactId() {
+    var params = new URLSearchParams(window.location.search);
+    var contactId = params.get('contactid');
+    if (contactId) lsSet('pocket_contactid', contactId);
+    return lsGet('pocket_contactid');
+  }
+
+  function checkAttributionWindow() {
+    var stored = lsJson('pocket_utms');
+    if (!stored.timestamp) return;
+    if (Date.now() - stored.timestamp > CONFIG.attributionWindowMs) lsRemove('pocket_utms');
+  }
+
+  function captureUTMs() {
+    var params = new URLSearchParams(window.location.search);
+    var incoming = params.get('utm_content');
+    if (!incoming) return;
+    var utms = { timestamp: Date.now() };
+    var keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+    for (var i = 0; i < keys.length; i++) {
+      var val = params.get(keys[i]);
+      if (val) utms[keys[i]] = val;
+    }
+    var stored = lsJson('pocket_utms');
+    if (!stored.utm_content || stored.utm_content !== incoming) {
+      lsSet('pocket_utms', JSON.stringify(utms));
+    }
+  }
+
+  function getStoredUTMs() {
+    var utms = {};
+    var stored = lsJson('pocket_utms');
+    for (var k in stored) {
+      if (k !== 'timestamp' && Object.prototype.hasOwnProperty.call(stored, k)) utms[k] = stored[k];
+    }
+    return utms;
+  }
+
+  function gaClientId() {
+    // _ga = GA1.1.<rand>.<ts>; the client id is the last two parts.
+    var parts = readCookie('_ga').split('.');
+    return parts.length >= 4 ? parts.slice(-2).join('.') : '';
+  }
+
+  function eloquaGuid() {
+    var m = readCookie('ELOQUA').match(/GUID=([0-9A-Fa-f]{32})/);
+    return m ? m[1] : '';
+  }
+
+  function pushToGA4(pocketId, contactId) {
+    if (typeof window.gtag !== 'function') return;
+    var props = { pocket_id: pocketId };
+    if (contactId) props.contact_id = contactId;
+    window.gtag('set', 'user_properties', props);
+  }
+
+  function beacon(url, payload) {
+    if (!url) return false;
+    var body = JSON.stringify(payload);
+    try {
+      // text/plain keeps this a simple request: no CORS preflight, and the
+      // beacon still delivers when the page unloads into Ticketmaster.
+      if (navigator.sendBeacon && navigator.sendBeacon(url, new Blob([body], { type: 'text/plain' }))) return true;
+    } catch (e) {}
+    try {
+      fetch(url, { method: 'POST', mode: 'no-cors', keepalive: true, body: body }).catch(function () {});
+      return true;
+    } catch (e2) { return false; }
+  }
+
+  function writeSession(pocketId, contactId) {
+    if (!CONFIG.sessionUrl) return;
+    var utms = getStoredUTMs();
+    if (!Object.keys(utms).length && !contactId) return;
+    var payload = { session_id: pocketId, page_url: window.location.href, eloqua_guid: eloquaGuid() };
+    for (var k in utms) payload[k] = utms[k];
+    if (contactId) payload.contact_id = contactId;
+    beacon(CONFIG.sessionUrl, payload);
+  }
+
+  function sendClick(destUrl) {
+    var ok = beacon(CONFIG.clickUrl, {
+      click_id: 'htc_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 8),
+      source_page: window.location.pathname,
+      dest_url: destUrl,
+      ga_client_id: gaClientId(),
+      session_id: lsGet('pocket_session_id') || '',
+      eloqua_guid: eloquaGuid(),
+      nfl_device_id: ''
+    });
+    if (ok) state.clicksSent++;
+  }
+
+  // ---------- URL rewrites ----------
+
+  function currentSection() {
+    var segs = window.location.pathname.split('/').filter(Boolean);
+    return segs.length ? segs.join('-') : 'homepage';
+  }
+
+  function rewriteTicketmasterUrl(originalUrl) {
+    var utms = getStoredUTMs();
+    var parsed;
+    try { parsed = new URL(originalUrl); } catch (e) { return originalUrl; }
+
+    var preservedGl = parsed.searchParams.get('_gl');
+    var incomingWtMcId = parsed.searchParams.get('wt.mc_id');
+    var skip = { '_gl': 1, 'wt.mc_id': 1, 'camefrom': 1, 'utm_campaign': 1, 'utm_source': 1, 'utm_medium': 1, 'utm_content': 1 };
+    var passthrough = new URLSearchParams();
+    parsed.searchParams.forEach(function (value, key) {
+      if (!skip[key]) passthrough.append(key, value);
+    });
+
+    var wtMcId = (incomingWtMcId && incomingWtMcId.indexOf(CONFIG.wtMcIdPrefixRequired) === 0)
+      ? incomingWtMcId : CONFIG.wtMcIdFallback;
+
+    var camefromSuffix = (utms.utm_campaign && utms.utm_content)
+      ? utms.utm_campaign + '_00_' + utms.utm_content
+      : 'web-' + currentSection();
+
+    var full = utms.utm_campaign && utms.utm_source && utms.utm_medium && utms.utm_content;
+    var parts = [
+      'utm_campaign=' + encodeURIComponent(full ? utms.utm_campaign : ''),
+      'utm_source=' + encodeURIComponent(full ? utms.utm_source : currentSection()),
+      'utm_medium=' + encodeURIComponent(full ? utms.utm_medium : 'web'),
+      'utm_content=' + encodeURIComponent(full ? utms.utm_content : '')
+    ];
+    var pt = passthrough.toString();
+    if (pt) parts.push(pt);
+    parts.push('camefrom=' + encodeURIComponent('CFC_TEXANS_' + camefromSuffix));
+    parts.push('wt.mc_id=' + encodeURIComponent(wtMcId));
+    if (preservedGl) parts.push('_gl=' + encodeURIComponent(preservedGl));
+
+    // Keep the hash: Account Manager routes live there (#/invoice etc.).
+    return parsed.origin + parsed.pathname + Q + parts.join(AMP) + parsed.hash;
+  }
+
+  function rewriteShopUrl(originalUrl) {
+    var utms = getStoredUTMs();
+    var parsed;
+    try { parsed = new URL(originalUrl); } catch (e) { return originalUrl; }
+
+    var preservedGl = parsed.searchParams.get('_gl');
+    var passthrough = new URLSearchParams();
+    parsed.searchParams.forEach(function (value, key) {
+      if (key !== '_gl' && key !== '_s') passthrough.append(key, value);
+    });
+
+    var suffix = (utms.utm_campaign && utms.utm_content)
+      ? utms.utm_campaign + '_00_' + utms.utm_content
+      : 'web-' + currentSection();
+
+    var parts = [];
+    var pt = passthrough.toString();
+    if (pt) parts.push(pt);
+    parts.push('_s=' + encodeURIComponent('bm-INT-Texans-' + suffix));
+    if (preservedGl) parts.push('_gl=' + encodeURIComponent(preservedGl));
+
+    return parsed.origin + parsed.pathname + Q + parts.join(AMP) + parsed.hash;
+  }
+
+  function rewriteInternalLink(el) {
+    if (!el || !el.href || el.getAttribute('data-pocket-rewritten') === '1') return;
+    try {
+      var url = new URL(el.href, window.location.origin);
+      if (url.hostname !== window.location.hostname) return;
+      var utms = getStoredUTMs();
+      var keys = Object.keys(utms);
+      if (!keys.length) return;
+      for (var i = 0; i < keys.length; i++) {
+        if (utms[keys[i]]) url.searchParams.set(keys[i], utms[keys[i]]);
+      }
+      el.href = url.toString();
+      el.setAttribute('data-pocket-rewritten', '1');
+    } catch (e) {}
+  }
+
+  function rewriteAllInternalLinks() {
+    var links = document.querySelectorAll('a[href]');
+    for (var i = 0; i < links.length; i++) rewriteInternalLink(links[i]);
+  }
+
+  // ---------- wiring ----------
+
+  function onClick(e) {
+    // Another copy (the Launch version) already took this click.
+    if (e.defaultPrevented) return;
+    var target = e.target;
+    while (target && target !== document) {
+      if (target.tagName === 'A' && target.href) {
+        var url;
+        try { url = new URL(target.href, window.location.origin); } catch (err) { return; }
+        var rewritten = null;
+        var isTm = url.hostname.indexOf('ticketmaster.com') !== -1;
+        if (isTm) rewritten = rewriteTicketmasterUrl(target.href);
+        else if (url.hostname.indexOf('shop.houstontexans') !== -1) rewritten = rewriteShopUrl(target.href);
+        if (!rewritten) return;
+
+        e.preventDefault();
+        // Claim it so the Launch copy's handler never opens a second tab.
+        e.stopImmediatePropagation();
+        if (isTm) sendClick(rewritten);
+        if (target.target === '_blank' || e.ctrlKey || e.metaKey || e.shiftKey) {
+          window.open(rewritten, target.target || '_blank', 'noopener');
+        } else {
+          window.location.href = rewritten;
+        }
+        return;
+      }
+      target = target.parentNode;
+    }
+  }
+
+  function setupLinkRewriting() {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', rewriteAllInternalLinks);
+    } else {
+      rewriteAllInternalLinks();
+    }
+    window.addEventListener('load', rewriteAllInternalLinks);
+
+    var observer = new MutationObserver(function (mutations) {
+      for (var i = 0; i < mutations.length; i++) {
+        var added = mutations[i].addedNodes;
+        for (var j = 0; j < added.length; j++) {
+          var node = added[j];
+          if (node.nodeType !== 1) continue;
+          if (node.tagName === 'A') rewriteInternalLink(node);
+          if (node.querySelectorAll) {
+            var inner = node.querySelectorAll('a[href]');
+            for (var k = 0; k < inner.length; k++) rewriteInternalLink(inner[k]);
+          }
+        }
+      }
+    });
+    function startObserver() { observer.observe(document.body, { childList: true, subtree: true }); }
+    if (document.body) startObserver();
+    else document.addEventListener('DOMContentLoaded', startObserver);
+
+    document.addEventListener('click', onClick, true);
+  }
+
+  function start() {
+    if (state.started) return;
+    state.started = true;
+    var pocketId = getOrCreatePocketId();
+    var contactId = captureContactId();
+    checkAttributionWindow();
+    captureUTMs();
+    pushToGA4(pocketId, contactId);
+    writeSession(pocketId, contactId);
+    setupLinkRewriting();
+  }
+
+  // ---------- consent gate (matches the Launch rule's OneTrust check) ----------
+
+  function consented() {
+    var groups = window.OnetrustActiveGroups || '';
+    return groups.indexOf(',' + CONFIG.consentGroup + ',') > -1;
+  }
+
+  var waited = 0;
+  function waitForConsent() {
+    if (state.started) return;
+    if (consented()) { start(); return; }
+    if (waited >= CONFIG.consentWaitMs) return;
+    waited += 250;
+    setTimeout(waitForConsent, 250);
+  }
+
+  window.addEventListener('consent.onetrust', function () { if (consented()) start(); });
+  waitForConsent();
+
+  // Exposed for console checks: houModules['session-attribution'].test(url)
+  state.test = rewriteTicketmasterUrl;
+})();
+</script>
