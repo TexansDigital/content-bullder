@@ -150,8 +150,10 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 /* In-feed playback. The active YouTube card mounts YouTube's player in the area between the
    progress strip and a slim band of ours at the bottom. Nothing of ours sits over the video;
    the band carries the headline and the controls. The poster stays underneath until the
-   player reports it is playing, so there is never a black frame. */
-.slide.yt>iframe.yt{position:absolute;left:0;right:0;top:26px;bottom:60px;width:100%;height:auto;border:0;
+   player reports it is playing, so there is never a black frame. The height is explicit:
+   an iframe is a replaced element, and with top and bottom set and height auto it kept
+   its 150px default rather than stretching. */
+.slide.yt>iframe.yt{position:absolute;left:0;right:0;top:26px;bottom:60px;width:100%;height:calc(100% - 86px);border:0;
  background:#000;opacity:0;transition:opacity .3s var(--ease);z-index:2}
 .slide.yt.yt-playing>iframe.yt{opacity:1}
 .slide.yt.yt-playing>.play,.slide.yt.yt-playing>.top{display:none}

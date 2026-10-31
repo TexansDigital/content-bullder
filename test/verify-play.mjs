@@ -60,7 +60,7 @@ const inl = s0.locator('iframe.yt');
 t('the active YouTube card mounts YouTube\'s player at once', await inl.count() === 1);
 const src = await inl.getAttribute('src');
 t('muted autoplay, inline, no controls, cookieless, IFrame API on', /youtube-nocookie\.com\/embed\/Tq3sz_Yf-Nk\?/.test(src) && /autoplay=1/.test(src) && /mute=1/.test(src) && /controls=0/.test(src) && /enablejsapi=1/.test(src) && /playsinline=1/.test(src));
-t('the player sits above the band, never over it', await inl.evaluate((f) => { const r = f.getBoundingClientRect(); const band = f.parentElement.querySelector('.band').getBoundingClientRect(); return r.bottom <= band.top + 0.5 && r.top >= 20; }));
+t('the player fills the space between the strip and the band exactly', await inl.evaluate((f) => { const r = f.getBoundingClientRect(); const band = f.parentElement.querySelector('.band').getBoundingClientRect(); const slide = f.parentElement.getBoundingClientRect(); return Math.abs(r.bottom - band.top) < 1 && Math.abs(r.top - (slide.top + 26)) < 1 && r.height > 500; }));
 t('the poster shows and the player is invisible until it plays', await s0.locator(':scope > img').isVisible() && (await inl.evaluate((f) => getComputedStyle(f).opacity)) === '0');
 t('only the active card has a player', await pg.locator('iframe.yt').count() === 1);
 t('no story clock is running under a video card', await s0.evaluate((s) => !s._t));
