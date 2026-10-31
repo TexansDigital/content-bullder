@@ -37,6 +37,7 @@ studio and the embed only ever see a `ContentItem`, never the source that produc
 | Adapter | Gives us | Limit |
 | --- | --- | --- |
 | `upload` | **A graphic or video we upload.** Promo cards, sponsor slates, event art | Clippable |
+| `catalogue` | **The curated Shorts catalogue in Supabase** — already typed, labelled evergreen or timely, and tagged with the players and opponent each is about | Reads only, with the publishable key under RLS. Prefer this over `youtube` |
 | `youtube` | Metadata for a whole channel, via the uploads playlist | Never the file; plays in YouTube's iframe |
 | `cloudinary` | Our own assets, at any aspect ratio | Clippable, and reframed to 9:16 |
 | `rss` | Article metadata, no credentials or quota | Metadata only |
@@ -52,6 +53,11 @@ A card is not always a clip. The feed renders four kinds, and the studio treats 
 | `file` / `cloudinary` | Video we control | Plays and loops while on screen |
 | `youtube` | A YouTube video | Poster in the feed; playback goes to YouTube's player, as its terms require |
 | `link` | A page, no media | Poster plus an action button |
+
+Every card also carries **`entities`** — the players, opponent and themes it is about, as
+slugs from the entity dictionary — plus a **`contentType`** and a **`shelfLife`** of `evergreen` or
+`timely`. These are what make a like on a card say something: `player:c-j-stroud` plus
+`theme:touchdown` is a preference; `players` is a folder.
 
 Every kind takes a headline, a caption, an action button and a sponsor. **A graphic with a link
 is a first-class card**, not a video with something missing.

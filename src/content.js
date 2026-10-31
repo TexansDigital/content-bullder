@@ -99,6 +99,25 @@ export function makeClip(c) {
   return { of, start: s, end, ...(c.playback === true ? { playback: true } : {}) };
 }
 
+const SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/;
+// Content types in the catalogue are snake_case (game_action, fun_trends); entity slugs are
+// kebab-case. Two rules, or the first real content type is silently dropped.
+const TYPE_SLUG = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+const slugs = (v, max = 12) => (Array.isArray(v) ? v : [])
+  .map((x) => String(x ?? '').toLowerCase().trim())
+  .filter((x, i, arr) => SLUG.test(x) && arr.indexOf(x) === i)
+  .slice(0, max);
+
+export function makeEntities(e) {
+  if (!e || typeof e !== 'object' || Array.isArray(e)) return { players: [], opponent: null, themes: [] };
+  const opp = String(e.opponent ?? '').toLowerCase().trim();
+  return {
+    players: slugs(e.players),
+    opponent: SLUG.test(opp) ? opp : null,
+    themes: slugs(e.themes),
+  };
+}
+
 const MAX_TEXT = 300;
 const clean = (s, max = MAX_TEXT) =>
   (s == null ? null : String(s).trim().slice(0, max) || null);
@@ -128,6 +147,22 @@ export function makeItem(partial = {}) {
       : null,
     sponsor: partial.sponsor || null,
     clip: makeClip(partial.clip),
+    /**
+     * What the card is about, as slugs from the entity dictionary: the players in it, the
+     * opponent it concerns, the themes it carries. This is the substrate for understanding
+     * fans at all — a like on `players` says almost nothing; a like on `player:c-j-stroud`
+     * plus `theme:touchdown` says a great deal. Empty is allowed; wrong is not, so slugs are
+     * shape-checked and anything else is dropped.
+     */
+    entities: makeEntities(partial.entities),
+    /** The catalogue's content type for the clip (game_action, pranks, player_stories...). */
+    contentType: TYPE_SLUG.test(String(partial.contentType ?? '')) ? String(partial.contentType) : null,
+    /**
+     * `evergreen` holds its place in ranking indefinitely; `timely` decays. This is the
+     * original brief — a Stories-shaped feed where what we choose does not disappear — made
+     * into a per-card control rather than an accident of sort order.
+     */
+    shelfLife: ['evergreen', 'timely'].includes(partial.shelfLife) ? partial.shelfLife : null,
     /**
      * `cover` fills the 9:16 frame and crops. `contain` letterboxes the graphic so there is
      * deliberate empty space above and below it for text to sit in — which is what "a text

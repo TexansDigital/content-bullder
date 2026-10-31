@@ -1,0 +1,95 @@
+import { makeItem } from '../content.js';
+import { posterCandidates } from '../youtube.js';
+
+/**
+ * The curated catalogue in Supabase — videos the YouTube pipeline has already classified,
+ * labelled evergreen or timely, and (once the tagging job has run) tagged with the players,
+ * opponent and themes each one is about.
+ *
+ * This is the source the feed should prefer over YouTube live: the same videos, already
+ * typed and labelled, and readable with the project's publishable key under row-level
+ * security that allows exactly these tables and nothing else.
+ *
+ * Reads only. Nothing in this adapter can write to the catalogue.
+ */
+const URL_DEFAULT = 'https://xisvulbabqsyxnlyuwcz.supabase.co';
+// The publishable key is built to ship in client code; RLS limits it to anon_read on the
+// catalogue tables. Override both with SUPABASE_URL / SUPABASE_KEY for another project.
+const KEY_DEFAULT = 'sb_publishable_9Tipf7u3W0i5I_GeJEkCgw_bdu8ZbGe';
+
+/** Catalogue content types onto the feed's collections. Unmapped types land in Series. */
+const COLLECTION_OF = {
+  game_action: 'gameday', opponent_week: 'gameday', hype_brand: 'gameday', calendar: 'gameday',
+  player_stories: 'players', draft_roster: 'players', offseason_camp: 'players', workout_camp: 'players',
+  coaches: 'presser', front_office: 'presser',
+  community: 'community',
+};
+
+export default {
+  key: 'catalogue',
+  label: 'Catalogue',
+  needs: [],
+  notes: 'Shorts the pipeline has already typed and labelled, with the players and opponent each is about. Reads the Supabase catalogue; nothing is written.',
+
+  async fetch({ months = 12, max = 300, contentType, onlyTagged = false } = {}, deps = {}) {
+    const get = deps.fetch || globalThis.fetch;
+    const base = (process.env.SUPABASE_URL || URL_DEFAULT).replace(/\/$/, '');
+    const key = process.env.SUPABASE_KEY || KEY_DEFAULT;
+    const rest = async (path) => {
+      const r = await get(`${base}/rest/v1/${path}`, {
+        headers: { apikey: key, authorization: `Bearer ${key}`, accept: 'application/json' },
+      });
+      if (r.status === 404) return [];           // a table that does not exist yet reads as empty
+      if (!r.ok) throw new Error(`catalogue: ${path.split('?')[0]} ${r.status}`);
+      return r.json();
+    };
+
+    const since = new Date(Date.now() - Number(months) * 30 * 86400e3).toISOString();
+    const limit = Math.min(1000, Math.max(1, Number(max) || 300));
+    const videos = await rest(
+      'videos?select=id,title,description,published_at,duration_seconds,thumbnail_url,lifetime_views'
+      + `&creator_content_type=eq.SHORTS&is_active=not.is.false&published_at=gte.${since}`
+      + `&order=published_at.desc&limit=${limit}`);
+    if (!videos.length) return [];
+
+    const ids = videos.map((v) => v.id);
+    const inList = (xs) => `in.(${xs.map((x) => `"${x}"`).join(',')})`;
+    // Three label tables, each batched over the same ids. Any of them may be sparse.
+    const [types, labels, entities] = await Promise.all([
+      rest(`short_content_types?select=video_id,content_type&video_id=${inList(ids)}`),
+      rest(`short_labels?select=video_id,label&video_id=${inList(ids)}`),
+      rest(`feed_video_entities?select=video_id,entity_type,entity_slug,confidence&video_id=${inList(ids)}`),
+    ]);
+    const typeOf = Object.fromEntries(types.map((t) => [t.video_id, t.content_type]));
+    const labelOf = Object.fromEntries(labels.map((l) => [l.video_id, l.label]));
+    const entsOf = {};
+    for (const e of entities) (entsOf[e.video_id] ||= []).push(e);
+
+    return videos.flatMap((v) => {
+      const ct = typeOf[v.id] || null;
+      if (contentType && ct !== contentType) return [];
+      const ents = entsOf[v.id] || [];
+      if (onlyTagged && !ents.length) return [];
+      const players = ents.filter((e) => e.entity_type === 'player')
+        .sort((a, b) => b.confidence - a.confidence).map((e) => e.entity_slug);
+      const opponent = ents.find((e) => e.entity_type === 'opponent')?.entity_slug || null;
+      const themes = ents.filter((e) => e.entity_type === 'theme').map((e) => e.entity_slug);
+      return [makeItem({
+        id: `yt-${v.id}`,
+        source: 'catalogue',
+        collection: COLLECTION_OF[ct] || 'series',
+        headline: v.title,
+        caption: (v.description || '').split('\n')[0].slice(0, 200) || null,
+        media: { kind: 'youtube', videoId: v.id, url: `https://www.youtube.com/shorts/${v.id}` },
+        poster: [v.thumbnail_url, ...posterCandidates(v.id)].filter(Boolean),
+        durationSeconds: v.duration_seconds || 0,
+        publishedAt: v.published_at,
+        links: { youtube: `https://www.youtube.com/shorts/${v.id}` },
+        entities: { players, opponent, themes },
+        contentType: ct,
+        shelfLife: labelOf[v.id] || null,
+        flags: { vertical: true, hasCaptions: false, views: v.lifetime_views || 0 },
+      })];
+    });
+  },
+};
