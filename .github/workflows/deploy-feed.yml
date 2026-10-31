@@ -41,6 +41,7 @@ jobs:
           node-version: 22
       - run: node test/verify-catalogue.mjs
       - run: node test/verify-worker.mjs
+      - run: node test/verify-rank.mjs
       - run: node --check workers/feed/src/app.js
       - name: Bundle without deploying
         working-directory: workers/feed

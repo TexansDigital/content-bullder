@@ -137,10 +137,10 @@ it competes with what you composed. Override with Show or Hide.
 
 ## Verification
 
-Eleven suites under [`test/`](test/), each reproducing a specific reported failure so a
-regression names the thing that broke. Two run in plain Node with no server and no network
-(`verify-catalogue.mjs`, `verify-worker.mjs`); the rest drive a headless browser against a
-server on 4400.
+Thirteen suites under [`test/`](test/), each reproducing a specific reported failure so a
+regression names the thing that broke. Three run in plain Node with no server and no network
+(`verify-catalogue.mjs`, `verify-worker.mjs`, `verify-rank.mjs`); the rest drive a headless
+browser against a server on 4400.
 
 ```sh
 npm --prefix /tmp i playwright@1.48.0
