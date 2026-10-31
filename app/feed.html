@@ -138,6 +138,42 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
   .top{top:calc(74px + env(safe-area-inset-top,0px))}
   .nav{display:none}
 }
+/* Tap to play. A YouTube card is a poster until tapped; then YouTube's own player takes the
+   frame, unobscured, with our bar above it. That is what its terms require, and it is the
+   difference between a slideshow and a feed that plays. */
+.play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;width:72px;height:72px;
+ border:0;background:rgba(2,17,24,.72);color:#fff;display:flex;align-items:center;justify-content:center;
+ cursor:pointer;box-shadow:0 0 0 1px rgba(255,255,255,.25)}
+.play svg{width:30px;height:30px;margin-left:3px}
+.play:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.slide>img[data-play]{cursor:pointer}
+/* In-feed playback. The active YouTube card mounts YouTube's player in the area between the
+   progress strip and a slim band of ours at the bottom. Nothing of ours sits over the video;
+   the band carries the headline and the controls. The poster stays underneath until the
+   player reports it is playing, so there is never a black frame. */
+.slide.yt>iframe.yt{position:absolute;left:0;right:0;top:26px;bottom:60px;width:100%;height:auto;border:0;
+ background:#000;opacity:0;transition:opacity .3s var(--ease);z-index:2}
+.slide.yt.yt-playing>iframe.yt{opacity:1}
+.slide.yt.yt-playing>.play,.slide.yt.yt-playing>.top{display:none}
+.slide.yt>.sb,.slide.yt>.bot,.slide.yt>.rail{display:none}
+.slide.yt>.band{position:absolute;left:0;right:0;bottom:0;height:60px;z-index:6;display:flex;align-items:center;
+ gap:2px;padding:0 4px 0 12px;background:var(--steel,#021118);border-top:1px solid rgba(255,255,255,.12)}
+.band b{flex:1;min-width:0;font:700 12px/1.2 var(--sans);text-transform:uppercase;letter-spacing:.04em;color:#fff;
+ overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding-right:6px}
+.band .rb{flex:none;min-width:40px;min-height:44px;padding:4px}
+.band .rb span{display:none}
+.band .rb svg{width:20px;height:20px}
+#player{position:fixed;inset:0;z-index:40;background:#021118;display:flex;flex-direction:column}
+#player[hidden]{display:none}
+#player .pbar{display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top,0px)) 8px 8px 12px;
+ color:#fff;border-bottom:1px solid rgba(255,255,255,.14);min-height:48px}
+#player .pbar b{flex:1;font-weight:500;font-size:12px;line-height:1.25;letter-spacing:.02em;text-transform:uppercase;
+ overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#player .pclose{flex:none;width:44px;height:44px;border:0;background:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+#player .pclose svg{width:22px;height:22px}
+#player .pclose:focus-visible{outline:2px solid #fff;outline-offset:-4px}
+#player .pframe{flex:1;min-height:0;background:#000}
+#player .pframe iframe{display:block;width:100%;height:100%;border:0}
 </style></head><body>
 <div class="wrap">
   <div class="bar" id="bar" role="group" aria-label="Collections"></div>
@@ -163,6 +199,9 @@ const IC = {
   out:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v6H4V6h6"/></svg>',
   muted:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l4 6M21 9l-4 6"/></svg>',
   sound:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 8a5 5 0 0 1 0 8"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l13 8-13 8z"/></svg>',
+  close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M5 5l14 14M19 5L5 19"/></svg>',
+  expand:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
 };
 const likes = {
   read(){ try { return JSON.parse(localStorage.getItem('txfeed.likes') || '{}'); } catch { return {}; } },
@@ -420,6 +459,7 @@ function cardClosed(slide, c, i, complete) {
 let soundOn = false;
 function applySound() {
   document.querySelectorAll('#feed video').forEach((v) => (v.muted = !soundOn));
+  document.querySelectorAll('#feed iframe.yt').forEach((f) => ytCmd(f, soundOn ? 'unMute' : 'mute'));
   document.querySelectorAll('.rb.sound').forEach((b) => {
     b.setAttribute('aria-pressed', soundOn);
     // The label was set once at render and stayed "Unmute" after unmuting.
@@ -427,6 +467,152 @@ function applySound() {
     b.innerHTML = (soundOn ? IC.sound : IC.muted) + `<span>${soundOn ? 'Sound' : 'Muted'}</span>`;
   });
 }
+
+/* ---------- tap to play ----------------------------------------------------------
+ * YouTube's terms allow its video only in its own player, unobscured. So a YouTube card is a
+ * poster in the feed, and a tap hands the frame to that player with our bar above it, never
+ * over it. The IFrame API is used for exactly one thing: knowing when the video ended, so the
+ * feed can move on by itself. Closing early is a signal too; both are kept.
+ */
+const player = { slide: null, card: null, idx: 0, openedAt: 0 };
+const YT_ORIGIN = /^https:\/\/www\.youtube(-nocookie)?\.com$/;
+const YT_ID = /^[A-Za-z0-9_-]{6,20}$/;
+/** If YouTube has not started within this long, the card behaves like a story again. */
+const YT_START_MS = 8000;
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** The IFrame API over postMessage: ask for events, send a command. */
+const ytListen = (f) => { try { f.contentWindow.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*'); } catch {} };
+const ytCmd = (f, func, args = []) => { try { f.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args }), '*'); } catch {} };
+
+/** Move on from a card: the next one, or on the last card flush its completion. */
+function advanceFrom(slide) {
+  slide._done = true;
+  const feed = $('#feed');
+  const i = Number(slide.dataset.index) || 0;
+  if (slide.nextElementSibling) feed.scrollBy({ top: feed.clientHeight, behavior: 'smooth' });
+  else if (cardOf(slide)) cardClosed(slide, cardOf(slide), i, true);
+}
+
+/** The story clock: fill the segment over `hold` seconds, then advance. */
+function armHold(slide) {
+  const fill = $('#segs .fill');
+  const hold = Number(slide.dataset.hold) || 6;
+  if (fill) {
+    fill.style.transition = 'none'; fill.style.width = '0%';
+    requestAnimationFrame(() => { fill.style.transition = `width ${hold}s linear`; fill.style.width = '100%'; });
+  }
+  clearTimeout(slide._t);
+  slide._t = setTimeout(() => advanceFrom(slide), hold * 1000);
+}
+
+/* In-feed: the active YouTube card gets YouTube's player, muted until the fan asks for sound,
+ * in the region above our band. The poster stays until the player says it is playing. If it
+ * never does (offline, blocked, not embeddable) the card falls back to the story hold. */
+function mountYt(slide, c) {
+  const id = String(c?.media?.videoId || '');
+  if (!YT_ID.test(id) || slide._yt) return;
+  const q = new URLSearchParams({ autoplay: '1', mute: '1', controls: '0', playsinline: '1', rel: '0',
+    modestbranding: '1', enablejsapi: '1', origin: location.origin });
+  const f = document.createElement('iframe');
+  f.className = 'yt';
+  f.src = `https://www.youtube-nocookie.com/embed/${id}?${q}`;
+  f.title = c.headline;
+  f.allow = 'autoplay; encrypted-media';
+  f.tabIndex = -1;
+  f.addEventListener('load', () => ytListen(f));
+  slide.appendChild(f);
+  slide._yt = { f, started: false, auto: slide.dataset.advance !== 'manual' };
+  slide._ytFallback = setTimeout(() => {
+    if (slide._yt && !slide._yt.started) { unmountYt(slide); armHold(slide); }
+  }, YT_START_MS);
+}
+function unmountYt(slide) {
+  clearTimeout(slide._ytFallback); slide._ytFallback = null;
+  slide._yt?.f.remove();
+  slide._yt = null;
+  slide.classList.remove('yt-playing');
+}
+
+/* Expanded: the same player takes the whole frame with our bar above it. Reached from the band's
+ * expand button, or from the poster when autoplay is off (reduced motion) or has not started. */
+function openPlayer(slide, c, i) {
+  const id = String(c.media?.videoId || '');
+  if (!YT_ID.test(id)) return;
+  if (player.slide) closePlayer(false);
+  unmountYt(slide);
+  if (slide._t) { clearTimeout(slide._t); slide._t = null; }
+  const fill = $('#segs .fill');
+  if (fill) { fill.style.transition = 'none'; fill.style.width = '100%'; }
+  const q = new URLSearchParams({ autoplay: '1', playsinline: '1', rel: '0', modestbranding: '1',
+    enablejsapi: '1', origin: location.origin });
+  const f = document.createElement('iframe');
+  f.src = `https://www.youtube-nocookie.com/embed/${id}?${q}`;
+  f.title = c.headline;
+  f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+  f.setAttribute('allowfullscreen', '');
+  f.addEventListener('load', () => ytListen(f));
+  $('#player .pframe').replaceChildren(f);
+  $('#p-title').textContent = c.headline;
+  $('#player').hidden = false;
+  $('#feed').setAttribute('inert', '');
+  Object.assign(player, { slide, card: c, idx: i, openedAt: Date.now() });
+  track('card_play', cardParams(c, i));
+  $('#player .pclose').focus();
+}
+
+function closePlayer(ended) {
+  const el = $('#player');
+  if (el.hidden || !player.slide) return;
+  const secs = Math.round((Date.now() - player.openedAt) / 1000);
+  track(ended ? 'card_play_complete' : 'card_play_close', { ...cardParams(player.card, player.idx), play_seconds: secs, play_mode: 'expanded' });
+  $('#player .pframe').replaceChildren();
+  el.hidden = true;
+  $('#feed').removeAttribute('inert');
+  const { slide, card } = player;
+  player.slide = null; player.card = null;
+  // Either way the card has been engaged with: leaving it is a completion, not an exit.
+  slide._done = true;
+  if (ended) { advanceFrom(slide); return; }
+  slide.querySelector('.play')?.focus();
+  // Back in the feed on the same card: pick the inline player back up where it belongs.
+  if (!reducedMotion()) mountYt(slide, card);
+}
+
+addEventListener('message', (e) => {
+  if (!YT_ORIGIN.test(e.origin)) return;
+  let d;
+  try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch { return; }
+  if (!d || typeof d !== 'object') return;
+  // State arrives two ways: onStateChange with a number, or infoDelivery with playerState.
+  const state = d.event === 'onStateChange' ? d.info
+    : d.event === 'infoDelivery' && d.info && typeof d.info.playerState === 'number' ? d.info.playerState : null;
+  const modal = $('#player iframe');
+  if (modal && e.source === modal.contentWindow) {
+    if (state === 0) closePlayer(true);          // 0 is ENDED in the IFrame API's table
+    return;
+  }
+  const slide = [...document.querySelectorAll('.slide.yt')].find((s2) => s2._yt && s2._yt.f.contentWindow === e.source);
+  if (!slide) return;
+  const st = slide._yt;
+  const c = cardOf(slide);
+  const i = Number(slide.dataset.index) || 0;
+  if (d.event === 'onError') { unmountYt(slide); armHold(slide); return; }
+  if (state === 1 && !st.started) {             // PLAYING, first time
+    st.started = true;
+    clearTimeout(slide._ytFallback); slide._ytFallback = null;
+    slide.classList.add('yt-playing');
+    if (soundOn) ytCmd(st.f, 'unMute');
+    if (c) track('card_autoplay', cardParams(c, i));
+  }
+  if (state === 0 && st.started) {              // ENDED
+    if (c) track('card_play_complete', { ...cardParams(c, i), play_mode: 'inline' });
+    if (st.auto) advanceFrom(slide); else unmountYt(slide);
+  }
+});
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#player').hidden) closePlayer(false); });
+$('#player .pclose').innerHTML = IC.close;
+$('#player .pclose').onclick = () => closePlayer(false);
 
 /** Placeholder art when a source gives no poster — deterministic per id, on-brand. */
 function generated(id) {
@@ -502,6 +688,7 @@ function render() {
   // resolved against the NEW rows at the old index, so one card's view produced two
   // completions, the second attributed to whatever now sat in that position.
   io.disconnect();
+  if (player.slide) closePlayer(false);
   feed.querySelectorAll('.slide').forEach((s) => {
     clearTimeout(s._t); clearTimeout(s._seenTimer);
     s._t = null; s._seenAt = 0; s._done = false;
@@ -513,7 +700,7 @@ function render() {
     Publish items in the studio and they appear here.</p>`; return; }
   const name = (k) => (DATA.collections.find((c) => c.key === k) || {}).name || k;
 
-  feed.innerHTML = rows.map((c, i) => `<article class="slide" data-id="${esc(c.id)}"
+  feed.innerHTML = rows.map((c, i) => `<article class="slide${c.media?.kind === 'youtube' ? ' yt' : ''}" data-id="${esc(c.id)}"
     data-hold="${c.advance?.seconds || 6}" data-advance="${c.advance?.mode || 'auto'}"
     data-index="${i}" data-total="${rows.length}" role="article"
     ${c.clip?.playback ? `data-in="${esc(c.clip.start)}" data-out="${esc(c.clip.end)}"` : ''}
@@ -536,17 +723,26 @@ function render() {
       ${c.duration ? `<span class="dur">${esc(c.duration)}</span>` : ''}
     </div>
     ${chromeFor(c)}
+    ${c.media?.kind === 'youtube' && /^[A-Za-z0-9_-]{6,20}$/.test(c.media.videoId || '')
+      ? `<button class="play" type="button" aria-label="Play: ${esc(c.headline)}">${IC.play}</button>
+         <div class="band"><b>${esc(c.headline)}</b>
+           <button class="rb like" aria-pressed="${!!liked[c.id]}" aria-label="Like">${IC.like}<span>Like</span></button>
+           <button class="rb share" aria-label="Share">${IC.share}<span>Share</span></button>
+           <button class="rb sound" aria-pressed="${soundOn}" aria-label="${soundOn ? 'Mute' : 'Unmute'}">${soundOn ? IC.sound : IC.muted}<span>${soundOn ? 'Sound' : 'Muted'}</span></button>
+           <button class="rb expand" aria-label="Expand player">${IC.expand}<span>Full</span></button>
+           ${safeUrl(c.links?.youtube) ? `<a class="rb" href="${esc(c.links.youtube)}" target="_blank" rel="noopener" aria-label="Watch on YouTube">${IC.out}<span>Source</span></a>` : ''}
+         </div>` : ''}
     <p class="flash" hidden></p>
-    <div class="rail">
+    ${c.media?.kind === 'youtube' ? '' : `<div class="rail">
       <button class="rb like" aria-pressed="${!!liked[c.id]}" aria-label="Like">${IC.like}<span>Like</span></button>
       <button class="rb share" aria-label="Share">${IC.share}<span>Share</span></button>
-      <button class="rb sound" aria-pressed="${soundOn}"
+      ${c.media?.kind === 'youtube' ? '' : `<button class="rb sound" aria-pressed="${soundOn}"
         aria-label="${soundOn ? 'Mute' : 'Unmute'}">${soundOn ? IC.sound : IC.muted}<span>${
-        soundOn ? 'Sound' : 'Muted'}</span></button>
+        soundOn ? 'Sound' : 'Muted'}</span></button>`}
       ${safeUrl(Object.values(c.links || {})[0])
         ? `<a class="rb" href="${esc(Object.values(c.links)[0])}" target="_blank" rel="noopener"
              aria-label="Open original">${IC.out}<span>Source</span></a>` : ''}
-    </div></article>`).join('');
+    </div>`}</article>`).join('');
 
   feed.querySelectorAll('img[data-fallback]').forEach((img) => {
     let queue;
@@ -566,10 +762,20 @@ function render() {
       b.setAttribute('aria-pressed', on); liked[id] = on; likes.write(liked);
       track(on ? 'card_like' : 'card_unlike', cardParams(card, at));
     };
-    s.querySelector('.sound').onclick = () => {
+    const snd = s.querySelector('.sound');
+    if (snd) snd.onclick = () => {
       soundOn = !soundOn; applySound();
       track('sound_toggle', { ...cardParams(card, at), sound_on: soundOn });
     };
+    const play = s.querySelector('.play');
+    if (play) {
+      play.onclick = () => openPlayer(s, card, at);
+      const ex = s.querySelector('.expand');
+      if (ex) ex.onclick = () => openPlayer(s, card, at);
+      // The whole poster is the target too; the button is the affordance.
+      const img = s.querySelector(':scope > img');
+      if (img) { img.dataset.play = '1'; img.onclick = () => openPlayer(s, card, at); }
+    }
     s.querySelector('.cta')?.addEventListener('click', () =>
       track('card_action', { ...cardParams(card, at), action_label: card.action?.label || '' }));
     s.querySelectorAll('.ovl a').forEach((a) => a.addEventListener('click', () =>
@@ -662,19 +868,21 @@ const io = new IntersectionObserver((es) => es.forEach((e) => {
     if (cardOf(slide)) cardClosed(slide, cardOf(slide), idxOf, slide._done === true);
     slide._done = false;
     v?.pause();
+    unmountYt(slide);
     if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
     if (slide._t) { clearTimeout(slide._t); slide._t = null; }
     return;
   }
-  const auto = slide.dataset.advance !== 'manual'
-    && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const next = () => {
-    slide._done = true;
-    const feed = $('#feed');
-    if (slide.nextElementSibling) feed.scrollBy({ top: feed.clientHeight, behavior: 'smooth' });
-    // On the last card nothing scrolls, so the completion would never be flushed.
-    else if (cardOf(slide)) cardClosed(slide, cardOf(slide), idxOf, true);
-  };
+  const auto = slide.dataset.advance !== 'manual' && !reducedMotion();
+  const next = () => advanceFrom(slide);
+
+  if (slide.classList.contains('yt')) {
+    if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
+    // Reduced motion: a poster and a play button, nothing moves on its own.
+    if (reducedMotion()) return;
+    if (!player.slide) mountYt(slide, cardOf(slide));
+    return;
+  }
 
   if (v) {
     // A clip cut at playback time carries in/out rather than a trimmed file, so the player
@@ -708,18 +916,9 @@ const io = new IntersectionObserver((es) => es.forEach((e) => {
     if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; }
     return;
   }
-  if (!fill) return;
-
   // Filling the bar under reduced motion made all 20 cards look already-seen.
-  if (!auto) { fill.style.transition = 'none'; fill.style.width = '0%'; return; }
-
-  const hold = Number(slide.dataset.hold) || 6;
-  fill.style.transition = 'none'; fill.style.width = '0%';
-  requestAnimationFrame(() => {
-    fill.style.transition = `width ${hold}s linear`;
-    fill.style.width = '100%';
-  });
-  slide._t = setTimeout(next, hold * 1000);
+  if (!auto) { if (fill) { fill.style.transition = 'none'; fill.style.width = '0%'; } return; }
+  armHold(slide);
 }), { threshold: 0.6 });
 
 function chips() {
@@ -782,4 +981,9 @@ try {
   $('#feed').querySelector('.retry').onclick = () => location.reload();
   console.error('feed load failed:', e);
 }
-</script></body></html>
+</script>
+<div id="player" role="dialog" aria-modal="true" aria-label="Now playing" hidden>
+  <div class="pbar"><b id="p-title"></b><button class="pclose" type="button" aria-label="Back to the feed"></button></div>
+  <div class="pframe"></div>
+</div>
+</body></html>

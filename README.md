@@ -72,7 +72,7 @@ A card is not always a clip. The feed renders four kinds, and the studio treats 
 | --- | --- | --- |
 | `image` | A graphic — promo, sponsor slate, announcement | Holds for `holdSeconds`, fills the progress segment, then advances like a story |
 | `file` / `cloudinary` | Video we control | Plays and loops while on screen |
-| `youtube` | A YouTube video | Poster in the feed; playback goes to YouTube's player, as its terms require |
+| `youtube` | A YouTube video | Plays in the feed in YouTube's own player, mounted on the active card above a slim band of ours, muted until the fan asks for sound. Its terms allow its video only in that player, unobscured, so nothing of ours sits over it. Expand opens it full-frame; reduced motion gets a poster and a play button |
 | `link` | A page, no media | Poster plus an action button |
 
 Every card also carries **`entities`** — the players, opponent and themes it is about, as
