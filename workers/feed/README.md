@@ -15,10 +15,13 @@ Anything naming a player on `excluded_players` is dropped from both sources befo
 
 ## First deploy (Adam, once)
 
-From a terminal on the Mac, in this directory:
+From a terminal on the Mac. The clone lands in `~/Downloads/texans-feed` because a different
+folder already uses the repo's own name there:
 
 ```bash
-cd ~/Downloads/content-bullder/workers/feed
+cd ~/Downloads
+git clone -b claude/storyteller-social-widget-research-t8b3zp https://github.com/TexansDigital/content-bullder.git texans-feed
+cd texans-feed/workers/feed
 npx wrangler login
 npx wrangler deploy
 npx wrangler secret put SUPABASE_SERVICE_KEY
@@ -48,7 +51,7 @@ forms-on-pocket.
 Publish in the studio reaches feed.htow.nz when the studio is started with the service key:
 
 ```bash
-cd ~/Downloads/content-bullder
+cd ~/Downloads/texans-feed
 SUPABASE_SERVICE_KEY=eyJ... node server.mjs
 ```
 
@@ -67,6 +70,6 @@ locally. Table SQL is `sql/040-feed-items.sql`.
 ## Local check without deploying
 
 ```bash
-cd ~/Downloads/content-bullder/workers/feed
+cd ~/Downloads/texans-feed/workers/feed
 npx wrangler dev
 ```
