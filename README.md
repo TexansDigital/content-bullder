@@ -20,6 +20,27 @@ No install, no build step, Node 18+. Then:
 State lives in `content/store.json`. `STORE=/path/file.json node server.mjs` moves it;
 swapping in Postgres means replacing `load()`/`save()` in `server.mjs`.
 
+## Production
+
+The public feed is a Cloudflare Worker, **feed.htow.nz**, in [`workers/feed/`](workers/feed/).
+It bundles the same `app/feed.html` and reads cards from Supabase instead of the file store:
+studio-published cards from `feed_items` first, in editorial order, then the catalogue's
+Shorts, newest first. A card an editor publishes over a catalogue Short (same id) replaces it.
+Anything naming a player on `excluded_players` is dropped from both sources before serving.
+
+What fans do in the feed posts back to the serving origin in small batches (`/api/events`).
+The Worker writes those rows to `feed_events`; the local server appends them to
+`events.ndjson` beside the store. Nothing is posted for a visitor who declined measurement.
+
+To make Publish here go live there, start the studio with the service key:
+
+```bash
+SUPABASE_SERVICE_KEY=eyJ... node server.mjs
+```
+
+Deploy steps, secrets and what does not work yet (studio uploads have no public home) are in
+[`workers/feed/README.md`](workers/feed/README.md). Database objects are in [`sql/`](sql/).
+
 ## How it's put together
 
 ```
@@ -116,8 +137,10 @@ it competes with what you composed. Override with Show or Hide.
 
 ## Verification
 
-Eight browser-driven suites under [`test/`](test/), 184 assertions, each reproducing a specific
-reported failure so a regression names the thing that broke.
+Eleven suites under [`test/`](test/), each reproducing a specific reported failure so a
+regression names the thing that broke. Two run in plain Node with no server and no network
+(`verify-catalogue.mjs`, `verify-worker.mjs`); the rest drive a headless browser against a
+server on 4400.
 
 ```sh
 npm --prefix /tmp i playwright@1.48.0

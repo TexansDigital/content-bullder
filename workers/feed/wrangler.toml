@@ -1,0 +1,31 @@
+# txfeed: the public vertical feed at feed.htow.nz.
+#
+# The custom domain is NOT declared here, on purpose: add feed.htow.nz once in the dashboard
+# (Workers & Pages > txfeed > Settings > Domains & Routes) and wrangler leaves it alone on every
+# later deploy, so the deploy token needs no zone permissions. Same pattern as go.htow.nz.
+name = "txfeed"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# feed.html is imported as a string so one file serves both the local studio and production.
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
+
+[vars]
+SUPABASE_URL = "https://xisvulbabqsyxnlyuwcz.supabase.co"
+# Publishable key: built to ship in client code, limited by RLS to the catalogue tables.
+SUPABASE_KEY = "sb_publishable_9Tipf7u3W0i5I_GeJEkCgw_bdu8ZbGe"
+# Who may frame the feed. The feed is only ever meant to appear inside the club's own site.
+FRAME_ANCESTORS = "'self' https://www.houstontexans.com https://houstontexans.com"
+# GA4 is opt-in. Blank loads no Google script at all. ?ga= on the iframe src overrides per placement.
+GA_MEASUREMENT_ID = ""
+# How far back the catalogue reaches and how many Shorts it serves at most.
+CATALOGUE_MONTHS = "12"
+CATALOGUE_MAX = "300"
+
+# Secrets (set once with `npx wrangler secret put <NAME>` from this directory, never commit):
+#   SUPABASE_SERVICE_KEY   service_role key; the only credential that can write feed_events.
+#                          Without it the Worker still serves the feed and quietly drops events.

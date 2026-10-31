@@ -1,3 +1,6 @@
 content/uploads/
 content/store.json
 node_modules
+content/events.ndjson
+workers/feed/.wrangler/
+workers/feed/dist/

@@ -1,0 +1,72 @@
+# Deploy the public feed Worker (workers/feed, Cloudflare name "txfeed") when its source, the
+# feed page, or the shared content model changes on the default branch.
+#
+# Setup, once, in GitHub > Settings > Secrets and variables > Actions:
+#   CLOUDFLARE_API_TOKEN   token from the "Edit Cloudflare Workers" template, scoped to the
+#                          texansdigital account
+#   CLOUDFLARE_ACCOUNT_ID  from `npx wrangler whoami`
+#
+# The SUPABASE_SERVICE_KEY secret is set once with `npx wrangler secret put` from a terminal
+# and survives every deploy; the Action never sees it. The feed.htow.nz custom domain is
+# added once in the dashboard and is likewise untouched here.
+
+name: deploy-feed
+
+on:
+  push:
+    branches: [main, claude/storyteller-social-widget-research-t8b3zp]
+    paths:
+      - "workers/feed/**"
+      - "app/feed.html"
+      - "src/**"
+      - ".github/workflows/deploy-feed.yml"
+  pull_request:
+    paths:
+      - "workers/feed/**"
+      - "app/feed.html"
+      - "src/**"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-feed-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node test/verify-catalogue.mjs
+      - run: node test/verify-worker.mjs
+      - run: node --check workers/feed/src/app.js
+      - name: Bundle without deploying
+        working-directory: workers/feed
+        run: npx --yes wrangler@4 deploy --dry-run --outdir dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deploy txfeed
+        working-directory: workers/feed
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy
+      - name: Health check
+        run: |
+          set -e
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS https://feed.htow.nz/health && echo; then exit 0; fi
+            sleep 10
+          done
+          echo "feed.htow.nz did not answer /health" >&2
+          exit 1

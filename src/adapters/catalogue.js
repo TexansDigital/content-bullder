@@ -60,8 +60,10 @@ export default {
 
   async fetch({ months = 12, max = 300, contentType, onlyTagged = false } = {}, deps = {}) {
     const get = deps.fetch || globalThis.fetch;
-    const base = (process.env.SUPABASE_URL || URL_DEFAULT).replace(/\/$/, '');
-    const key = process.env.SUPABASE_KEY || KEY_DEFAULT;
+    // Node reads process.env; a Worker has no process and passes its bindings as deps.env.
+    const env = deps.env || (typeof process !== 'undefined' ? process.env : {});
+    const base = (env.SUPABASE_URL || URL_DEFAULT).replace(/\/$/, '');
+    const key = env.SUPABASE_KEY || KEY_DEFAULT;
     const rest = async (path) => {
       const r = await get(`${base}/rest/v1/${path}`, {
         headers: { apikey: key, authorization: `Bearer ${key}`, accept: 'application/json' },

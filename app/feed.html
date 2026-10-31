@@ -285,6 +285,7 @@ function emit(event, payload) {
   // are allowed to measure at all, and it carries nothing.
   if (!measuring && event !== 'hello') return;
   try { window.gtag?.('event', event, payload); } catch { /* never break the feed */ }
+  try { keep(event, payload); } catch { /* likewise */ }
   try {
     // Framed, this reaches the host page. Unframed, it reaches this page — so anyone
     // integrating can open /feed directly, listen for 'message', and watch the stream
@@ -293,6 +294,41 @@ function emit(event, payload) {
       .postMessage({ source: 'txfeed', event, params: payload }, '*');
   } catch { /* a cross-origin parent that refuses messages is not our problem */ }
 }
+
+/* ---------- what fans do, kept ------------------------------------------------
+ * Events also go back to the origin that served this feed, in small batches, when its
+ * /api/feed names an endpoint (DATA.analytics.events). Until DATA arrives they wait; an
+ * origin that names none means they are dropped. Nothing is ever sent anywhere the feed was
+ * not told to send it, and nothing is sent at all for a visitor who declined measurement,
+ * because emit() returns before keep() for them.
+ */
+let outbox = [];
+let outboxTimer = null;
+const eventsUrl = () => (typeof DATA?.analytics?.events === 'string' && DATA.analytics.events.startsWith('/'))
+  ? DATA.analytics.events : null;
+
+function keep(event, payload) {
+  if (event === 'hello') return;
+  outbox.push({ event, params: payload, at: new Date().toISOString() });
+  if (outbox.length >= 20) return postOutbox();
+  if (!outboxTimer) outboxTimer = setTimeout(postOutbox, 2000);
+}
+
+function postOutbox() {
+  clearTimeout(outboxTimer); outboxTimer = null;
+  if (!DATA.generatedAt) return;           // /api/feed has not answered yet; hold
+  const url = eventsUrl();
+  const batch = outbox; outbox = [];
+  if (!url || !batch.length) return;
+  const body = JSON.stringify({ events: batch });
+  try {
+    // text/plain keeps sendBeacon on the no-preflight path; the server parses JSON anyway.
+    if (navigator.sendBeacon?.(url, new Blob([body], { type: 'text/plain;charset=UTF-8' }))) return;
+  } catch { /* fall through to fetch */ }
+  fetch(url, { method: 'POST', body, keepalive: true,
+    headers: { 'content-type': 'text/plain;charset=UTF-8' } }).catch(() => {});
+}
+addEventListener('pagehide', postOutbox);
 
 function track(event, params = {}) {
   // Queue the raw params, not a finished payload: building it here froze the ids as they
@@ -712,6 +748,10 @@ try {
     const slide = $('#feed').querySelector(`.slide[data-index="${activeIdx}"]`);
     if (slide && cardOf(slide)) cardClosed(slide, cardOf(slide), activeIdx, slide._done === true);
   });
+  // Registered after the close handler above so the card_exit it emits is in this batch.
+  addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') postOutbox(); });
+  // Anything kept while /api/feed was in flight (identity, feed_load) goes now.
+  if (outbox.length && !outboxTimer) outboxTimer = setTimeout(postOutbox, 500);
 } catch (e) {
   // This renders on houstontexans.com. A CDN error page or a bad deploy used to surface
   // "DATA.collections is not iterable" to a fan, in grey on black, with no way out.

@@ -12,7 +12,7 @@
  * STORE=/path/to/file.json overrides it; swapping in Postgres means replacing load/save.
  */
 import { createServer } from 'node:http';
-import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rename, appendFile } from 'node:fs/promises';
 import { existsSync, statSync, createReadStream } from 'node:fs';
 import { extname, join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -83,7 +83,40 @@ async function saveRaw(state) {
   const tmp = `${STORE}.${process.pid}.tmp`;
   await writeFile(tmp, JSON.stringify(state, null, 2) + '\n');
   await rename(tmp, STORE);
+  // Not awaited: the editor's save must not wait on Supabase, and a mirror failure is
+  // logged, not surfaced as a failed save.
+  mirror(state).catch((e) => console.error('feed_items mirror:', e.message));
   return state;
+}
+
+/**
+ * Production serves cards from Supabase, not from this file. With SUPABASE_SERVICE_KEY set,
+ * every save upserts the whole store into feed_items and archives any row this store no
+ * longer holds, so Publish here is live at feed.htow.nz within the Worker's cache window.
+ * Without the key this is a no-op and the studio is purely local.
+ */
+const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://xisvulbabqsyxnlyuwcz.supabase.co').replace(/\/$/, '');
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+async function mirror(state) {
+  if (!SERVICE_KEY) return;
+  const headers = { apikey: SERVICE_KEY, authorization: `Bearer ${SERVICE_KEY}`,
+    'content-type': 'application/json', prefer: 'resolution=merge-duplicates,return=minimal' };
+  const now = new Date().toISOString();
+  const items = state.items || [];
+  if (items.length) {
+    const rows = items.map((i) => ({ id: i.id, status: i.status, collection: i.collection,
+      sort_index: i.sortIndex || 0, published_at: i.publishedAt || null, item: i, updated_at: now }));
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/feed_items?on_conflict=id`, { method: 'POST', headers, body: JSON.stringify(rows) });
+    if (!r.ok) throw new Error(`upsert ${r.status}`);
+  }
+  // Rows for cards deleted here must stop serving. in.() cannot be empty, so no items means
+  // archive everything still published.
+  const gone = items.length
+    ? `id=not.in.(${items.map((i) => `"${i.id}"`).join(',')})&status=eq.published`
+    : 'status=eq.published';
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/feed_items?${gone}`, { method: 'PATCH', headers,
+    body: JSON.stringify({ status: STATUS.ARCHIVED, updated_at: now }) });
+  if (!r.ok) throw new Error(`archive ${r.status}`);
 }
 
 /**
@@ -223,6 +256,22 @@ const server = createServer(async (req, res) => {
         'access-control-allow-methods': 'GET,OPTIONS',
         'access-control-allow-headers': 'content-type' });
       return res.end();
+    }
+
+    if (p === '/api/events' && req.method === 'POST') {
+      // Local sink for what the feed reports: one JSON line per event beside the store, so
+      // the stream can be read while building. It sits above the mutation gate because a
+      // beacon carries no studio token and never touches the store. Production writes
+      // feed_events in Supabase from the Worker instead.
+      const body = await readBody(req);
+      const list = (Array.isArray(body?.events) ? body.events : [body]).slice(0, 50)
+        .filter((e) => e && typeof e === 'object' && typeof e.event === 'string');
+      if (list.length) {
+        const received = new Date().toISOString();
+        await appendFile(join(dirname(STORE), 'events.ndjson'),
+          list.map((e) => JSON.stringify({ received, ...e })).join('\n') + '\n');
+      }
+      res.writeHead(204); return res.end();
     }
 
     if (req.method !== 'GET' && req.method !== 'HEAD' && !mutationAllowed(req))
@@ -369,7 +418,7 @@ const server = createServer(async (req, res) => {
       const only = url.searchParams.get('collection');
       return json(res, 200, {
         generatedAt: new Date().toISOString(),
-        analytics: { ga4: GA4 },
+        analytics: { ga4: GA4, events: '/api/events' },
         collections: liveCollections(items),
         clips: only ? live.filter((i) => i.collection === only) : live,
       }, { public: true });
@@ -516,6 +565,8 @@ server.listen(PORT, () => {
   console.log('\n  studio   /          pull, curate, publish');
   console.log('  feed     /feed      what goes in the iframe');
   console.log('  api      /api/feed  published items as JSON');
+  console.log('  events   /api/events  what the feed reports, appended to events.ndjson beside the store');
+  if (SERVICE_KEY) console.log('  mirror   every save upserts feed_items in Supabase');
   console.log(`\n  store    ${STORE}`);
   console.log(`${line}`);
   console.log('  Leave this window open — Ctrl-C stops the server.\n');
