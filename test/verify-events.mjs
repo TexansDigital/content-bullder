@@ -34,8 +34,10 @@ async function visit(url, { beforeLoad, wait = 3500 } = {}) {
   const pg = await ctx.newPage();
   const posts = [];
   const errs = [];
+  const feedReqs = [];
   pg.on('pageerror', (e) => errs.push(e.message));
   pg.on('request', (r) => {
+    if (r.method() === 'GET' && r.url().includes('/api/feed')) feedReqs.push(r.url());
     if (r.method() === 'POST' && r.url().endsWith('/api/events')) {
       try { posts.push(JSON.parse(r.postData() || '{}')); } catch { posts.push({ raw: r.postData() }); }
     }
@@ -49,7 +51,7 @@ async function visit(url, { beforeLoad, wait = 3500 } = {}) {
   if (beforeLoad) await pg.addInitScript(beforeLoad);
   await pg.goto(url, { waitUntil: 'networkidle' });
   await pg.waitForTimeout(wait);
-  return { pg, ctx, posts, errs, events: () => posts.flatMap((p) => p.events || []) };
+  return { pg, ctx, posts, errs, feedReqs, events: () => posts.flatMap((p) => p.events || []) };
 }
 
 /* ---------- a plain visit ---------- */
@@ -62,6 +64,8 @@ t('hello is never sent to the server', !ev1.some((e) => e.event === 'hello'));
 t('every event carries the device id', ev1.every((e) => /^[A-Za-z0-9._:-]{6,128}$/.test(e.params?.device_id || '')));
 t('every event is timestamped', ev1.every((e) => !Number.isNaN(Date.parse(e.at))));
 t('no page errors', v1.errs.length === 0);
+t('unframed, the feed is requested as the device so it can be ranked', v1.feedReqs.length === 1 && /\/api\/feed\?did=[A-Za-z0-9._:-]{6,}$/.test(v1.feedReqs[0]));
+t('feed_load says which order was served', ev1.find((e) => e.event === 'feed_load')?.params.feed_rank === 'shared');
 const beacons = await v1.pg.evaluate(() => window.__beacons);
 t('sendBeacon is tried first, with a text/plain body so it needs no preflight',
   beacons.length >= 1 && beacons.every((x) => x.u === '/api/events' && /^text\/plain/.test(x.type || '')));
@@ -86,6 +90,7 @@ const v2 = await visit(`${B}/feed?pid=sess_1792089626000_k3j9xq2ab`);
 const ev2 = v2.events();
 t('with ?pid= every event carries pocket_id', ev2.length > 0 && ev2.every((e) => e.params?.pocket_id === 'sess_1792089626000_k3j9xq2ab'));
 t('and identity_source says url', ev2.find((e) => e.event === 'identity')?.params.identity_source === 'url');
+t('with ?pid= the feed is requested as that pocket id', v2.feedReqs[0]?.endsWith('/api/feed?sid=sess_1792089626000_k3j9xq2ab'));
 await v2.ctx.close();
 
 /* ---------- a host that declines: nothing leaves ---------- */
@@ -100,10 +105,15 @@ const hostDeclines = `
 const ctx3 = await b.newContext({ viewport: { width: 430, height: 880 } });
 const pg3 = await ctx3.newPage();
 const posts3 = [];
-pg3.on('request', (r) => { if (r.method() === 'POST' && r.url().endsWith('/api/events')) posts3.push(r); });
+const feed3 = [];
+pg3.on('request', (r) => {
+  if (r.method() === 'POST' && r.url().endsWith('/api/events')) posts3.push(r);
+  if (r.method() === 'GET' && r.url().includes('/api/feed')) feed3.push(r.url());
+});
 await pg3.setContent(hostDeclines, { waitUntil: 'networkidle' });
 await pg3.waitForTimeout(3500);
 t('a declined-consent visitor produces no event post at all', posts3.length === 0);
+t('and their feed is requested anonymously, no id of any kind', feed3.length === 1 && feed3[0].endsWith('/api/feed'));
 await ctx3.close();
 
 /* ---------- the server side of the sink ---------- */

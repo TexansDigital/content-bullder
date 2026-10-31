@@ -3,7 +3,8 @@
  * ContentItem shape, same adapters — but no file store: cards come from Supabase.
  *
  *   GET  /  /feed        the embeddable feed (what goes in the iframe on houstontexans.com)
- *   GET  /api/feed       published cards as JSON: studio-curated first, then the catalogue
+ *   GET  /api/feed       published cards as JSON: studio-curated first, then the catalogue,
+ *                        reordered for the watcher when ?sid= or ?did= names a known profile
  *   POST /api/events     what fans do in the feed, written to feed_events
  *   GET  /health         liveness plus how much of each source is being served
  *
@@ -18,6 +19,7 @@
  */
 import { makeItem, feedSort, liveCollections, STATUS } from '../../../src/content.js';
 import catalogue, { excludedMatchers } from '../../../src/adapters/catalogue.js';
+import { rankFeed } from '../../../src/rank.js';
 
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
 const EVENT_NAME = /^[a-z][a-z0-9_]{0,39}$/;
@@ -96,33 +98,70 @@ export function createApp({ feedHtml, deps = {} } = {}) {
 
   const ga4 = (env) => (/^G-[A-Z0-9]{4,20}$/i.test(env.GA_MEASUREMENT_ID || '') ? env.GA_MEASUREMENT_ID : null);
 
+  /**
+   * The shared feed, built once per FEED_TTL_S and kept in the Cache API as JSON so every
+   * visitor's request, personalised or not, starts from the same cards.
+   */
+  async function shared(request, env, ctx) {
+    const cache = deps.cache === null ? null : (deps.cache || globalThis.caches?.default);
+    const key = new Request(new URL(`/__shared?m=${env.CATALOGUE_MONTHS || 12}&x=${env.CATALOGUE_MAX || 300}`, request.url).toString(), { method: 'GET' });
+    if (cache) {
+      const hit = await cache.match(key);
+      if (hit) return hit.json();
+    }
+    const built = await buildFeed(env);
+    if (cache && built.live.length) {
+      const put = cache.put(key, new Response(JSON.stringify(built), {
+        headers: { 'content-type': 'application/json', 'cache-control': `public, max-age=${FEED_TTL_S}` } }));
+      if (ctx?.waitUntil) ctx.waitUntil(put); else await put;
+    }
+    return built;
+  }
+
+  /**
+   * The watcher's profile, by pocket id or device id, read with the service key: profiles
+   * are never readable with the publishable key. Any failure is "no profile", never an error
+   * in the feed.
+   */
+  async function profileFor(env, who) {
+    if (!who || !env.SUPABASE_SERVICE_KEY || !ID_SHAPE.test(who)) return null;
+    try {
+      const rows = await rest(env,
+        `feed_profiles?select=entity_weights,content_type_weights,events&session_id=eq.${encodeURIComponent(who)}&limit=1`,
+        env.SUPABASE_SERVICE_KEY);
+      return Array.isArray(rows) && rows[0] ? rows[0] : null;
+    } catch (e) {
+      console.error('feed_profiles read', e?.message);
+      return null;
+    }
+  }
+
   async function apiFeed(request, env, ctx) {
     const url = new URL(request.url);
-    const cache = deps.cache === null ? null : (deps.cache || globalThis.caches?.default);
-    const cacheKey = new Request(url.toString(), { method: 'GET' });
-    if (cache) {
-      const hit = await cache.match(cacheKey);
-      if (hit) return hit;
-    }
-    const { live, counts, warnings } = await buildFeed(env);
+    const { live, counts, warnings } = await shared(request, env, ctx);
+    // Who is watching: the host's pocket id if the handshake answered, else the feed's own
+    // device id. Either ranks; neither is required.
+    const who = url.searchParams.get('sid') || url.searchParams.get('did') || '';
+    const profile = await profileFor(env, who);
+    const { items, ranked } = rankFeed(live, profile);
     const only = url.searchParams.get('collection');
     const body = JSON.stringify({
       generatedAt: now().toISOString(),
-      analytics: { ga4: ga4(env), events: env.SUPABASE_SERVICE_KEY ? '/api/events' : null },
-      collections: liveCollections(live),
-      clips: only ? live.filter((i) => i.collection === only) : live,
+      analytics: { ga4: ga4(env), events: env.SUPABASE_SERVICE_KEY ? '/api/events' : null, rank: ranked ? 'personal' : 'shared' },
+      collections: liveCollections(items),
+      clips: only ? items.filter((i) => i.collection === only) : items,
       counts,
       ...(warnings.length ? { warnings } : {}),
     });
-    const res = new Response(body, {
-      status: live.length ? 200 : 503,
+    return new Response(body, {
+      status: items.length ? 200 : 503,
       headers: jsonHeaders({
-        'cache-control': live.length ? `public, max-age=${FEED_TTL_S}` : 'no-store',
+        // A personalised answer is one person's; it must never be cached for the next.
+        'cache-control': !items.length ? 'no-store' : who ? 'private, no-store' : `public, max-age=${FEED_TTL_S}`,
         'access-control-allow-origin': '*',
+        'vary': 'Accept',
       }),
     });
-    if (cache && live.length) ctx?.waitUntil?.(cache.put(cacheKey, res.clone()));
-    return res;
   }
 
   /** One client event into one feed_events row. Returns null for anything malformed. */
@@ -196,7 +235,7 @@ export function createApp({ feedHtml, deps = {} } = {}) {
         if (method === 'GET' && p === '/api/feed') return apiFeed(request, env, ctx);
         if (method === 'POST' && p === '/api/events') return apiEvents(request, env, ctx);
         if (method === 'GET' && p === '/health') {
-          const { counts, warnings } = await buildFeed(env);
+          const { counts, warnings } = await shared(request, env, ctx);
           return new Response(JSON.stringify({ ok: counts.served > 0, worker: 'txfeed', counts, warnings,
             events: Boolean(env.SUPABASE_SERVICE_KEY), ga4: Boolean(ga4(env)) }),
             { status: counts.served > 0 ? 200 : 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });

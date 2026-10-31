@@ -21,6 +21,14 @@ const ITEMS = [
   { item: { id: 'promo-ban', source: 'manual', collection: 'players', headline: 'Deshaun Watson night', media: { kind: 'image', url: 'https://img.example/x.jpg' }, poster: ['https://img.example/x.jpg'], sortIndex: 3 } },
 ];
 const EXCLUDED = [{ name: 'Deshaun Watson' }, { name: 'Joe Mixon' }];
+const ENTS = [
+  { video_id: 'Tq3sz_Yf-Nk', entity_type: 'player', entity_slug: 'tank-dell', confidence: 1 },
+  { video_id: 'dwNx1tv_k24', entity_type: 'player', entity_slug: 'c-j-stroud', confidence: 1 },
+];
+const PROFILES = {
+  'sess_1792089626000_k3j9xq2ab': { events: 9, entity_weights: { 'player:tank-dell': 1 }, content_type_weights: {} },
+  'dev_thin00001': { events: 1, entity_weights: { 'player:tank-dell': 1 }, content_type_weights: {} },
+};
 
 const calls = [];
 const mock = (over = {}) => async (url, opts = {}) => {
@@ -32,7 +40,9 @@ const mock = (over = {}) => async (url, opts = {}) => {
   const body = table === 'videos' ? VIDEOS
     : table === 'feed_items' ? ITEMS
     : table === 'excluded_players' ? EXCLUDED
-    : (table === 'short_content_types' || table === 'short_labels' || table === 'feed_video_entities') ? []
+    : table === 'feed_video_entities' ? ENTS
+    : table === 'feed_profiles' ? (() => { const m = /session_id=eq\.([^&]+)/.exec(url); const w = m ? decodeURIComponent(m[1]) : ''; return PROFILES[w] ? [PROFILES[w]] : []; })()
+    : (table === 'short_content_types' || table === 'short_labels') ? []
     : null;
   if (body === null) return { ok: false, status: 404, json: async () => [] };
   return { ok: true, status: 200, json: async () => body };
@@ -99,15 +109,49 @@ t('a valid GA id is passed through', ga.analytics.ga4 === 'G-ABC123XYZ');
 const badGa = await (await app().fetch(req('/api/feed'), { GA_MEASUREMENT_ID: 'G-<script>' }, ctx)).json();
 t('a malformed GA id is dropped', badGa.analytics.ga4 === null);
 
+// ---- ranking ----
+// The shared feed here has three cards: promo-1 and the taken-over TORO card are editorial,
+// Tank is the only catalogue card. Add a second catalogue card so there is something to rank.
+const VIDEOS2 = [...VIDEOS, { id: 'zz2ndcatalog', title: 'Second catalogue card', description: '', published_at: '2026-10-21T18:00:00Z', duration_seconds: 20, thumbnail_url: null, lifetime_views: 1 }];
+const rankMock = (over = {}) => mock({ videos: async () => ({ ok: true, status: 200, json: async () => VIDEOS2 }), ...over });
+calls.length = 0;
+const plain = await (await app({ fetch: rankMock() }).fetch(req('/api/feed'), ENV, ctx)).json();
+t('with no id the shared order is served, newest catalogue card first', plain.analytics.rank === 'shared' && plain.clips.map((c) => c.id).slice(2).join(',') === 'yt-zz2ndcatalog,yt-Tq3sz_Yf-Nk');
+t('no id means feed_profiles is never asked', !calls.some((c) => /feed_profiles/.test(c.url)));
+calls.length = 0;
+const fanRes = await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx);
+const fan = await fanRes.json();
+t('a known pocket id gets a personal order', fan.analytics.rank === 'personal');
+t('the Tank fan sees the Tank card first in the catalogue tail', fan.clips.map((c) => c.id).slice(2).join(',') === 'yt-Tq3sz_Yf-Nk,yt-zz2ndcatalog');
+t('editorial cards stay on top regardless', fan.clips[0].id === 'promo-1' && fan.clips[1].id === 'yt-dwNx1tv_k24');
+t('a personal answer is never cacheable', /private, no-store/.test(fanRes.headers.get('cache-control')));
+const pr = calls.find((c) => /feed_profiles/.test(c.url));
+t('the profile is read with the service key, never the publishable one', pr && pr.opts.headers.apikey === 'service-secret');
+const thin = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?did=dev_thin00001'), ENV, ctx)).json();
+t('a one-event profile is too thin: shared order, honestly labelled', thin.analytics.rank === 'shared');
+const unknown = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_0000000000000_nobodyyet'), ENV, ctx)).json();
+t('an unknown id is simply shared', unknown.analytics.rank === 'shared' && unknown.clips.length === plain.clips.length);
+const junk = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=' + encodeURIComponent('x\' or 1=1')), ENV, ctx)).json();
+t('a malformed id never reaches Supabase', junk.analytics.rank === 'shared' && !calls.some((c) => /feed_profiles.*or%201/.test(c.url)));
+calls.length = 0;
+const noKeyFan = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), {}, ctx)).json();
+t('without the service key no profile is read and the order is shared', noKeyFan.analytics.rank === 'shared' && !calls.some((c) => /feed_profiles/.test(c.url)));
+const pdown = await (await app({ fetch: rankMock({ feed_profiles: async () => ({ ok: false, status: 500, json: async () => [] }) }) }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
+t('a failing profile read still serves the feed, shared', pdown.analytics.rank === 'shared' && pdown.clips.length === plain.clips.length);
+
 // ---- cache ----
 const store = new Map();
-const cache = { match: async (k) => store.get(k.url) || null, put: async (k, v) => { store.set(k.url, v); } };
+// Like the real Cache API, match() hands back a fresh copy each time, never the stored body.
+const cache = { match: async (k) => { const v = store.get(k.url); return v ? v.clone() : null; }, put: async (k, v) => { store.set(k.url, v); } };
 calls.length = 0;
 const a1 = app({ cache });
 await a1.fetch(req('/api/feed'), ENV, ctx); await Promise.all(waits.splice(0));
 const n1 = calls.length;
 await a1.fetch(req('/api/feed'), ENV, ctx);
 t('a second /api/feed within the window is served from cache with no Supabase calls', calls.length === n1 && store.size === 1);
+calls.length = 0;
+await a1.fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx);
+t('a personal request reuses the shared cache and only adds the profile read', calls.length === 1 && /feed_profiles/.test(calls[0].url) && store.size === 1);
 
 // ---- events ----
 calls.length = 0;

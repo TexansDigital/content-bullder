@@ -251,8 +251,20 @@ function mintDevice() {
  * — a host that never answers must not cost us the session.
  */
 const HANDSHAKE_MS = 1200;
+/**
+ * How long the first /api/feed request waits for the host to say who is watching, so the
+ * feed can be ordered for them from the first card. A Texans page answers in a few
+ * milliseconds; a host that never answers costs at most this.
+ */
+const RANK_WAIT_MS = 400;
 let identified = false;
 let pending = [];
+let onIdentified = null;
+const identityOrWait = (ms) => new Promise((done) => {
+  if (identified) return done();
+  const t = setTimeout(() => { onIdentified = null; done(); }, ms);
+  onIdentified = () => { clearTimeout(t); onIdentified = null; done(); };
+});
 
 function setPocketId(value, how) {
   if (identified) return;
@@ -272,6 +284,7 @@ const payloadFor = (params) => ({
 
 function flush(how) {
   identified = true;
+  onIdentified?.();
   const queued = pending;
   pending = [];
   // Identity first, so a consumer knows who the events that follow belong to. It goes
@@ -364,6 +377,7 @@ addEventListener('message', (e) => {
     measuring = false;
     pending = [];
     identified = true;
+    onIdentified?.();
     return;
   }
   if (d.pocketId == null) { flush('device'); return; }
@@ -738,10 +752,17 @@ try {
     setTimeout(() => { if (!identified) flush('device'); }, HANDSHAKE_MS);
   } else flush('device');
 
-  DATA = await (await fetch('/api/feed')).json();
+  // Ask for the feed as the person watching, so it can be ordered for them. The pocket id
+  // when the host has answered, the device id when measuring without one, nothing when the
+  // visitor declined. A slow host costs RANK_WAIT_MS at most, then the shared order is served.
+  await identityOrWait(RANK_WAIT_MS);
+  const who = pocketId ? `sid=${encodeURIComponent(pocketId)}`
+    : (measuring && mintDevice()) ? `did=${encodeURIComponent(deviceId)}` : '';
+  DATA = await (await fetch('/api/feed' + (who ? `?${who}` : ''))).json();
   loadGA(resolveGA());
   chips(); render(); applySound();
-  track('feed_load', { feed_cards: ROWS.length, feed_collections: DATA.collections.length });
+  track('feed_load', { feed_cards: ROWS.length, feed_collections: DATA.collections.length,
+    feed_rank: DATA.analytics?.rank || 'shared' });
   // A tab switch or a close ends the session without the observer ever firing again.
   addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'hidden') return;
