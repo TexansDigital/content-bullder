@@ -4,14 +4,17 @@ Project: `texans-youtube-dashboard` (`xisvulbabqsyxnlyuwcz`). Run in order in th
 
 | File | What it does | Status |
 |---|---|---|
-| `010-feed-fan-signal-tables.sql` | Creates `feed_entity_aliases`, `feed_video_entities`, `feed_events`, `feed_profiles`, RLS, and the `excluded_players` trigger | **not yet applied** (connector prompt timed out twice) |
-| `020-aliases-roster.sql` | 166 roster aliases, tiers 1 and 2 | waiting on 010 |
-| `030-aliases-former.sql` | former players, coach, GM. Full-name only | needs Adam's approval, then waiting on 010 |
+| `010-feed-fan-signal-tables.sql` | Creates `feed_entity_aliases`, `feed_video_entities`, `feed_events`, `feed_profiles`, RLS, and the `excluded_players` trigger | applied 31 Oct 2026 |
+| `020-aliases-roster.sql` | 166 roster aliases, tiers 1 and 2 | applied 31 Oct 2026 |
+| `030-aliases-former.sql` | former players, coach, GM. Full-name only | needs Adam's approval |
 
 Already applied as functions: `feed_rx_escape`, `feed_tag_videos(since)` (honours `excluded_players`),
 `feed_rollup_profiles(lookback)`, `feed_prune_events()`.
 
-After 010 and 020, the first tagging pass is:
+First tagging pass ran 31 Oct 2026 over 36 months: 1,871 of 2,401 Shorts tagged, 2,474 labels
+(1,007 player, 1,467 opponent from the schedule). Nightly pg_cron jobs at 08:10, 08:25 and
+08:40 UTC re-tag the last 14 months, roll up profiles, and prune events older than 90 days.
+To re-run by hand:
 
 ```sql
 select * from public.feed_tag_videos();
