@@ -6,7 +6,7 @@ Project: `texans-youtube-dashboard` (`xisvulbabqsyxnlyuwcz`). Run in order in th
 |---|---|---|
 | `010-feed-fan-signal-tables.sql` | Creates `feed_entity_aliases`, `feed_video_entities`, `feed_events`, `feed_profiles`, RLS, and the `excluded_players` trigger | applied 31 Oct 2026 |
 | `020-aliases-roster.sql` | 166 roster aliases, tiers 1 and 2 | applied 31 Oct 2026 |
-| `030-aliases-former.sql` | former players, coach, GM. Full-name only | needs Adam's approval |
+| `030-aliases-former.sql` | former players, coach, GM. Full-name only | applied 31 Oct 2026 |
 
 Already applied as functions: `feed_rx_escape`, `feed_tag_videos(since)` (honours `excluded_players`),
 `feed_rollup_profiles(lookback)`, `feed_prune_events()`.
