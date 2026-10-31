@@ -37,7 +37,7 @@ studio and the embed only ever see a `ContentItem`, never the source that produc
 | Adapter | Gives us | Limit |
 | --- | --- | --- |
 | `upload` | **A graphic or video we upload.** Promo cards, sponsor slates, event art | Clippable |
-| `catalogue` | **The curated Shorts catalogue in Supabase** — already typed, labelled evergreen or timely, and tagged with the players and opponent each is about | Reads only, with the publishable key under RLS. Prefer this over `youtube` |
+| `catalogue` | **The curated Shorts catalogue in Supabase** — already typed, labelled evergreen or timely, and tagged with the players and opponent each is about. Any Short naming a player on `excluded_players` is dropped before it reaches the feed | Reads only, with the publishable key under RLS. Prefer this over `youtube` |
 | `youtube` | Metadata for a whole channel, via the uploads playlist | Never the file; plays in YouTube's iframe |
 | `cloudinary` | Our own assets, at any aspect ratio | Clippable, and reframed to 9:16 |
 | `rss` | Article metadata, no credentials or quota | Metadata only |
