@@ -43,6 +43,11 @@ capture is `/enter`: the club's Eloqua form with the NFL privacy block, served w
 pseudonymous id, opened from a capture card the `capture_card` knob places. GA4 reports into
 the houstontexans.com property (`GA_MEASUREMENT_ID` in `wrangler.toml`).
 
+Placements: `?layout=rail` renders the feed as a row of tiles the width of the slot (the roster
+page), `?placement=` names the slot on every load, and `?focus=<player-slug>` on a player's page
+lifts that player's cards above everything, labelled with the name. Every load also says whether
+the device has been here before. Embed snippets and sizes: [`docs/roster-placement.md`](docs/roster-placement.md).
+
 To make Publish here go live there, start the studio with the service key:
 
 ```bash
@@ -148,11 +153,13 @@ it competes with what you composed. Override with Show or Hide.
 
 ## Verification
 
-Fourteen suites under [`test/`](test/), each reproducing a specific reported failure so a
+Fifteen suites under [`test/`](test/), each reproducing a specific reported failure so a
 regression names the thing that broke. Three run in plain Node with no server and no network
 (`verify-catalogue.mjs`, `verify-worker.mjs`, `verify-rank.mjs`); the rest drive a headless
 browser against a server on 4400. `verify-prefs.mjs` drives the picker, the reason pills, the
-knobs and the capture card against the local server's `prefs.json`.
+knobs and the capture card against the local server's `prefs.json`. `verify-rail.mjs` drives the
+roster layout: tiles, the open-at-that-card hand-off, a player page's focus, placement and
+returning-fan fields on every load.
 
 ```sh
 npm --prefix /tmp i playwright@1.48.0

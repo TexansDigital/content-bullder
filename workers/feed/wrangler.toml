@@ -22,6 +22,9 @@ SUPABASE_KEY = "sb_publishable_9Tipf7u3W0i5I_GeJEkCgw_bdu8ZbGe"
 FRAME_ANCESTORS = "'self' https://www.houstontexans.com https://houstontexans.com"
 # GA4 is opt-in. Blank loads no Google script at all. ?ga= on the iframe src overrides per placement.
 GA_MEASUREMENT_ID = "G-DFLYVN1338"
+# The Eloqua form the capture card posts to by default (the fan_preference_web form, 1 Nov 2026).
+# ?form= on /enter overrides it per card.
+ELOQUA_FORM_NAME = "fan_preference_web"
 # How far back the catalogue reaches and how many Shorts it serves at most.
 CATALOGUE_MONTHS = "12"
 CATALOGUE_MAX = "300"

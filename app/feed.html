@@ -202,10 +202,49 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .toast{position:fixed;left:16px;right:16px;top:calc(72px + env(safe-area-inset-top,0px));z-index:30;background:#0080C6;color:#fff;
   padding:12px 14px;border-radius:8px;font:700 13px/1.3 var(--sans);text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.4)}
 .toast[hidden]{display:none}
+/* ---- the rail layout: a row of tiles the width of the slot, for the roster and player pages.
+   A tile opens the feed itself, full-frame, at that card. The feed stays one DOM: the same
+   cards, the same observer, the same events; it is only hidden until a tile is tapped. */
+.tiles{display:none}
+.rail-mode .wrap{max-width:none;grid-template-rows:auto 1fr}
+.rail-mode .tiles{display:flex;gap:10px;min-height:0;overflow-x:auto;overflow-y:hidden;padding:0 16px 16px;
+  scroll-snap-type:x proximity;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.rail-mode .tiles::-webkit-scrollbar{display:none}
+.tile{flex:none;height:100%;aspect-ratio:9/16;position:relative;border:1px solid var(--line);padding:0;background:#000;
+  color:#fff;cursor:pointer;overflow:hidden;text-align:left;scroll-snap-align:start;font:inherit}
+.tile>img,.tile>.gen{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tile .tsb{position:absolute;inset:0;background:linear-gradient(0deg,rgba(2,17,24,.96) 8%,rgba(2,17,24,.35) 48%,transparent)}
+.tile .tb{position:absolute;left:10px;right:10px;bottom:10px;z-index:2}
+.tile .tb h3{font:900 14px/.95 var(--sans);text-transform:uppercase;letter-spacing:-.01em;margin:0;text-wrap:balance;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tile .tb p{margin:4px 0 0;font-size:11px;line-height:1.35;color:var(--body);display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden}
+.tile .tcoll{position:absolute;top:8px;left:8px;z-index:2;font:900 9px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;
+  background:var(--red);padding:4px 6px}
+.tile .tplay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(2,17,24,.72);
+  box-shadow:0 0 0 1px rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;z-index:2;pointer-events:none}
+.tile .tplay svg{width:18px;height:18px;margin-left:2px;fill:#fff}
+.tile.sys{background:#021018;border-color:#0080C6}
+.tile:hover{border-color:var(--red)}
+.tile:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.rail-mode .stage{display:none;position:fixed;inset:0;z-index:35;background:var(--steel);padding:0}
+.rail-mode .stage.open{display:flex}
+.rail-mode .stage .rclose{position:absolute;top:8px;right:8px;z-index:36;width:44px;height:44px;border:1px solid var(--line);
+  background:rgba(2,17,24,.8);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.rail-mode .stage .rclose svg{width:20px;height:20px}
+.rail-mode .stage .rclose:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.rclose{display:none}
+@media(max-width:600px){
+  .rail-mode .wrap{grid-template-rows:auto 1fr}
+  .rail-mode .bar{position:static;background:none;padding:12px 16px 10px}
+  .rail-mode .stage.open .phone{border:0;aspect-ratio:auto;width:100%;height:100%}
+  .rail-mode .stage .rclose{top:calc(8px + env(safe-area-inset-top,0px))}
+}
 </style></head><body>
 <div class="wrap">
   <div class="bar" id="bar" role="group" aria-label="Collections"></div>
-  <div class="stage"><div class="phone">
+  <div class="tiles" id="tiles" role="group" aria-label="Clips"></div>
+  <div class="stage" id="stage"><button class="rclose" id="rclose" type="button" aria-label="Back to the clips"></button><div class="phone">
     <div class="segs" id="segs" aria-hidden="true"></div>
     <p class="pos" id="pos" aria-live="polite"></p>
     <div class="nav">
@@ -236,6 +275,56 @@ const likes = {
   write(v){ try { localStorage.setItem('txfeed.likes', JSON.stringify(v)); } catch {} },
 };
 let DATA = { clips: [], collections: [] }, active = 'all', liked = likes.read();
+
+/* ---------- where this feed sits ---------------------------------------------
+ * One page, several placements. ?layout=rail renders a row of tiles the width of the slot
+ * (the roster) instead of the phone; ?placement= names the slot in every event so the same
+ * fan can be compared across surfaces; ?focus= is the player whose page this is, and the
+ * server lifts that player's cards above everything else for it. Each is matched, never
+ * trusted: an unknown value is simply dropped.
+ */
+const PAGE = (() => {
+  const q = new URLSearchParams(location.search);
+  const pick = (v, re) => (re.test(String(v ?? '')) ? String(v) : null);
+  return {
+    layout: q.get('layout') === 'rail' ? 'rail' : 'feed',
+    placement: pick(q.get('placement'), /^[a-z0-9_-]{1,40}$/),
+    focus: pick(q.get('focus'), /^[a-z0-9][a-z0-9-]{1,59}$/),
+  };
+})();
+if (PAGE.layout === 'rail') document.body.classList.add('rail-mode');
+/** /api/feed for the person watching, on the page they are on. */
+const feedUrl = (who) => {
+  const q = new URLSearchParams();
+  if (who) q.set(who.startsWith('sid=') ? 'sid' : 'did', who.slice(4));
+  if (PAGE.focus) q.set('focus', PAGE.focus);
+  const qs = q.toString();
+  return '/api/feed' + (qs ? `?${qs}` : '');
+};
+
+/* ---------- is this a returning fan? -------------------------------------------
+ * The id says who; this says how often. A visit is a load more than 30 minutes after the
+ * last one on this device. Kept beside the device id, under the same consent: a visitor who
+ * declined measurement gets no counter at all. Read once per load, as feed_load goes out.
+ */
+const VISIT_GAP_MS = 30 * 60e3;
+let VISIT = null;
+function visitParams() {
+  if (VISIT) return VISIT;
+  if (!measuring) return (VISIT = {});
+  try {
+    const k = 'txfeed.visits';
+    let v = {};
+    try { v = JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch { v = {}; }
+    const now = Date.now();
+    const last = Number(v.last) || 0, n = Number(v.n) || 0;
+    const fresh = !last || now - last >= VISIT_GAP_MS;
+    const visit_n = fresh ? n + 1 : Math.max(n, 1);
+    VISIT = { visit_n, returning: visit_n > 1, ...(visit_n > 1 && last ? { days_since: Math.round((now - last) / 864e5) } : {}) };
+    localStorage.setItem(k, JSON.stringify({ n: visit_n, last: now, first: Number(v.first) || now }));
+  } catch { VISIT = {}; }
+  return VISIT;
+}
 
 /* ---------- knobs ------------------------------------------------------------
  * The dials an experiment may turn, with their defaults. /api/feed hands back the values for
@@ -377,6 +466,9 @@ function emit(event, payload) {
   // `hello` is the one message that must go out regardless: it is how we learn whether we
   // are allowed to measure at all, and it carries nothing.
   if (!measuring && event !== 'hello') return;
+  // Stamped here, not when the params were built: by now the host has said whether we may
+  // measure at all, so a visitor who declined never gets a counter written.
+  if (event === 'feed_load') payload = { ...payload, ...visitParams() };
   try { window.gtag?.('event', event, payload); } catch { /* never break the feed */ }
   try { keep(event, payload); } catch { /* likewise */ }
   try {
@@ -786,7 +878,8 @@ function withSystemCards(base) {
 
 function pickerMarkup() {
   const pk = DATA.picker || {}, pr = DATA.prefs || {};
-  const picked = new Set(pr.players || []), wants = new Set(pr.wants || []);
+  // On a player's page the picker starts with that player pressed: the page is the first pick.
+  const picked = new Set(pr.players || (DATA.focus?.slug ? [DATA.focus.slug] : [])), wants = new Set(pr.wants || []);
   const boosted = new Set((pr.boosts || []).map((b) => b.key));
   const opt = (k, label, on, extra = '') => `<button class="opt" type="button" data-k="${esc(k)}" aria-pressed="${on}" ${extra}>${esc(label)}</button>`;
   return `<div class="pk">
@@ -830,13 +923,15 @@ function toast(m) {
 const loadParams = (why) => ({
   feed_cards: ROWS.length, feed_collections: DATA.collections.length, feed_rank: DATA.analytics?.rank || 'shared',
   has_prefs: Boolean(DATA.prefs), ...(why ? { feed_reload: why } : {}),
+  feed_layout: PAGE.layout, ...(PAGE.placement ? { feed_placement: PAGE.placement } : {}),
+  ...(DATA.focus?.slug ? { feed_focus: DATA.focus.slug } : {}),
   ...Object.fromEntries(Object.entries(DATA.experiments || {}).map(([k, v]) => [`exp_${k}`, String(v)])),
 });
 
 /** Fetch the feed again as the person watching, after their preferences changed. */
 async function reload(prefs, why) {
-  const who = pocketId ? `sid=${encodeURIComponent(pocketId)}` : (measuring && mintDevice()) ? `did=${encodeURIComponent(deviceId)}` : '';
-  DATA = await (await fetch('/api/feed' + (who ? `?${who}` : ''))).json();
+  const who = pocketId ? `sid=${pocketId}` : (measuring && mintDevice()) ? `did=${deviceId}` : '';
+  DATA = await (await fetch(feedUrl(who))).json();
   if (prefs && !DATA.prefs) DATA.prefs = prefs;
   knobs = { ...KNOB_DEFAULTS, ...(DATA.knobs || {}) };
   chips(); render(); $('#feed').scrollTop = 0;
@@ -1031,7 +1126,57 @@ function render() {
     if (j > 1) s.setAttribute('inert', '');
     io.observe(s);
   });
+  if (PAGE.layout === 'rail') renderTiles(rows, name);
 }
+
+/* ---------- the rail --------------------------------------------------------
+ * One tile per card, in the ranked order, with the reason on it. Tapping a tile opens the
+ * feed at that card; the feed's own observer then records the view at that position, so a
+ * rail session slices exactly like a feed session, plus rail_open and rail_close.
+ */
+function tileMarkup(c, i, name) {
+  const poster = c.system ? '' : safeUrl(c.media?.kind === 'image' ? c.media.url : (c.poster || [])[0]);
+  const blurb = c.system === 'picker' ? (DATA.prefs ? 'Change anything. The feed reorders on the spot.' : 'Three taps. Your feed, your reasons.')
+    : c.system === 'enter' ? String(c.extra?.blurb || '') : '';
+  return `<button class="tile${c.system ? ' sys' : ''}" type="button" data-index="${i}" data-id="${esc(c.id)}"
+    aria-label="${esc(c.headline)}">${poster ? `<img src="${esc(poster)}" alt="" loading="lazy">` : generated(c.id)}<div class="tsb"></div>
+    ${c.system ? '' : `<span class="tcoll">${esc(c.sponsor ? [c.sponsor.label, c.sponsor.name].filter(Boolean).join(' ') : name(c.collection))}</span>`}
+    ${c.media?.kind === 'youtube' || c.media?.kind === 'cloudinary' || c.media?.kind === 'file' ? `<span class="tplay">${IC.play}</span>` : ''}
+    <div class="tb">${whyFor(c)}<h3>${esc(c.headline)}</h3>${blurb ? `<p>${esc(blurb)}</p>` : ''}</div></button>`;
+}
+
+function renderTiles(rows, name) {
+  const el = $('#tiles');
+  closeRail(false);
+  el.innerHTML = rows.map((c, i) => tileMarkup(c, i, name)).join('');
+  el.querySelectorAll('.tile').forEach((t) => (t.onclick = () => openRail(Number(t.dataset.index) || 0)));
+  el.scrollLeft = 0;
+}
+
+function openRail(i) {
+  const stage = $('#stage'), feed = $('#feed');
+  stage.classList.add('open');
+  // Jump before the observer looks: reading clientHeight forces layout, so the first card
+  // the observer sees intersecting is the one that was tapped, not card one.
+  feed.scrollTop = i * feed.clientHeight;
+  const card = ROWS[i];
+  if (card) track('rail_open', cardParams(card, i));
+  $('#rclose').focus({ preventScroll: true });
+}
+
+function closeRail(report = true) {
+  const stage = $('#stage');
+  if (!stage.classList.contains('open')) return;
+  if (player.slide) closePlayer(false);
+  const card = ROWS[activeIdx];
+  stage.classList.remove('open');
+  if (report && card) track('rail_close', cardParams(card, activeIdx));
+  const t = $('#tiles').querySelector(`.tile[data-index="${activeIdx}"]`);
+  if (t) { t.scrollIntoView({ inline: 'nearest', block: 'nearest' }); t.focus({ preventScroll: true }); }
+}
+$('#rclose').innerHTML = IC.close;
+$('#rclose').onclick = () => closeRail();
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('#player').hidden && PAGE.layout === 'rail') closeRail(); });
 
 let activeIdx = 0;
 const MAX_SEGS = 8;
@@ -1186,9 +1331,8 @@ try {
   // when the host has answered, the device id when measuring without one, nothing when the
   // visitor declined. A slow host costs RANK_WAIT_MS at most, then the shared order is served.
   await identityOrWait(RANK_WAIT_MS);
-  const who = pocketId ? `sid=${encodeURIComponent(pocketId)}`
-    : (measuring && mintDevice()) ? `did=${encodeURIComponent(deviceId)}` : '';
-  DATA = await (await fetch('/api/feed' + (who ? `?${who}` : ''))).json();
+  const who = pocketId ? `sid=${pocketId}` : (measuring && mintDevice()) ? `did=${deviceId}` : '';
+  DATA = await (await fetch(feedUrl(who))).json();
   loadGA(resolveGA());
   knobs = { ...KNOB_DEFAULTS, ...(DATA.knobs || {}) };
   chips(); render(); applySound();

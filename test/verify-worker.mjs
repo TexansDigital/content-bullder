@@ -272,6 +272,18 @@ t('GET on the events route is 404, not a write', (await app().fetch(req('/api/ev
 const boom = await app({ fetch: async () => { throw new Error('network'); } }).fetch(req('/api/feed'), ENV, ctx);
 t('a total network failure is a 503 JSON, never a stack trace', boom.status === 503 && (await boom.json()).counts.served === 0);
 
+/* ---------- the page's player ---------- */
+const onPage = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?focus=tank-dell'), ENV, ctx)).json();
+t('a roster page names its player and that player leads the catalogue, labelled focused', onPage.analytics.rank === 'focused' && onPage.clips[2]?.id === 'yt-Tq3sz_Yf-Nk' && onPage.clips[2].why?.kind === 'focus' && onPage.clips[2].why.label === 'Tank Dell' && onPage.focus?.slug === 'tank-dell' && onPage.focus.name === 'Tank Dell');
+const noSuch = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?focus=nobody-here'), ENV, ctx)).json();
+t('a slug the dictionary does not know is dropped: shared order, no focus field', noSuch.analytics.rank === 'shared' && noSuch.focus === undefined);
+const banned = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?focus=joe-mixon'), ENV, ctx)).json();
+t('an excluded player can never be a focus', banned.analytics.rank === 'shared' && banned.focus === undefined);
+const badSlug = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?focus=' + encodeURIComponent('<img src=x>')), ENV, ctx)).json();
+t('a malformed focus is ignored', badSlug.analytics.rank === 'shared' && badSlug.focus === undefined);
+const pageFan = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_prefsfan1&focus=tank-dell'), ENV, ctx)).json();
+t('a fan with picks on another player\'s page: the page wins the order, the label stays personal', pageFan.analytics.rank === 'personal' && pageFan.clips[2]?.id === 'yt-Tq3sz_Yf-Nk' && pageFan.clips[2].why?.kind === 'focus' && pageFan.prefs?.players.join() === 'c-j-stroud');
+
 console.log('PASS ' + ok.length); ok.forEach((x) => console.log('  + ' + x));
 if (bad.length) { console.log('FAIL ' + bad.length); bad.forEach((x) => console.log('  - ' + x)); }
 process.exit(bad.length ? 1 : 0);

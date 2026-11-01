@@ -83,6 +83,17 @@ const lapsed = rankFeed(items, null, { now: NOW + 10 * 86400e3, prefs: makePrefs
 t('a lapsed boost does nothing', lapsed.ranked === true ? lapsed.items[2].id !== 'yt-old-timely' : true);
 t('an unknown boost key is ignored', explain(items[8], { prefs: makePrefs({ boosts: ['nothing'] }), offers, now: NOW }).why === null);
 
+/* ---------- the page's player ---------- */
+const onPage = rankFeed(items, null, { now: NOW, focus: 'will-anderson-jr', names });
+t('a player page ranks with no profile and no prefs: that player leads', onPage.ranked === true && onPage.focus === 'will-anderson-jr' && onPage.items[2].id === 'yt-anderson');
+t('the reason is the name, because the fan is on that page', onPage.items[2].why?.kind === 'focus' && onPage.items[2].why.label === 'Will Anderson Jr');
+const overPick = rankFeed(items, stroudFan, { now: NOW, focus: 'will-anderson-jr', prefs: makePrefs({ players: ['c-j-stroud'] }), names });
+t('the page outranks the fan\'s own pick and their history', overPick.items[2].id === 'yt-anderson' && overPick.items[2].why?.kind === 'focus');
+const untagged = rankFeed(items, null, { now: NOW, focus: 'nobody-here', names });
+t('a focus nobody tagged changes nothing', untagged.ranked === false && untagged.items === items && untagged.focus === undefined);
+const stroudPage = rankFeed(items, null, { now: NOW, focus: 'c-j-stroud', names }).items.map((i) => i.id);
+t('on a player\'s page their cards run back to back; the variety rule stands aside for them', stroudPage.slice(2, 5).every((id) => id.startsWith('yt-stroud')));
+
 /* ---------- experiments: deterministic arms, bounded knobs ---------- */
 const exp = { key: 'picker_pos', arms: { control: 1, early: 1 }, knobs: { early: { picker_position: 0, not_a_knob: 1 } }, traffic: 1 };
 const a1 = assignArm(exp, 'sess_1'); const a2 = assignArm(exp, 'sess_1');

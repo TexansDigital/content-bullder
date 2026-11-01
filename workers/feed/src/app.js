@@ -19,9 +19,11 @@
  */
 import { makeItem, feedSort, liveCollections, STATUS } from '../../../src/content.js';
 import catalogue, { excludedMatchers } from '../../../src/adapters/catalogue.js';
-import { rankFeed, makePrefs, resolveExperiments, displayName, LANES, MAX_PICKS } from '../../../src/rank.js';
+import { rankFeed, makePrefs, resolveExperiments, displayName, LANES, MAX_PICKS, MIN_EVENTS } from '../../../src/rank.js';
 
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
+/** A player slug as the dictionary spells it: the page the feed is framed on names one. */
+const SLUG = /^[a-z0-9][a-z0-9-]{1,59}$/;
 const FORM_NAME = /^[A-Za-z0-9_.-]{3,120}$/;
 const MAX_PREFS_BODY = 8 * 1024;
 /** How many players the picker offers. The most-tagged in the catalogue being served. */
@@ -221,15 +223,20 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
     // Who is watching: the host's pocket id if the handshake answered, else the feed's own
     // device id. Either ranks; neither is required.
     const who = url.searchParams.get('sid') || url.searchParams.get('did') || '';
+    // The player whose page this is, when the roster frames the feed. Only a name the
+    // dictionary knows counts, so an excluded or misspelled slug changes nothing.
+    const wanted = url.searchParams.get('focus') || '';
+    const focus = SLUG.test(wanted) && names[wanted] ? wanted : null;
     const [profile, prefRow] = await Promise.all([profileFor(env, who), prefsFor(env, who)]);
     const prefs = prefRow ? makePrefs(prefRow) : null;
-    const { items, ranked } = rankFeed(live, profile, { prefs, presets, offers, names, now: now().getTime() });
+    const { items, ranked, focus: focused } = rankFeed(live, profile, { prefs, presets, offers, names, focus, now: now().getTime() });
     const assigned = resolveExperiments(experiments, who);
     const only = url.searchParams.get('collection');
     const body = JSON.stringify({
       generatedAt: now().toISOString(),
       analytics: { ga4: ga4(env), events: env.SUPABASE_SERVICE_KEY ? '/api/events' : null,
-        rank: !ranked ? 'shared' : prefs?.explicit ? 'personal' : 'implicit' },
+        rank: !ranked ? 'shared' : prefs?.explicit ? 'personal' : profile && (Number(profile.events) || 0) >= MIN_EVENTS ? 'implicit' : 'focused' },
+      ...(focused ? { focus: { slug: focused, name: displayName(focused, names) } } : {}),
       collections: liveCollections(items),
       clips: only ? items.filter((i) => i.collection === only) : items,
       counts,

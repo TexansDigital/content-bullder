@@ -103,6 +103,9 @@ const lead = (item) => item.entities?.players?.[0] || null;
 export const PICK = 2.0;
 export const BOOST = 2.5;
 export const LANE = 0.8;
+/** The player whose page the feed is framed on. The page is the intent: it outranks a pick
+ *  plus the strongest history (2.0 + 2.1 + 0.35), so their cards lead on their own page. */
+export const FOCUS = 5.0;
 
 /** "c.j. stroud" → "C.J. Stroud"; falls back to the slug spelled out. */
 export function displayName(slug, names = {}) {
@@ -119,11 +122,16 @@ const short = (iso) => {
  * Score one card against everything known about the fan, and say which signal mattered
  * most. Returns { score, why } where why is { kind, key, label } or null.
  */
-export function explain(item, { profile, prefs, presets = {}, offers = {}, names = {}, now = Date.now() }) {
+export function explain(item, { profile, prefs, presets = {}, offers = {}, names = {}, focus = null, now = Date.now() }) {
   const reasons = [];
   const add = (score, kind, key, label) => { if (score > 0) reasons.push({ score, kind, key, label }); };
   const e = item.entities || {};
   const players = e.players || [];
+
+  // The page the feed sits on: a roster page for one player lifts that player's cards above
+  // everything, including the fan's own picks. The label is the name, because the fan is
+  // already on that page and knows why.
+  if (focus && players.includes(focus)) add(FOCUS, 'focus', focus, displayName(focus, names));
 
   // Implicit: the strongest single entity the fan has watched, plus the rest as a tail.
   if (profile) {
@@ -180,22 +188,25 @@ export function explain(item, { profile, prefs, presets = {}, offers = {}, names
 }
 
 /**
- * Returns { items, ranked }. `ranked` is false when nothing is known about the watcher (or
- * what is known is too thin), in which case `items` is the input untouched, so callers can
+ * Returns { items, ranked, focus }. `ranked` is false when nothing is known about the watcher
+ * (or what is known is too thin), in which case `items` is the input untouched, so callers can
  * report which order they served. When ranked, each reordered card that has a reason carries
- * it as `why: { kind, key, label }`.
+ * it as `why: { kind, key, label }`. `focus` is the player slug that applied, or null.
  */
-export function rankFeed(items, profile, { now = Date.now(), minEvents = MIN_EVENTS, prefs = null, presets = {}, offers = {}, names = {} } = {}) {
+export function rankFeed(items, profile, { now = Date.now(), minEvents = MIN_EVENTS, prefs = null, presets = {}, offers = {}, names = {}, focus = null } = {}) {
   if (!Array.isArray(items) || !items.length) return { items: items || [], ranked: false };
   const p = prefs && prefs.explicit !== undefined ? prefs : makePrefs(prefs);
   const implicit = profile && typeof profile === 'object' && (Number(profile.events) || 0) >= minEvents ? profile : null;
-  if (!implicit && !p?.explicit) return { items, ranked: false };
+  // A focus only counts when some card carries that player; otherwise it is a slug nobody
+  // tagged and the shared order stands.
+  const f = focus && items.some((i) => (i.entities?.players || []).includes(focus)) ? focus : null;
+  if (!implicit && !p?.explicit && !f) return { items, ranked: false };
   const fixed = items.filter((i) => (i.sortIndex ?? 0) < RANKABLE_FROM);
   const pool = items.filter((i) => (i.sortIndex ?? 0) >= RANKABLE_FROM);
   if (pool.length < 2) return { items, ranked: false };
 
   const scored = pool.map((i, n) => {
-    const { score, why } = explain(i, { profile: implicit, prefs: p, presets, offers, names, now });
+    const { score, why } = explain(i, { profile: implicit, prefs: p, presets, offers, names, focus: f, now });
     return { i: why ? { ...i, why } : i, n, score };
   });
   // Stable: ties keep the shared (newest-first) order.
@@ -209,13 +220,14 @@ export function rankFeed(items, profile, { now = Date.now(), minEvents = MIN_EVE
     const cur = rest.shift();
     const l = lead(cur);
     const n = out.length;
-    if (l && n >= 2 && lead(out[n - 1]) === l && lead(out[n - 2]) === l) {
+    // The focus player is exempt: on their own page, their cards run as long as they last.
+    if (l && l !== f && n >= 2 && lead(out[n - 1]) === l && lead(out[n - 2]) === l) {
       const k = rest.findIndex((x) => lead(x) !== l);
       if (k !== -1) { out.push(rest.splice(k, 1)[0]); rest.unshift(cur); continue; }
     }
     out.push(cur);
   }
-  return { items: [...fixed, ...out], ranked: true };
+  return { items: [...fixed, ...out], ranked: true, focus: f };
 }
 
 /* ---------- experiments ----------

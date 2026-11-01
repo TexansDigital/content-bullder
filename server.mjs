@@ -442,9 +442,12 @@ const server = createServer(async (req, res) => {
       const who = url.searchParams.get('sid') || url.searchParams.get('did') || '';
       const prefRow = who ? (await loadPrefs())[who] || null : null;
       const prefs = prefRow ? makePrefs(prefRow) : null;
-      const { items: live, ranked } = rankFeed(shared, null, { prefs, names: {} });
       const tally = {};
       for (const i of shared) for (const q of i.entities?.players || []) tally[q] = (tally[q] || 0) + 1;
+      // The player whose page frames the feed; only a tagged slug counts, as in the Worker.
+      const wanted = url.searchParams.get('focus') || '';
+      const focus = /^[a-z0-9][a-z0-9-]{1,59}$/.test(wanted) && tally[wanted] ? wanted : null;
+      const { items: live, ranked, focus: focused } = rankFeed(shared, null, { prefs, names: {}, focus });
       const picker = who ? {
         players: Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([slug, cards]) => ({ slug, name: displayName(slug), cards })),
         lanes: Object.entries(LANES).map(([key, l]) => ({ key, name: l.name })),
@@ -454,7 +457,8 @@ const server = createServer(async (req, res) => {
       try { if (process.env.FEED_KNOBS) knobs = { ...knobs, ...JSON.parse(process.env.FEED_KNOBS) }; } catch { /* a typo in the env is not a dark feed */ }
       return json(res, 200, {
         generatedAt: new Date().toISOString(),
-        analytics: { ga4: GA4, events: '/api/events', rank: ranked ? 'personal' : 'shared' },
+        analytics: { ga4: GA4, events: '/api/events', rank: !ranked ? 'shared' : prefs?.explicit ? 'personal' : 'focused' },
+        ...(focused ? { focus: { slug: focused, name: displayName(focused) } } : {}),
         collections: liveCollections(items),
         clips: only ? live.filter((i) => i.collection === only) : live,
         prefs: prefRow ? { ...prefRow } : null,

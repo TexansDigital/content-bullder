@@ -51,7 +51,7 @@ Explicit beats implicit. In `src/rank.js`: a picked player is worth 2.0 on a car
 1. **Email ↔ pocket id**, only through the Eloqua form (NFL privacy block, Adam's language). The hidden `pocket_id` field makes the join possible later; nothing else does.
 2. **Ticket intent as a declared field** (question above), joined to D1 clicks and purchases by session id.
 3. **Article engagement**, once article cards exist, to make "Watch or read?" pay off.
-4. **Which placement** a session came from (feed, roster, schedule), as a `feed_placement` param on `feed_load`, so the same fan's behaviour can be compared across surfaces.
+4. **Which placement** a session came from (feed, roster, player, schedule), as `feed_placement` on `feed_load`, plus `feed_layout`, `feed_focus` and the returning-fan fields `visit_n`, `returning`, `days_since`. **Live**; see [roster-placement.md](roster-placement.md).
 
 ## Privacy
 
