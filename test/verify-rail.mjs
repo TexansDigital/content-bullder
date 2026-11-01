@@ -113,6 +113,18 @@ const again = back.ev.filter((e) => e.event === 'feed_load').pop();
 t('a reload minutes later is the same visit, not a fifth', again.params.visit_n === 4);
 await back.ctx.close();
 
+/* ---------- posters that are not there ---------- */
+// A Short's largest YouTube poster is often missing; the tile walks the chain like the card does.
+await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: items[1].id, changes: { media: { kind: 'youtube', videoId: 'abcdefghijk', url: 'https://www.youtube.com/shorts/abcdefghijk' }, poster: ['https://a.example/missing.jpg', 'https://a.example/also-missing.jpg', 'https://a.example/ok.jpg'] } }) });
+const fb = await b.newContext({ viewport: { width: 1200, height: 560 } });
+const fbp = await fb.newPage();
+await fbp.route(/a\.example\//, (r) => (/missing/.test(r.request().url()) ? r.fulfill({ status: 404, body: '' }) : r.fulfill({ status: 200, contentType: 'image/png', body: PNG })));
+await fbp.goto(`${B}/feed?layout=rail&pid=sess_${RUN}_railposter`, { waitUntil: 'networkidle' }); await fbp.waitForTimeout(800);
+t('a tile whose first posters 404 ends on the one that exists', await fbp.evaluate((id) => document.querySelector(`#tiles .tile[data-id="${id}"] img`)?.src.endsWith('/ok.jpg'), items[1].id));
+t('a tile with no working poster keeps its ground, not a broken glyph', await fbp.evaluate(() => { const t = document.querySelector('#tiles .tile'); return t.querySelector('.gen') !== null; }));
+await fb.close();
+await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: items[1].id, changes: { media: { kind: 'image', url: 'https://a.example/2.jpg' }, poster: ['https://a.example/2.jpg'] } }) });
+
 /* ---------- the phone layout is untouched ---------- */
 const f = await open(`pid=sess_${RUN}_plain`, { viewport: { width: 390, height: 780 } });
 t('without the parameter the feed is the feed: phone layout, tiles hidden', !(await f.pg.evaluate(() => document.body.classList.contains('rail-mode'))) && await f.pg.locator('#tiles').isHidden() && await f.pg.locator('#feed').isVisible());

@@ -213,6 +213,7 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .tile{flex:none;height:100%;aspect-ratio:9/16;position:relative;border:1px solid var(--line);padding:0;background:#000;
   color:#fff;cursor:pointer;overflow:hidden;text-align:left;scroll-snap-align:start;font:inherit}
 .tile>img,.tile>.gen{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tile>img{z-index:1}
 .tile .tsb{position:absolute;inset:0;background:linear-gradient(0deg,rgba(2,17,24,.96) 8%,rgba(2,17,24,.35) 48%,transparent)}
 .tile .tb{position:absolute;left:10px;right:10px;bottom:10px;z-index:2}
 .tile .tb h3{font:900 14px/.95 var(--sans);text-transform:uppercase;letter-spacing:-.01em;margin:0;text-wrap:balance;
@@ -1135,11 +1136,14 @@ function render() {
  * rail session slices exactly like a feed session, plus rail_open and rail_close.
  */
 function tileMarkup(c, i, name) {
-  const poster = c.system ? '' : safeUrl(c.media?.kind === 'image' ? c.media.url : (c.poster || [])[0]);
+  // The same poster chain the card uses: YouTube's largest size is often missing for a Short,
+  // so the tile walks the list on error rather than showing a broken glyph.
+  const posters = c.system ? [] : (c.media?.kind === 'image' ? [c.media.url] : (c.poster || [])).map(safeUrl).filter(Boolean);
+  const poster = posters[0] || '';
   const blurb = c.system === 'picker' ? (DATA.prefs ? 'Change anything. The feed reorders on the spot.' : 'Three taps. Your feed, your reasons.')
     : c.system === 'enter' ? String(c.extra?.blurb || '') : '';
   return `<button class="tile${c.system ? ' sys' : ''}" type="button" data-index="${i}" data-id="${esc(c.id)}"
-    aria-label="${esc(c.headline)}">${poster ? `<img src="${esc(poster)}" alt="" loading="lazy">` : generated(c.id)}<div class="tsb"></div>
+    aria-label="${esc(c.headline)}">${poster ? `<img src="${esc(poster)}" alt="" loading="lazy" data-fallback="${esc(JSON.stringify(posters.slice(1)))}">` : generated(c.id)}${generated(c.id)}<div class="tsb"></div>
     ${c.system ? '' : `<span class="tcoll">${esc(c.sponsor ? [c.sponsor.label, c.sponsor.name].filter(Boolean).join(' ') : name(c.collection))}</span>`}
     ${c.media?.kind === 'youtube' || c.media?.kind === 'cloudinary' || c.media?.kind === 'file' ? `<span class="tplay">${IC.play}</span>` : ''}
     <div class="tb">${whyFor(c)}<h3>${esc(c.headline)}</h3>${blurb ? `<p>${esc(blurb)}</p>` : ''}</div></button>`;
@@ -1150,6 +1154,14 @@ function renderTiles(rows, name) {
   closeRail(false);
   el.innerHTML = rows.map((c, i) => tileMarkup(c, i, name)).join('');
   el.querySelectorAll('.tile').forEach((t) => (t.onclick = () => openRail(Number(t.dataset.index) || 0)));
+  el.querySelectorAll('img[data-fallback]').forEach((img) => {
+    let queue;
+    try { queue = JSON.parse(img.dataset.fallback); } catch { queue = []; }
+    img.onerror = () => {
+      const next = queue.shift();
+      if (next) img.src = next; else { img.onerror = null; img.remove(); }   // the ground shows through
+    };
+  });
   el.scrollLeft = 0;
 }
 
