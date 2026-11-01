@@ -32,6 +32,17 @@ What fans do in the feed posts back to the serving origin in small batches (`/ap
 The Worker writes those rows to `feed_events`; the local server appends them to
 `events.ndjson` beside the store. Nothing is posted for a visitor who declined measurement.
 
+What fans *tell* us goes to `/api/prefs` (`feed_preferences`): up to three players, the lanes
+they want more of, watch-or-read, a preset they follow (TORO's picks), time-boxed boosts. The
+picker card offers it on the third card; explicit picks outrank history from the first card and
+every card they move carries a reason pill. Design and rationale: [`docs/preference-layer.md`](docs/preference-layer.md).
+
+Experiments are rows in `feed_experiments`: arms assigned per visitor by hash, knobs applied
+to the page (`KNOB_DEFAULTS` in `src/rank.js`), the arm stamped on every `feed_load`. Data
+capture is `/enter`: the club's Eloqua form with the NFL privacy block, served with the fan's
+pseudonymous id, opened from a capture card the `capture_card` knob places. GA4 reports into
+the houstontexans.com property (`GA_MEASUREMENT_ID` in `wrangler.toml`).
+
 To make Publish here go live there, start the studio with the service key:
 
 ```bash
@@ -137,10 +148,11 @@ it competes with what you composed. Override with Show or Hide.
 
 ## Verification
 
-Thirteen suites under [`test/`](test/), each reproducing a specific reported failure so a
+Fourteen suites under [`test/`](test/), each reproducing a specific reported failure so a
 regression names the thing that broke. Three run in plain Node with no server and no network
 (`verify-catalogue.mjs`, `verify-worker.mjs`, `verify-rank.mjs`); the rest drive a headless
-browser against a server on 4400.
+browser against a server on 4400. `verify-prefs.mjs` drives the picker, the reason pills, the
+knobs and the capture card against the local server's `prefs.json`.
 
 ```sh
 npm --prefix /tmp i playwright@1.48.0

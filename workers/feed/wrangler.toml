@@ -21,7 +21,7 @@ SUPABASE_KEY = "sb_publishable_9Tipf7u3W0i5I_GeJEkCgw_bdu8ZbGe"
 # Who may frame the feed. The feed is only ever meant to appear inside the club's own site.
 FRAME_ANCESTORS = "'self' https://www.houstontexans.com https://houstontexans.com"
 # GA4 is opt-in. Blank loads no Google script at all. ?ga= on the iframe src overrides per placement.
-GA_MEASUREMENT_ID = ""
+GA_MEASUREMENT_ID = "G-DFLYVN1338"
 # How far back the catalogue reaches and how many Shorts it serves at most.
 CATALOGUE_MONTHS = "12"
 CATALOGUE_MAX = "300"

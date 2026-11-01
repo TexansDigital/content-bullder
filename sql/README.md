@@ -8,6 +8,7 @@ Project: `texans-youtube-dashboard` (`xisvulbabqsyxnlyuwcz`). Run in order in th
 | `020-aliases-roster.sql` | 166 roster aliases, tiers 1 and 2 | applied 31 Oct 2026 |
 | `030-aliases-former.sql` | former players, coach, GM. Full-name only | applied 31 Oct 2026 |
 | `040-feed-items.sql` | `feed_items`: studio-published cards mirrored for the public Worker. Anon reads published rows only | applied 31 Oct 2026 |
+| `060-feed-preferences-experiments.sql` | `feed_preferences` (what a fan picked, service key only), `feed_presets` (TORO's picks seeded), `feed_boost_offers` (time-boxed "more of X until date" offers), `feed_experiments` (knob arms assigned per visitor by hash). Public rows are only the active/running config | **run in the SQL editor** (connector prompt expired twice) |
 | `050-feed-rollup-counts.sql` | `feed_rollup_profiles` counts card events only and recomputes the count each run instead of adding to it (the first scheduled run had doubled every profile) | applied 1 Nov 2026 |
 
 Already applied as functions: `feed_rx_escape`, `feed_tag_videos(since)` (honours `excluded_players`),
@@ -26,3 +27,30 @@ select * from public.feed_tag_videos();
 Exclusion is enforced twice. The trigger stops an excluded name entering the dictionary.
 `feed_tag_videos` purges labels for any name added to `excluded_players` later and never
 writes new ones. To exclude someone, add a row to `excluded_players`. Nothing else to do.
+
+## The preference layer
+
+`feed_preferences` is written only by the Worker (`POST /api/prefs`) with the service key and
+read back on every `/api/feed?sid=`. Explicit picks outrank history: a picked player scores 2.0
+against a card, a live boost 2.5, a lane 0.8 (constants in `src/rank.js`). Every card an
+explicit signal moves carries a `why` the page shows as a pill.
+
+To offer a time-boxed boost ("Draft news until 24 Apr"), insert a row:
+
+```sql
+insert into public.feed_boost_offers (key, label, blurb, content_types, keywords, ends_at, created_by)
+values ('draft-2027', 'Draft news', 'Mocks, visits, picks', '{draft_roster}', '{draft,mock,prospect}', '2027-04-24 23:59-05', 'adam');
+```
+
+To run an experiment, insert a row with `status = 'running'`. Arms are `{arm: weight}`; knobs
+are `{arm: {knob: value}}` and only knobs named in `KNOB_DEFAULTS` (`src/rank.js`) take effect:
+`picker_position`, `picker_reoffer_days`, `reason_pills` (explicit | all | off), `sound_hint`,
+`capture_card` (`{position, headline, blurb, cta, form, campaign}`).
+
+```sql
+insert into public.feed_experiments (key, hypothesis, metric, arms, knobs, traffic, status, created_by)
+values ('picker_pos', 'Offering the picker on card 1 raises saves without hurting depth', 'prefs_save / feed_load',
+        '{"control": 1, "first": 1}', '{"first": {"picker_position": 0}}', 0.5, 'running', 'engagement-review');
+```
+
+Every `feed_load` event carries `exp_<key>: <arm>` so results can be sliced by arm.

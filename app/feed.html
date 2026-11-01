@@ -176,6 +176,32 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 #player .pclose:focus-visible{outline:2px solid #fff;outline-offset:-4px}
 #player .pframe{flex:1;min-height:0;background:#000}
 #player .pframe iframe{display:block;width:100%;height:100%;border:0}
+/* Reason pills: why this card is here, in the fan's words. */
+.why{display:block;font:600 10px/1.2 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:#4fb3ff;margin-bottom:3px}
+.bot .why{margin-bottom:6px}
+.chip.mine{border-color:#0080C6;color:#fff}
+/* System cards: the picker and data capture. */
+.slide.sys{background:#021018}
+.pk{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;gap:12px;overflow:auto;color:#fff;
+  padding:calc(72px + env(safe-area-inset-top,0px)) 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.pk h2{font:800 22px/1.1 var(--sans);text-transform:uppercase;letter-spacing:.02em;margin:0}
+.pk p{margin:0;font-size:13px;line-height:1.4;color:#cfd8de}
+.pk h3{font:700 11px/1.2 var(--sans);text-transform:uppercase;letter-spacing:.08em;color:#9fb4c2;margin:6px 0 0}
+.pk .opts{display:flex;flex-wrap:wrap;gap:8px}
+.pk .opt{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:#fff;border-radius:999px;padding:9px 14px;
+  font:600 13px/1 var(--sans);cursor:pointer;min-height:40px}
+.pk .opt[aria-pressed="true"]{background:#ED0028;border-color:#ED0028}
+.pk .acts{margin-top:auto;display:flex;gap:10px;align-items:center;padding-top:8px}
+.pk .save{flex:1;background:#ED0028;color:#fff;border:0;border-radius:6px;padding:14px;font:800 14px/1 var(--sans);
+  text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
+.pk .save:disabled{opacity:.5}
+.pk .skip{background:none;border:0;color:#9fb4c2;font:600 13px/1 var(--sans);padding:12px;cursor:pointer}
+.pk .note{font-size:11px;color:#7f93a0}
+.pk .offer{border:1px solid #0080C6;border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center}
+.pk .offer b{flex:1;font-size:13px;line-height:1.3}
+.toast{position:fixed;left:16px;right:16px;top:calc(72px + env(safe-area-inset-top,0px));z-index:30;background:#0080C6;color:#fff;
+  padding:12px 14px;border-radius:8px;font:700 13px/1.3 var(--sans);text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+.toast[hidden]{display:none}
 </style></head><body>
 <div class="wrap">
   <div class="bar" id="bar" role="group" aria-label="Collections"></div>
@@ -210,6 +236,19 @@ const likes = {
   write(v){ try { localStorage.setItem('txfeed.likes', JSON.stringify(v)); } catch {} },
 };
 let DATA = { clips: [], collections: [] }, active = 'all', liked = likes.read();
+
+/* ---------- knobs ------------------------------------------------------------
+ * The dials an experiment may turn, with their defaults. /api/feed hands back the values for
+ * this visitor's arms; anything it names that is not here is ignored. */
+const KNOB_DEFAULTS = { picker_position: 2, picker_reoffer_days: 7, reason_pills: 'explicit', sound_hint: false, capture_card: null };
+let knobs = { ...KNOB_DEFAULTS };
+let forcePicker = false;
+let soundHinted = false;
+const skipKey = 'txfeed.prefs.skip';
+const skippedRecently = () => {
+  try { const t = Number(localStorage.getItem(skipKey) || 0); return t > 0 && (Date.now() - t) < (Number(knobs.picker_reoffer_days) || 7) * 86400e3; }
+  catch { return false; }
+};
 
 /* ---------- analytics ----------------------------------------------------------
  * Two sinks, both optional, neither load-bearing. GA4 fires only when a measurement
@@ -424,6 +463,10 @@ addEventListener('message', (e) => {
   if (d.pocketId == null) { flush('device'); return; }
   setPocketId(d.pocketId, 'host-message');
 });
+// The /enter page (same origin, in the modal) says when its form was submitted.
+addEventListener('message', (e) => {
+  if (e.data?.source === 'txfeed-enter' && e.data.event === 'submit') track('capture_submit', { card_id: 'sys-enter' });
+});
 
 /** The card dimensions every event carries, so any one of them can be sliced alike. */
 const cardParams = (c, i) => ({
@@ -563,8 +606,29 @@ function openPlayer(slide, c, i) {
   $('#player .pclose').focus();
 }
 
+/** The same modal, holding a page of ours (the entry form) instead of YouTube's player. */
+function openFrame(url, title) {
+  if (player.slide) closePlayer(false);
+  const f = document.createElement('iframe');
+  f.src = url; f.title = title;
+  $('#player .pframe').replaceChildren(f);
+  $('#p-title').textContent = title;
+  $('#player').hidden = false;
+  $('#feed').setAttribute('inert', '');
+  player.frame = true;
+  $('#player .pclose').focus();
+}
+
 function closePlayer(ended) {
   const el = $('#player');
+  if (player.frame) {
+    player.frame = false;
+    $('#player .pframe').replaceChildren();
+    el.hidden = true;
+    $('#feed').removeAttribute('inert');
+    track('capture_close', { card_id: 'sys-enter' });
+    return;
+  }
   if (el.hidden || !player.slide) return;
   const secs = Math.round((Date.now() - player.openedAt) / 1000);
   track(ended ? 'card_play_complete' : 'card_play_close', { ...cardParams(player.card, player.idx), play_seconds: secs, play_mode: 'expanded' });
@@ -606,6 +670,7 @@ addEventListener('message', (e) => {
     slide.classList.add('yt-playing');
     if (soundOn) ytCmd(st.f, 'unMute');
     if (c) track('card_autoplay', cardParams(c, i));
+    if (knobs.sound_hint && !soundOn && !soundHinted) { soundHinted = true; flashOn(slide, 'Tap Muted for sound'); }
   }
   if (state === 0 && st.started) {              // ENDED
     if (c) track('card_play_complete', { ...cardParams(c, i), play_mode: 'inline' });
@@ -643,7 +708,7 @@ function chromeFor(c) {
   const show = c.chrome === 'on' || (c.chrome !== 'off' && !(c.overlays?.length));
   if (!show) return '';
   return `<div class="bot">
-      <h2>${esc(c.headline)}</h2>
+      ${whyFor(c)}<h2>${esc(c.headline)}</h2>
       ${c.caption ? `<p>${esc(c.caption)}</p>` : ''}
       ${c.action && safeUrl(c.action.url) ? `<a class="cta" href="${esc(c.action.url)}" target="_blank" rel="noopener">${esc(c.action.label)}</a>` : ''}
     </div>`;
@@ -682,8 +747,157 @@ function mediaFor(c) {
     : generated(c.id);
 }
 
+/* ---------- the preference layer, on the page -------------------------------
+ * Two cards the feed inserts itself. The picker is how a fan tells us what they want and
+ * sees the feed change for it on the spot, with a reason on every card it moved. The capture
+ * card opens the club's Eloqua form (with the NFL privacy block) at /enter, carrying this
+ * session's pseudonymous id so an entry can later be joined to what that fan watched. Both
+ * are plain objects in the ContentItem shape so every event about them slices like any card.
+ */
+const whoAmI = () => pocketId || (measuring ? mintDevice() : null);
+const fmtDay = (iso) => { const d = new Date(iso); return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''; };
+
+const whyFor = (c) => {
+  const w = c.why;
+  if (!w?.label || knobs.reason_pills === 'off') return '';
+  if (knobs.reason_pills !== 'all' && (w.kind === 'watch' || w.kind === 'affinity')) return '';
+  return `<small class="why">${esc(w.label)}</small>`;
+};
+const firstReason = () => ROWS.find((r) => r.why?.label && !r.system)?.why.label || '';
+
+const systemCard = (id, headline, system, extra = {}) => ({ id, source: 'system', status: 'published', collection: 'gameday', headline,
+  caption: null, media: { kind: 'none' }, poster: [], durationSeconds: 0, duration: '', publishedAt: null, action: null, sponsor: null,
+  clip: null, entities: { players: [], opponent: null, themes: [] }, overlays: [], chrome: 'off', advance: { mode: 'manual', seconds: 6 },
+  links: {}, flags: {}, sortIndex: 0, system, extra });
+
+function withSystemCards(base) {
+  const rows = [...base];
+  if (!rows.length || active !== 'all') return rows;
+  const pos = (n, len) => Math.max(0, Math.min(Number.isFinite(Number(n)) ? Number(n) : len, len));
+  // Nothing to pick means nothing to offer: a feed with no tagged players gets no picker.
+  const offer = DATA.picker?.players?.length && whoAmI() && (forcePicker || (!DATA.prefs && !skippedRecently() && Number(knobs.picker_position) >= 0));
+  if (offer) rows.splice(forcePicker ? 0 : pos(knobs.picker_position, rows.length), 0, systemCard('sys-picker', DATA.prefs ? 'Your feed' : 'Make it yours', 'picker'));
+  const cap = knobs.capture_card;
+  if (cap && typeof cap === 'object' && cap.form) {
+    rows.splice(pos(cap.position ?? 5, rows.length), 0, systemCard('sys-enter', String(cap.headline || 'Enter to win').slice(0, 80), 'enter', cap));
+  }
+  return rows;
+}
+
+function pickerMarkup() {
+  const pk = DATA.picker || {}, pr = DATA.prefs || {};
+  const picked = new Set(pr.players || []), wants = new Set(pr.wants || []);
+  const boosted = new Set((pr.boosts || []).map((b) => b.key));
+  const opt = (k, label, on, extra = '') => `<button class="opt" type="button" data-k="${esc(k)}" aria-pressed="${on}" ${extra}>${esc(label)}</button>`;
+  return `<div class="pk">
+    <h2>${DATA.prefs ? 'Your feed' : 'Make it yours'}</h2>
+    <p>${DATA.prefs ? 'Change anything. The feed reorders on the spot.' : 'Three taps. The feed reorders for you on the spot, and tells you why.'}</p>
+    <h3>Pick up to ${Number(pk.max_players) || 3} players</h3>
+    <div class="opts players">${(pk.players || []).map((p) => opt(p.slug, p.name, picked.has(p.slug))).join('')}</div>
+    <h3>More of</h3>
+    <div class="opts lanes">${(pk.lanes || []).map((l) => opt(l.key, l.name, wants.has(l.key))).join('')}</div>
+    <h3>Watch or read?</h3>
+    <div class="opts format">${[['video', 'Mostly video'], ['both', 'Mix in articles']].map(([k, n]) => opt(k, n, (pr.format || 'video') === k)).join('')}</div>
+    ${(pk.presets || []).length ? `<h3>Follow</h3><div class="opts follow">${pk.presets.map((p) => opt(p.slug, p.name, pr.follow === p.slug)).join('')}</div>` : ''}
+    ${(pk.offers || []).map((o) => `<div class="offer"><b>${esc(o.label)}${o.blurb ? ` · ${esc(o.blurb)}` : ''} · until ${esc(fmtDay(o.ends_at))}</b>${opt(o.key, boosted.has(o.key) ? 'On' : 'Yes', boosted.has(o.key))}</div>`).join('')}
+    <div class="acts"><button class="save" type="button">${DATA.prefs ? 'Update my feed' : 'Set my feed'}</button><button class="skip" type="button">${DATA.prefs ? 'Cancel' : 'Not now'}</button></div>
+    <p class="note">Saved to this Texans session, no account needed. Nothing personal is stored.</p>
+  </div><p class="flash" hidden></p>`;
+}
+
+function systemMarkup(c, i, total) {
+  const open = `<article class="slide sys" data-id="${esc(c.id)}" data-hold="6" data-advance="manual" data-index="${i}" data-total="${total}"
+    role="article" aria-posinset="${i + 1}" aria-setsize="${total}" aria-label="${esc(c.headline)}">${generated(c.id)}<div class="st"></div>`;
+  if (c.system === 'picker') return open + pickerMarkup() + '</article>';
+  const x = c.extra || {};
+  return open + `<div class="pk enter"><h2>${esc(c.headline)}</h2><p>${esc(x.blurb || '')}</p>
+    <div class="acts"><button class="save go" type="button">${esc(x.cta || 'Enter')}</button></div>
+    <p class="note">Opens the entry form. Your details go to the Houston Texans under their privacy policy.</p></div><p class="flash" hidden></p></article>`;
+}
+
+function flashOn(slide, m) {
+  const el = slide.querySelector('.flash');
+  if (!el) return;
+  el.textContent = m; el.hidden = false;
+  clearTimeout(el._t); el._t = setTimeout(() => (el.hidden = true), 2200);
+}
+function toast(m) {
+  const el = $('#toast');
+  el.textContent = m; el.hidden = false;
+  clearTimeout(el._t); el._t = setTimeout(() => (el.hidden = true), 3200);
+}
+
+const loadParams = (why) => ({
+  feed_cards: ROWS.length, feed_collections: DATA.collections.length, feed_rank: DATA.analytics?.rank || 'shared',
+  has_prefs: Boolean(DATA.prefs), ...(why ? { feed_reload: why } : {}),
+  ...Object.fromEntries(Object.entries(DATA.experiments || {}).map(([k, v]) => [`exp_${k}`, String(v)])),
+});
+
+/** Fetch the feed again as the person watching, after their preferences changed. */
+async function reload(prefs, why) {
+  const who = pocketId ? `sid=${encodeURIComponent(pocketId)}` : (measuring && mintDevice()) ? `did=${encodeURIComponent(deviceId)}` : '';
+  DATA = await (await fetch('/api/feed' + (who ? `?${who}` : ''))).json();
+  if (prefs && !DATA.prefs) DATA.prefs = prefs;
+  knobs = { ...KNOB_DEFAULTS, ...(DATA.knobs || {}) };
+  chips(); render(); $('#feed').scrollTop = 0;
+  track('feed_load', loadParams(why));
+}
+
+function wireSystem(s, card, at) {
+  if (card.system === 'enter') {
+    s.querySelector('.go').onclick = () => {
+      const x = card.extra || {};
+      const q = new URLSearchParams({ pid: whoAmI() || '', form: String(x.form || ''), cid: String(x.campaign || ''), card: card.id, title: card.headline });
+      openFrame(`/enter?${q}`, card.headline);
+      track('capture_open', cardParams(card, at));
+    };
+    return;
+  }
+  const pk = s.querySelector('.pk');
+  const max = Number(DATA.picker?.max_players) || 3;
+  const group = (name, limit) => pk.querySelectorAll(`.${name} .opt`).forEach((b) => (b.onclick = () => {
+    const on = b.getAttribute('aria-pressed') !== 'true';
+    if (limit === 1) pk.querySelectorAll(`.${name} .opt`).forEach((o) => o.setAttribute('aria-pressed', 'false'));
+    if (on && limit > 1 && pk.querySelectorAll(`.${name} .opt[aria-pressed="true"]`).length >= limit) { flashOn(s, `Up to ${limit} players`); return; }
+    b.setAttribute('aria-pressed', String(on || limit === 1));
+  }));
+  group('players', max); group('lanes', 99); group('format', 1); group('follow', 1);
+  pk.querySelectorAll('.offer .opt').forEach((b) => (b.onclick = () => {
+    const on = b.getAttribute('aria-pressed') !== 'true';
+    b.setAttribute('aria-pressed', String(on)); b.textContent = on ? 'On' : 'Yes';
+    track(on ? 'offer_accept' : 'offer_decline', { ...cardParams(card, at), offer_key: b.dataset.k });
+  }));
+  const picks = (name) => [...pk.querySelectorAll(`.${name} .opt[aria-pressed="true"]`)].map((b) => b.dataset.k);
+  const save = pk.querySelector('.save');
+  save.onclick = async () => {
+    const body = { players: picks('players'), wants: picks('lanes'), format: picks('format')[0] || null, follow: picks('follow')[0] || null,
+      boosts: picks('offer'), source: DATA.prefs ? 'edit' : 'picker',
+      ...(pocketId ? { pocket_id: pocketId } : {}), ...(mintDevice() ? { device_id: deviceId } : {}) };
+    save.disabled = true;
+    try {
+      const r = await fetch('/api/prefs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) throw new Error(String(r.status));
+      const res = await r.json();
+      track('prefs_save', { ...cardParams(card, at), players_n: body.players.length, wants_n: body.wants.length,
+        pref_format: body.format || '', pref_follow: body.follow || '', boosts_n: body.boosts.length });
+      forcePicker = false;
+      await reload(res.prefs, 'prefs');
+      const why = firstReason();
+      toast(why ? `Your feed is set. First up: ${why.toLowerCase()}.` : 'Your feed is set.');
+    } catch {
+      save.disabled = false;
+      flashOn(s, 'Could not save. Try again.');
+    }
+  };
+  pk.querySelector('.skip').onclick = () => {
+    track(DATA.prefs ? 'prefs_cancel' : 'prefs_skip', cardParams(card, at));
+    if (!DATA.prefs) { try { localStorage.setItem(skipKey, String(Date.now())); } catch {} }
+    forcePicker = false; render();
+  };
+}
+
 function render() {
-  const rows = active === 'all' ? DATA.clips : DATA.clips.filter((c) => c.collection === active);
+  const rows = withSystemCards(active === 'all' ? DATA.clips : DATA.clips.filter((c) => c.collection === active));
   const feed = $('#feed');
   // Replacing innerHTML detaches the slides but leaves their timers armed. An orphaned hold
   // timer then fired next(), found no sibling, and flushed a completion — which cardOf()
@@ -702,7 +916,7 @@ function render() {
     Publish items in the studio and they appear here.</p>`; return; }
   const name = (k) => (DATA.collections.find((c) => c.key === k) || {}).name || k;
 
-  feed.innerHTML = rows.map((c, i) => `<article class="slide${c.media?.kind === 'youtube' ? ' yt' : ''}" data-id="${esc(c.id)}"
+  feed.innerHTML = rows.map((c, i) => c.system ? systemMarkup(c, i, rows.length) : `<article class="slide${c.media?.kind === 'youtube' ? ' yt' : ''}" data-id="${esc(c.id)}"
     data-hold="${c.advance?.seconds || 6}" data-advance="${c.advance?.mode || 'auto'}"
     data-index="${i}" data-total="${rows.length}" role="article"
     ${c.clip?.playback ? `data-in="${esc(c.clip.start)}" data-out="${esc(c.clip.end)}"` : ''}
@@ -727,7 +941,7 @@ function render() {
     ${chromeFor(c)}
     ${c.media?.kind === 'youtube' && /^[A-Za-z0-9_-]{6,20}$/.test(c.media.videoId || '')
       ? `<button class="play" type="button" aria-label="Play: ${esc(c.headline)}">${IC.play}</button>
-         <div class="band"><b>${esc(c.headline)}</b>
+         <div class="band"><b>${whyFor(c)}${esc(c.headline)}</b>
            <button class="rb like" aria-pressed="${!!liked[c.id]}" aria-label="Like">${IC.like}<span>Like</span></button>
            <button class="rb share" aria-label="Share">${IC.share}<span>Share</span></button>
            <button class="rb sound" aria-pressed="${soundOn}" aria-label="${soundOn ? 'Mute' : 'Unmute'}">${soundOn ? IC.sound : IC.muted}<span>${soundOn ? 'Sound' : 'Muted'}</span></button>
@@ -759,6 +973,7 @@ function render() {
     const id = s.dataset.id;
     const at = Number(s.dataset.index) || 0;
     const card = rows[at];
+    if (card?.system) { wireSystem(s, card, at); return; }
     s.querySelector('.like').onclick = (e) => {
       const b = e.currentTarget, on = b.getAttribute('aria-pressed') !== 'true';
       b.setAttribute('aria-pressed', on); liked[id] = on; likes.write(liked);
@@ -932,9 +1147,16 @@ const io = new IntersectionObserver((es) => es.forEach((e) => {
 
 function chips() {
   const all = [{ key: 'all', name: 'All' }, ...DATA.collections];
-  $('#bar').innerHTML = all.map((c) =>
+  // A fan who has set their feed gets a way back to it: one chip, always first.
+  const mine = DATA.prefs && DATA.picker ? `<button class="chip mine" data-k="__mine" aria-pressed="false">Your feed ✎</button>` : '';
+  $('#bar').innerHTML = mine + all.map((c) =>
     `<button class="chip" aria-pressed="${c.key === active}" data-k="${esc(c.key)}">${esc(c.name)}</button>`).join('');
   $('#bar').querySelectorAll('.chip').forEach((b) => (b.onclick = () => {
+    if (b.dataset.k === '__mine') {
+      forcePicker = true; active = 'all'; chips(); render(); $('#feed').scrollTop = 0;
+      track('prefs_open', { feed_cards: ROWS.length });
+      return;
+    }
     active = b.dataset.k; chips(); render(); $('#feed').scrollTop = 0;
     track('collection_filter', { feed_cards: ROWS.length });
   }));
@@ -968,9 +1190,9 @@ try {
     : (measuring && mintDevice()) ? `did=${encodeURIComponent(deviceId)}` : '';
   DATA = await (await fetch('/api/feed' + (who ? `?${who}` : ''))).json();
   loadGA(resolveGA());
+  knobs = { ...KNOB_DEFAULTS, ...(DATA.knobs || {}) };
   chips(); render(); applySound();
-  track('feed_load', { feed_cards: ROWS.length, feed_collections: DATA.collections.length,
-    feed_rank: DATA.analytics?.rank || 'shared' });
+  track('feed_load', loadParams());
   // A tab switch or a close ends the session without the observer ever firing again.
   addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'hidden') return;
@@ -991,6 +1213,7 @@ try {
   console.error('feed load failed:', e);
 }
 </script>
+<p class="toast" id="toast" role="status" hidden></p>
 <div id="player" role="dialog" aria-modal="true" aria-label="Now playing" hidden>
   <div class="pbar"><b id="p-title"></b><button class="pclose" type="button" aria-label="Back to the feed"></button></div>
   <div class="pframe"></div>

@@ -2,7 +2,7 @@
  * Affinity ranking, pure. What a Stroud fan sees first, what an editor's order survives,
  * and when a thin profile is rightly ignored.
  */
-import { rankFeed, affinity, freshness, RANKABLE_FROM } from '../src/rank.js';
+import { rankFeed, affinity, freshness, RANKABLE_FROM, makePrefs, explain, displayName, assignArm, resolveExperiments, KNOB_DEFAULTS, LANES } from '../src/rank.js';
 
 const ok = [], bad = [];
 const t = (n, c) => (c ? ok : bad).push(n);
@@ -50,6 +50,53 @@ t('affinity of a card with no entities is zero', affinity(items[2], stroudFan) =
 t('freshness halves every 14 days', Math.abs(freshness({ publishedAt: day(14) }, NOW) - 0.5) < 1e-9 && freshness({ publishedAt: day(0) }, NOW) === 1);
 t('evergreen freshness is steady and unknown dates are low', freshness({ shelfLife: 'evergreen', publishedAt: day(900) }) === 0.6 && freshness({}) === 0.1);
 t('ties keep newest-first order', (() => { const z = rankFeed([cat('a', [], null, null, 3), cat('b', [], null, null, 1), cat('c', [], null, null, 2)], { events: 9 }, { now: NOW }); return z.items.map((i) => i.id).join('') === 'bca'; })());
+
+
+/* ---------- explicit preferences: the picker's half ---------- */
+const names = { 'c-j-stroud': 'c.j. stroud', 'will-anderson-jr': 'will anderson jr', 'tank-dell': 'tank dell' };
+t('display names: initials and capitals come out right', displayName('c-j-stroud', names) === 'C.J. Stroud' && displayName('will-anderson-jr', names) === 'Will Anderson Jr' && displayName('ka-imi-fairbairn', {}) === 'Ka Imi Fairbairn');
+
+const pr = makePrefs({ players: ['Will-Anderson-Jr', 'bogus slug!', 'c-j-stroud', 'tank-dell', 'nico-collins'], wants: ['fun', 'nope', 'fun'], format: 'read', follow: 'toro', boosts: ['draft-week', { key: 'bad key' }] });
+t('prefs are coerced: three players at most, known lanes only, duplicates dropped', pr.players.join(',') === 'will-anderson-jr,c-j-stroud,tank-dell' && pr.wants.join(',') === 'fun' && pr.format === 'read' && pr.follow === 'toro' && pr.boosts.length === 1 && pr.explicit === true);
+t('empty prefs are not explicit', makePrefs({}).explicit === false && makePrefs(null) === null && makePrefs('x') === null);
+
+const picked = rankFeed(items, null, { now: NOW, prefs: makePrefs({ players: ['will-anderson-jr'] }), names });
+t('a pick ranks with no profile at all', picked.ranked === true && picked.items[2].id === 'yt-anderson');
+t('and the moved card says why, in the fan\'s words', picked.items[2].why?.kind === 'pick' && picked.items[2].why.label === 'Because you picked Will Anderson Jr');
+t('cards the pick did not touch carry no reason', !picked.items.find((i) => i.id === 'yt-old-timely').why);
+
+const both = rankFeed(items, stroudFan, { now: NOW, prefs: makePrefs({ players: ['will-anderson-jr'] }), names });
+t('explicit beats implicit: the Anderson pick outranks the Stroud history', both.items[2].id === 'yt-anderson');
+t('implicit history still labels its own cards', both.items.find((i) => i.id === 'yt-stroud-1').why?.kind === 'watch' && /Because you watch C\.J\. Stroud/.test(both.items.find((i) => i.id === 'yt-stroud-1').why.label));
+
+const lane = rankFeed(items, null, { now: NOW, prefs: makePrefs({ wants: ['fun'] }), names });
+t('a lane lifts its content types and explains itself', lane.items[2].id === 'yt-new-toro' && lane.items[2].why?.kind === 'lane' && lane.items[2].why.label === 'More fun & toro, as you asked');
+
+const presets = { toro: { name: "TORO's picks", entity_weights: {}, content_type_weights: { mascot_skits: 1 } } };
+const follow = rankFeed(items, null, { now: NOW, prefs: makePrefs({ follow: 'toro' }), presets, names });
+t('following a preset ranks by its weights and names it', follow.items[2].id === 'yt-new-toro' && follow.items[2].why?.label === "TORO's picks");
+
+const offers = { 'draft-week': { label: 'Draft news', content_types: ['calendar'], keywords: ['draft'], ends_at: new Date(NOW + 3 * 86400e3).toISOString() } };
+const boosted = rankFeed(items, null, { now: NOW, prefs: makePrefs({ boosts: [{ key: 'draft-week', until: offers['draft-week'].ends_at }] }), offers, names });
+t('a live boost lifts an old card to the front and shows its end date', boosted.items[2].id === 'yt-old-timely' && /^Draft news · until/.test(boosted.items[2].why?.label || ''));
+const lapsed = rankFeed(items, null, { now: NOW + 10 * 86400e3, prefs: makePrefs({ boosts: [{ key: 'draft-week', until: offers['draft-week'].ends_at }] }), offers, names });
+t('a lapsed boost does nothing', lapsed.ranked === true ? lapsed.items[2].id !== 'yt-old-timely' : true);
+t('an unknown boost key is ignored', explain(items[8], { prefs: makePrefs({ boosts: ['nothing'] }), offers, now: NOW }).why === null);
+
+/* ---------- experiments: deterministic arms, bounded knobs ---------- */
+const exp = { key: 'picker_pos', arms: { control: 1, early: 1 }, knobs: { early: { picker_position: 0, not_a_knob: 1 } }, traffic: 1 };
+const a1 = assignArm(exp, 'sess_1'); const a2 = assignArm(exp, 'sess_1');
+t('the same visitor always lands in the same arm', a1 === a2 && ['control', 'early'].includes(a1));
+const spread = {}; for (let i = 0; i < 2000; i++) { const a = assignArm(exp, `dv-${i}`); spread[a] = (spread[a] || 0) + 1; }
+t(`two equal arms split roughly evenly (${spread.control}/${spread.early})`, Math.abs(spread.control - spread.early) < 200);
+const half = { ...exp, traffic: 0.5 }; let inExp = 0; for (let i = 0; i < 2000; i++) if (assignArm(half, `dv-${i}`)) inExp++;
+t(`traffic caps exposure (${inExp}/2000 at 50%)`, inExp > 850 && inExp < 1150);
+t('no visitor id means no arm', assignArm(exp, '') === null && assignArm(exp, null) === null);
+const res = resolveExperiments([exp, { key: 'bad key!', arms: { a: 1 } }, null], 'sess_x');
+const arm = res.experiments.picker_pos;
+t('resolution reports the arm and applies only known knobs', arm && (arm === 'early' ? res.knobs.picker_position === 0 : res.knobs.picker_position === KNOB_DEFAULTS.picker_position) && !('not_a_knob' in res.knobs) && !('bad key!' in res.experiments));
+t('with nothing running the knobs are the defaults', JSON.stringify(resolveExperiments([], 'sess_x').knobs) === JSON.stringify(KNOB_DEFAULTS));
+t('every lane has a name and at least one matcher', Object.values(LANES).every((l) => l.name && ((l.types || []).length || (l.collections || []).length || l.action)));
 
 console.log('PASS ' + ok.length); ok.forEach((x) => console.log('  + ' + x));
 if (bad.length) { console.log('FAIL ' + bad.length); bad.forEach((x) => console.log('  - ' + x)); }

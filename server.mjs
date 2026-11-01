@@ -18,6 +18,7 @@ import { extname, join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listAdapters, pull } from './src/adapters/index.js';
 import { makeItem, validate, feedSort, liveCollections, STATUS, COLLECTIONS } from './src/content.js';
+import { rankFeed, makePrefs, displayName, LANES, MAX_PICKS, KNOB_DEFAULTS } from './src/rank.js';
 import { TEMPLATES, templatePatch, templateFromItem } from './src/templates.js';
 import { builder, publicId } from './src/cloudinary.js';
 
@@ -168,6 +169,11 @@ class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
 }
 
+const prefsPath = () => join(dirname(STORE), 'prefs.json');
+async function loadPrefs() {
+  try { return JSON.parse(await readFile(prefsPath(), 'utf8')); } catch { return {}; }
+}
+
 const readBody = (req) => new Promise((ok, no) => {
   let b = ''; let n = 0; let done = false;
   req.on('data', (c) => {
@@ -272,6 +278,21 @@ const server = createServer(async (req, res) => {
           list.map((e) => JSON.stringify({ received, ...e })).join('\n') + '\n');
       }
       res.writeHead(204); return res.end();
+    }
+
+    if (p === '/api/prefs' && req.method === 'POST') {
+      // Local twin of the Worker's preference save: one JSON file beside the store, keyed by
+      // the pseudonymous id, so the picker can be built and tested against this server. Sits
+      // above the mutation gate for the same reason /api/events does: it carries no studio
+      // token and never touches the store.
+      const body = await readBody(req);
+      const who = [body?.pocket_id, body?.device_id].map((v) => String(v ?? '')).find((v) => /^[A-Za-z0-9._:-]{6,128}$/.test(v));
+      if (!who) return json(res, 400, { error: 'no id' });
+      const pr = makePrefs(body);
+      const all = await loadPrefs();
+      all[who] = { players: pr.players, wants: pr.wants, format: pr.format, follow: pr.follow, boosts: pr.boosts, updated_at: new Date().toISOString() };
+      await writeFile(prefsPath(), JSON.stringify(all, null, 2));
+      return json(res, 200, { ok: true, prefs: all[who] });
     }
 
     if (req.method !== 'GET' && req.method !== 'HEAD' && !mutationAllowed(req))
@@ -414,14 +435,31 @@ const server = createServer(async (req, res) => {
 
     if (p === '/api/feed') {
       const { items } = await load();
-      const live = items.filter((i) => i.status === STATUS.PUBLISHED).sort(feedSort);
+      const shared = items.filter((i) => i.status === STATUS.PUBLISHED).sort(feedSort);
       const only = url.searchParams.get('collection');
+      // The same preference layer the Worker serves, from the local prefs file: lets the
+      // picker, the reasons and the knobs be exercised against this server.
+      const who = url.searchParams.get('sid') || url.searchParams.get('did') || '';
+      const prefRow = who ? (await loadPrefs())[who] || null : null;
+      const prefs = prefRow ? makePrefs(prefRow) : null;
+      const { items: live, ranked } = rankFeed(shared, null, { prefs, names: {} });
+      const tally = {};
+      for (const i of shared) for (const q of i.entities?.players || []) tally[q] = (tally[q] || 0) + 1;
+      const picker = who ? {
+        players: Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([slug, cards]) => ({ slug, name: displayName(slug), cards })),
+        lanes: Object.entries(LANES).map(([key, l]) => ({ key, name: l.name })),
+        presets: [], offers: [], max_players: MAX_PICKS,
+      } : null;
+      let knobs = { ...KNOB_DEFAULTS };
+      try { if (process.env.FEED_KNOBS) knobs = { ...knobs, ...JSON.parse(process.env.FEED_KNOBS) }; } catch { /* a typo in the env is not a dark feed */ }
       return json(res, 200, {
         generatedAt: new Date().toISOString(),
-        analytics: { ga4: GA4, events: '/api/events' },
+        analytics: { ga4: GA4, events: '/api/events', rank: ranked ? 'personal' : 'shared' },
         collections: liveCollections(items),
         clips: only ? live.filter((i) => i.collection === only) : live,
-      }, { public: true });
+        prefs: prefRow ? { ...prefRow } : null,
+        picker, experiments: {}, knobs,
+      }, { public: !who });
     }
 
     if (p === '/api/items' && req.method === 'GET') {

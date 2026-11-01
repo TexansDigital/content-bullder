@@ -30,6 +30,17 @@ const PROFILES = {
   'dev_thin00001': { events: 1, entity_weights: { 'player:tank-dell': 1 }, content_type_weights: {} },
 };
 
+const ALIASES = [
+  { entity_slug: 'tank-dell', alias: 'tank dell' }, { entity_slug: 'c-j-stroud', alias: 'c j stroud' }, { entity_slug: 'c-j-stroud', alias: 'c.j. stroud' },
+];
+const PRESETS = [{ slug: 'toro', name: "TORO's picks", blurb: 'The fun side.', entity_weights: {}, content_type_weights: { mascot_skits: 1 } }];
+const OFFERS = [{ key: 'draft-week', label: 'Draft news', blurb: '', content_types: ['draft_roster'], keywords: ['draft'], ends_at: '2099-04-24T00:00:00Z' },
+  { key: 'stale', label: 'Over', blurb: '', content_types: [], keywords: [], ends_at: '2020-01-01T00:00:00Z' }];
+const EXPERIMENTS = [{ key: 'picker_pos', arms: { control: 1, early: 1 }, knobs: { early: { picker_position: 0, bogus: 1 } }, traffic: 1 }];
+const PREFS = {
+  'sess_1792089626000_prefsfan1': { players: ['c-j-stroud'], wants: ['fun'], format: 'video', follow: null, boosts: [], updated_at: '2026-11-01T00:00:00Z' },
+  'sess_1792089626000_prefsfan2': { players: ['tank-dell'], wants: [], format: null, follow: null, boosts: [], updated_at: '2026-11-01T00:00:00Z' },
+};
 const calls = [];
 const mock = (over = {}) => async (url, opts = {}) => {
   calls.push({ url, opts });
@@ -43,14 +54,21 @@ const mock = (over = {}) => async (url, opts = {}) => {
     : table === 'feed_video_entities' ? ENTS
     : table === 'feed_profiles' ? (() => { const m = /session_id=eq\.([^&]+)/.exec(url); const w = m ? decodeURIComponent(m[1]) : ''; return PROFILES[w] ? [PROFILES[w]] : []; })()
     : (table === 'short_content_types' || table === 'short_labels') ? []
+    : table === 'feed_entity_aliases' ? ALIASES
+    : table === 'feed_presets' ? PRESETS
+    : table === 'feed_boost_offers' ? OFFERS
+    : table === 'feed_experiments' ? EXPERIMENTS
+    : table === 'feed_preferences' ? (opts.method === 'POST' ? [] : (() => { const m = /session_id=eq\.([^&]+)/.exec(url); const w = m ? decodeURIComponent(m[1]) : ''; return PREFS[w] ? [PREFS[w]] : []; })())
     : null;
+  if (opts.method === 'POST' && table === 'feed_preferences') return { ok: true, status: 201, json: async () => [] };
   if (body === null) return { ok: false, status: 404, json: async () => [] };
   return { ok: true, status: 200, json: async () => body };
 };
 const waits = [];
 const ctx = { waitUntil: (p) => waits.push(p) };
 const ENV = { SUPABASE_SERVICE_KEY: 'service-secret' };
-const app = (deps = {}) => createApp({ feedHtml: '<!doctype html><title>feed</title>', deps: { fetch: mock(), cache: null, ...deps } });
+const ENTER = '<!doctype html><title>{{TITLE}}</title><form name="{{FORM_NAME}}"><input name="elqCampaignId" value="{{CAMPAIGN_ID}}"><input name="pocket_id" value="{{POCKET_ID}}"><input name="utm_content" value="{{UTM_CONTENT}}"></form>';
+const app = (deps = {}) => createApp({ feedHtml: '<!doctype html><title>feed</title>', enterHtml: ENTER, deps: { fetch: mock(), cache: null, ...deps } });
 const req = (path, init) => new Request(`https://feed.htow.nz${path}`, init);
 
 // ---- the page ----
@@ -121,7 +139,7 @@ t('no id means feed_profiles is never asked', !calls.some((c) => /feed_profiles/
 calls.length = 0;
 const fanRes = await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx);
 const fan = await fanRes.json();
-t('a known pocket id gets a personal order', fan.analytics.rank === 'personal');
+t('a known pocket id with history gets an order of its own, labelled implicit', fan.analytics.rank === 'implicit');
 t('the Tank fan sees the Tank card first in the catalogue tail', fan.clips.map((c) => c.id).slice(2).join(',') === 'yt-Tq3sz_Yf-Nk,yt-zz2ndcatalog');
 t('editorial cards stay on top regardless', fan.clips[0].id === 'promo-1' && fan.clips[1].id === 'yt-dwNx1tv_k24');
 t('a personal answer is never cacheable', /private, no-store/.test(fanRes.headers.get('cache-control')));
@@ -151,7 +169,7 @@ await a1.fetch(req('/api/feed'), ENV, ctx);
 t('a second /api/feed within the window is served from cache with no Supabase calls', calls.length === n1 && store.size === 1);
 calls.length = 0;
 await a1.fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx);
-t('a personal request reuses the shared cache and only adds the profile read', calls.length === 1 && /feed_profiles/.test(calls[0].url) && store.size === 1);
+t('a personal request reuses the shared cache and only adds the profile and preference reads', calls.length === 2 && calls.every((c) => /feed_profiles|feed_preferences/.test(c.url)) && store.size === 1);
 
 // ---- events ----
 calls.length = 0;
@@ -192,10 +210,63 @@ await Promise.all(waits.splice(0));
 const big = JSON.parse(calls.find((c) => /feed_events/.test(c.url) && c.opts.method === 'POST').opts.body)[0];
 t('oversized params are truncated to a marker, the ids survive', big.params.truncated === true && big.session_id === 'sess_1792089626000_k3j9xq2ab');
 
+// ---- the preference layer ----
+calls.length = 0;
+const anon = await (await app({ fetch: rankMock() }).fetch(req('/api/feed'), ENV, ctx)).json();
+t('anonymous: no picker (nothing to save against), default knobs, no prefs', anon.picker === null && anon.prefs === null && anon.knobs.picker_position === 2 && JSON.stringify(anon.experiments) === '{}');
+const withId = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_0000000000000_nobodyyet'), ENV, ctx)).json();
+t('an identified visitor gets the picker: the catalogue\'s players, named', withId.picker && withId.picker.players.some((p) => p.slug === 'tank-dell' && p.name === 'Tank Dell') && withId.picker.max_players === 3);
+t('initials are preferred for names', withId.picker.players.find((p) => p.slug === 'c-j-stroud')?.name === 'C.J. Stroud');
+t('lanes, presets and only live offers ride along', withId.picker.lanes.length === 5 && withId.picker.presets[0].slug === 'toro' && withId.picker.offers.map((o) => o.key).join() === 'draft-week');
+t('a running experiment assigns an arm and its knobs', ['control', 'early'].includes(withId.experiments.picker_pos) && (withId.experiments.picker_pos === 'early' ? withId.knobs.picker_position === 0 : withId.knobs.picker_position === 2) && !('bogus' in withId.knobs));
+const same = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_0000000000000_nobodyyet'), ENV, ctx)).json();
+t('the arm is stable across requests', same.experiments.picker_pos === withId.experiments.picker_pos);
+t('without the service key the picker is withheld (nowhere to save)', (await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_0000000000000_nobodyyet'), {}, ctx)).json()).picker === null);
+
+calls.length = 0;
+const pf = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_prefsfan1'), ENV, ctx)).json();
+t('saved preferences come back with the feed and rank it as personal', pf.prefs?.players?.[0] === 'c-j-stroud' && pf.analytics.rank === 'personal');
+t('editorial cards are untouched by a pick (the Stroud card an editor placed stays second)', pf.clips.slice(0, 2).map((c) => c.id).join() === 'promo-1,yt-dwNx1tv_k24' && !pf.clips[1].why);
+const pf2 = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_prefsfan2'), ENV, ctx)).json();
+t('the picked player\'s catalogue card leads the tail and says why', pf2.clips[2].id === 'yt-Tq3sz_Yf-Nk' && pf2.clips[2].why?.kind === 'pick' && pf2.clips[2].why.label === 'Because you picked Tank Dell');
+t('a taken-over Short keeps its tags, so it is in the picker', withId.picker.players.some((p) => p.slug === 'c-j-stroud'));
+t('preferences are read with the service key', calls.some((c) => /feed_preferences/.test(c.url) && c.opts.headers.apikey === 'service-secret'));
+const implicitOnly = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
+t('history alone is labelled implicit, not personal', implicitOnly.analytics.rank === 'implicit');
+
+calls.length = 0;
+const save = await app({ fetch: rankMock() }).fetch(req('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: 'sess_1792089626000_k3j9xq2ab', players: ['tank-dell', 'c-j-stroud', 'x', 'y', 'z'], wants: ['fun', 'nope'], format: 'both', follow: 'toro', boosts: ['draft-week', 'stale', 'unknown'], source: 'edit' }) }), ENV, ctx);
+const saved = await save.json();
+const wr = calls.find((c) => /feed_preferences/.test(c.url) && c.opts.method === 'POST');
+const row = wr ? JSON.parse(wr.opts.body) : {};
+t('a save is accepted and echoed back', save.status === 200 && saved.ok === true && saved.prefs.players.join() === 'tank-dell,c-j-stroud,x');
+t('the row is an upsert on session_id with the service key', wr && /on_conflict=session_id/.test(wr.url) && /merge-duplicates/.test(wr.opts.headers.prefer) && wr.opts.headers.apikey === 'service-secret');
+t('unknown lanes, presets and offers never reach the table', row.wants.join() === 'fun' && row.follow === 'toro' && row.boosts.length === 1 && row.boosts[0].key === 'draft-week' && row.boosts[0].until === '2099-04-24T00:00:00Z');
+t('the write is stamped with the source and a time', row.source === 'edit' && row.session_id === 'sess_1792089626000_k3j9xq2ab' && typeof row.updated_at === 'string');
+t('a save with no usable id is a 400', (await app({ fetch: rankMock() }).fetch(req('/api/prefs', { method: 'POST', body: JSON.stringify({ players: ['tank-dell'] }) }), ENV, ctx)).status === 400);
+t('a save with bad JSON is a 400', (await app().fetch(req('/api/prefs', { method: 'POST', body: '{nope' }), ENV, ctx)).status === 400);
+t('an oversized save is a 413', (await app().fetch(req('/api/prefs', { method: 'POST', body: 'x'.repeat(9000) }), ENV, ctx)).status === 413);
+t('without the service key saving is refused, not silently dropped', (await app().fetch(req('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: 'sess_1792089626000_k3j9xq2ab' }) }), {}, ctx)).status === 503);
+const downSave = await app({ fetch: rankMock({ feed_preferences: async (u, o) => (o.method === 'POST' ? { ok: false, status: 500, json: async () => [] } : { ok: true, status: 200, json: async () => [] }) }) }).fetch(req('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: 'sess_1792089626000_k3j9xq2ab', players: ['tank-dell'] }) }), ENV, ctx);
+t('a failed write is a 503 the page can show', downSave.status === 503);
+
+const noTable = await (await app({ fetch: rankMock({ feed_preferences: async (u, o) => (o.method === 'POST' ? { ok: false, status: 404, json: async () => [] } : { ok: false, status: 404, json: async () => [] }) }) }).fetch(req('/api/feed?sid=sess_0000000000000_nobodyyet'), ENV, ctx)).json();
+t('before the preferences table exists the picker is withheld and the feed says why', noTable.picker === null && (noTable.warnings || []).some((w) => /feed_preferences/.test(w)));
+
+// ---- the entry form ----
+const en = await app().fetch(req('/enter?pid=sess_1792089626000_k3j9xq2ab&form=HTX_Sweeps_2026&cid=abc-123&card=sys-enter&title=Win+tickets'), ENV, ctx);
+const enHtml = await en.text();
+t('the entry form is served with the id, form, campaign and card filled in', en.status === 200 && /name="HTX_Sweeps_2026"/.test(enHtml) && /value="abc-123"/.test(enHtml) && /value="sess_1792089626000_k3j9xq2ab"/.test(enHtml) && /value="sys-enter"/.test(enHtml) && /<title>Win tickets<\/title>/.test(enHtml));
+t('the form is private and may only be framed by the club', /no-store/.test(en.headers.get('cache-control')) && /frame-ancestors 'self' 'self' https:\/\/www\.houstontexans\.com|frame-ancestors 'self' https:\/\/www\.houstontexans\.com/.test(en.headers.get('content-security-policy')));
+const badEnter = await (await app().fetch(req('/enter?pid=' + encodeURIComponent('"><script>x</script>') + '&form=' + encodeURIComponent('<b>') + '&title=' + encodeURIComponent('<img onerror=1>')), ENV, ctx)).text();
+t('a malformed id, form name or title never reaches the markup', !/<script>x/.test(badEnter) && !/<b>/.test(badEnter) && !/<img/.test(badEnter) && /<title>Enter<\/title>/.test(badEnter));
+t('an env default supplies the form name when the query has none', /name="ENV_FORM"/.test(await (await app().fetch(req('/enter'), { ...ENV, ELOQUA_FORM_NAME: 'ENV_FORM' }, ctx)).text()));
+t('without the template the route is a 404', (await createApp({ feedHtml: 'x', deps: { fetch: mock(), cache: null } }).fetch(req('/enter'), ENV, ctx)).status === 404);
+
 // ---- health and misc ----
 const h = await app().fetch(req('/health'), ENV, ctx);
 const hb = await h.json();
-t('health reports ok with per-source counts', h.status === 200 && hb.ok === true && hb.counts.served === 3 && hb.events === true);
+t('health reports ok with per-source counts', h.status === 200 && hb.ok === true && hb.counts.served === 3 && hb.events === true && hb.prefs === true && hb.experiments.join() === 'picker_pos' && hb.offers.join() === 'draft-week');
 t('unknown paths are 404', (await app().fetch(req('/nope'), ENV, ctx)).status === 404);
 t('GET on the events route is 404, not a write', (await app().fetch(req('/api/events'), ENV, ctx)).status === 404);
 const boom = await app({ fetch: async () => { throw new Error('network'); } }).fetch(req('/api/feed'), ENV, ctx);
