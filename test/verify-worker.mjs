@@ -34,8 +34,10 @@ const ALIASES = [
   { entity_slug: 'tank-dell', alias: 'tank dell' }, { entity_slug: 'c-j-stroud', alias: 'c j stroud' }, { entity_slug: 'c-j-stroud', alias: 'c.j. stroud' },
 ];
 const PRESETS = [{ slug: 'toro', name: "TORO's picks", blurb: 'The fun side.', entity_weights: {}, content_type_weights: { mascot_skits: 1 } }];
-const OFFERS = [{ key: 'draft-week', label: 'Draft news', blurb: '', content_types: ['draft_roster'], keywords: ['draft'], ends_at: '2099-04-24T00:00:00Z' },
-  { key: 'stale', label: 'Over', blurb: '', content_types: [], keywords: [], ends_at: '2020-01-01T00:00:00Z' }];
+const OFFERS = [{ key: 'draft-week', label: 'Draft news', blurb: '', content_types: ['draft_roster'], keywords: ['draft', 'parade'], ends_at: '2099-04-24T00:00:00Z' },
+  { key: 'stale', label: 'Over', blurb: '', content_types: [], keywords: [], ends_at: '2020-01-01T00:00:00Z' },
+  // Live, but nothing in the catalogue is about it yet: a promise the feed could not keep.
+  { key: 'chargers-week', label: 'Chargers week', blurb: '', content_types: ['opponent_week'], keywords: ['chargers'], ends_at: '2099-11-09T00:00:00Z' }];
 const EXPERIMENTS = [{ key: 'picker_pos', arms: { control: 1, early: 1 }, knobs: { early: { picker_position: 0, bogus: 1 } }, traffic: 1 }];
 const WEEKS = {
   'sess_1792089626000_k3j9xq2ab': { views: 14, players: [{ slug: 'tank-dell', n: 9 }, { slug: 'nobody-known', n: 2 }], types: [{ type: 'mascot_skits', n: 5 }, { type: 'not_a_type', n: 1 }] },
@@ -225,6 +227,8 @@ const withId = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=
 t('an identified visitor gets the picker: the catalogue\'s players, named', withId.picker && withId.picker.players.some((p) => p.slug === 'tank-dell' && p.name === 'Tank Dell') && withId.picker.max_players === 3);
 t('initials are preferred for names', withId.picker.players.find((p) => p.slug === 'c-j-stroud')?.name === 'C.J. Stroud');
 t('lanes, presets and only live offers ride along', withId.picker.lanes.length === 5 && withId.picker.presets[0].slug === 'toro' && withId.picker.offers.map((o) => o.key).join() === 'draft-week');
+t('an offer says how many cards it would move', withId.picker.offers[0].cards === 1);
+t('an offer with no card to lift yet is withheld, not promised', !withId.picker.offers.some((o) => o.key === 'chargers-week'));
 t('a running experiment assigns an arm and its knobs', ['control', 'early'].includes(withId.experiments.picker_pos) && (withId.experiments.picker_pos === 'early' ? withId.knobs.picker_position === 0 : withId.knobs.picker_position === 2) && !('bogus' in withId.knobs));
 const same = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_0000000000000_nobodyyet'), ENV, ctx)).json();
 t('the arm is stable across requests', same.experiments.picker_pos === withId.experiments.picker_pos);
@@ -292,7 +296,7 @@ t('without the template the route is a 404', (await createApp({ feedHtml: 'x', d
 // ---- health and misc ----
 const h = await app().fetch(req('/health'), ENV, ctx);
 const hb = await h.json();
-t('health reports ok with per-source counts', h.status === 200 && hb.ok === true && hb.counts.served === 3 && hb.events === true && hb.prefs === true && hb.experiments.join() === 'picker_pos' && hb.offers.join() === 'draft-week');
+t('health reports ok with per-source counts', h.status === 200 && hb.ok === true && hb.counts.served === 3 && hb.events === true && hb.prefs === true && hb.experiments.join() === 'picker_pos' && hb.offers.join() === 'draft-week' && hb.offers_withheld.join() === 'chargers-week');
 t('unknown paths are 404', (await app().fetch(req('/nope'), ENV, ctx)).status === 404);
 t('GET on the events route is 404, not a write', (await app().fetch(req('/api/events'), ENV, ctx)).status === 404);
 const boom = await app({ fetch: async () => { throw new Error('network'); } }).fetch(req('/api/feed'), ENV, ctx);

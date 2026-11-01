@@ -2,7 +2,7 @@
  * Affinity ranking, pure. What a Stroud fan sees first, what an editor's order survives,
  * and when a thin profile is rightly ignored.
  */
-import { rankFeed, affinity, freshness, RANKABLE_FROM, makePrefs, explain, displayName, assignArm, resolveExperiments, KNOB_DEFAULTS, LANES } from '../src/rank.js';
+import { rankFeed, affinity, freshness, RANKABLE_FROM, makePrefs, explain, displayName, assignArm, resolveExperiments, KNOB_DEFAULTS, LANES, offerHit } from '../src/rank.js';
 
 const ok = [], bad = [];
 const t = (n, c) => (c ? ok : bad).push(n);
@@ -82,6 +82,14 @@ t('a live boost lifts an old card to the front and shows its end date', boosted.
 const lapsed = rankFeed(items, null, { now: NOW + 10 * 86400e3, prefs: makePrefs({ boosts: [{ key: 'draft-week', until: offers['draft-week'].ends_at }] }), offers, names });
 t('a lapsed boost does nothing', lapsed.ranked === true ? lapsed.items[2].id !== 'yt-old-timely' : true);
 t('an unknown boost key is ignored', explain(items[8], { prefs: makePrefs({ boosts: ['nothing'] }), offers, now: NOW }).why === null);
+
+/* ---------- what an offer lifts ---------- */
+const colts = { key: 'colts-week', content_types: ['opponent_week'], keywords: ['colts', 'indianapolis', 'indy'] };
+t('an offer matches the opponent a card is tagged with, whatever the headline says', offerHit({ headline: 'All Angles', entities: { opponent: 'colts' } }, colts));
+t('and a whole word in the headline or caption', offerHit({ headline: 'Beat the Colts!', entities: {} }, colts) && offerHit({ headline: 'x', caption: 'Indy bound', entities: {} }, colts));
+t('but not a fragment: "indy" is not "lindy"', !offerHit({ headline: 'prank war: lindy and jlo', entities: { opponent: 'giants' } }, colts));
+t('and the content type', offerHit({ contentType: 'opponent_week', entities: {} }, colts) && !offerHit({ contentType: 'pranks', entities: {} }, colts));
+t('a keyword with spaces matches a slugged opponent', offerHit({ entities: { opponent: 'los-angeles-chargers' } }, { keywords: ['Los Angeles Chargers'] }));
 
 /* ---------- the two questions ---------- */
 const ticket = cat('yt-tickets', [], null, 'calendar', 6, { action: { url: 'https://www.houstontexans.com/tickets', label: 'Get tickets' }, collection: 'gameday' });

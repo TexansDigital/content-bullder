@@ -972,7 +972,8 @@ function systemMarkup(c, i, total) {
   }
   if (c.system === 'offer') {
     const until = fmtDay(x.ends_at);
-    return open + `<div class="pk enter"><h2>${esc(c.headline)}</h2><p>${esc(x.blurb ? `${x.blurb} ` : '')}We'll lift it until ${esc(until)}, then your feed goes back to normal.</p>
+    const count = Number(x.cards) > 0 ? `${x.cards} clip${x.cards === 1 ? '' : 's'} ready and counting. ` : '';
+    return open + `<div class="pk enter"><h2>${esc(c.headline)}</h2><p>${esc(x.blurb ? `${x.blurb} ` : '')}${esc(count)}We'll lift it until ${esc(until)}, then your feed goes back to normal.</p>
       <div class="acts"><button class="save yes" type="button">Yes, until ${esc(until)}</button><button class="skip no" type="button">No thanks</button></div>
       <p class="note">One tap. Your picks stay as they are.</p></div><p class="flash" hidden></p></article>`;
   }

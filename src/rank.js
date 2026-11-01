@@ -123,6 +123,22 @@ export const TYPE_NAMES = {
   opponent_week: 'opponent week', challenges: 'challenges', calendar: 'schedule', player_pranks: 'player pranks', mascot: 'TORO',
   workout_camp: 'workouts', front_office: 'front office', community: 'community',
 };
+/**
+ * Does this card belong to an offer? By content type, by the opponent it is tagged with (an
+ * offer keyword "Chargers" matches a card tagged opponent "chargers"), or by a whole word in
+ * the headline or caption. Whole words, because "indy" must not match "lindy".
+ */
+export function offerHit(item, offer) {
+  if (!item || !offer) return false;
+  if ((offer.content_types || []).includes(item.contentType)) return true;
+  const words = (offer.keywords || []).map((k) => String(k || '').toLowerCase().trim()).filter(Boolean);
+  if (!words.length) return false;
+  const opp = String(item.entities?.opponent || '').toLowerCase();
+  if (opp && words.some((k) => k.replace(/[^a-z0-9]+/g, '-') === opp || k === opp)) return true;
+  const text = `${item.headline || ''}\n${item.caption || ''}`.toLowerCase();
+  return words.some((k) => new RegExp(`(^|[^a-z0-9])${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^a-z0-9])`).test(text));
+}
+
 /** The lane a content type belongs to, for "want more of this?" */
 export const laneOf = (type) => Object.entries(LANES).find(([, l]) => (l.types || []).includes(type))?.[0] || null;
 /** The player whose page the feed is framed on. The page is the intent: it outranks a pick
@@ -194,10 +210,7 @@ export function explain(item, { profile, prefs, presets = {}, offers = {}, names
       if (!offer) continue;
       const until = Date.parse(b.until || offer.ends_at || '');
       if (Number.isFinite(until) && until <= now) continue;
-      const text = `${item.headline || ''}\n${item.caption || ''}`.toLowerCase();
-      const hit = (offer.content_types || []).includes(item.contentType)
-        || (offer.keywords || []).some((k) => k && text.includes(String(k).toLowerCase()));
-      if (hit) add(BOOST, 'boost', b.key, Number.isFinite(until) ? `${offer.label} · until ${short(until)}` : offer.label);
+      if (offerHit(item, offer)) add(BOOST, 'boost', b.key, Number.isFinite(until) ? `${offer.label} · until ${short(until)}` : offer.label);
     }
   }
 

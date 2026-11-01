@@ -19,7 +19,7 @@
  */
 import { makeItem, feedSort, liveCollections, STATUS } from '../../../src/content.js';
 import catalogue, { excludedMatchers } from '../../../src/adapters/catalogue.js';
-import { rankFeed, makePrefs, resolveExperiments, displayName, LANES, MAX_PICKS, MIN_EVENTS, TYPE_NAMES, laneOf } from '../../../src/rank.js';
+import { rankFeed, makePrefs, resolveExperiments, displayName, LANES, MAX_PICKS, MIN_EVENTS, TYPE_NAMES, laneOf, offerHit } from '../../../src/rank.js';
 
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
 /** A player slug as the dictionary spells it: the page the feed is framed on names one. */
@@ -141,6 +141,14 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
     const unservable = all.filter((i) => !servable(i)).length;
     if (unservable) warnings.push(`${unservable} card(s) skipped: media is not an absolute URL`);
     const live = all.filter(servable).sort(feedSort);
+    // An offer is a promise to lift something. It is only made when at least one live card
+    // would actually move for it; "Chargers week" waits until the first Chargers card exists.
+    // Every live offer still ranks a boost already accepted, so content arriving later counts.
+    const offered = {}, withheld = [];
+    for (const [key, o] of Object.entries(offers)) {
+      const cards = live.filter((i) => offerHit(i, o)).length;
+      if (cards > 0) offered[key] = { ...o, cards }; else withheld.push(key);
+    }
     // The picker offers the players this feed actually has cards about, most-tagged first,
     // named from the dictionary. The dictionary refuses excluded names, so none can appear.
     const tally = {};
@@ -152,11 +160,11 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
       players: pickerPlayers,
       lanes: Object.entries(LANES).map(([key, l]) => ({ key, name: l.name })),
       presets: Object.values(presets).map((p) => ({ slug: p.slug, name: p.name, blurb: p.blurb || '' })),
-      offers: Object.values(offers).map((o) => ({ key: o.key, label: o.label, blurb: o.blurb || '', ends_at: o.ends_at })),
+      offers: Object.values(offered).map((o) => ({ key: o.key, label: o.label, blurb: o.blurb || '', ends_at: o.ends_at, cards: o.cards })),
       max_players: MAX_PICKS,
     };
     return { live, counts: { curated: editorial.length, catalogue: shorts.length, served: live.length }, warnings,
-      names, presets, offers, experiments, picker, prefsReady };
+      names, presets, offers, offered, withheld, experiments, picker, prefsReady };
   }
 
   const ga4 = (env) => (/^G-[A-Z0-9]{4,20}$/i.test(env.GA_MEASUREMENT_ID || '') ? env.GA_MEASUREMENT_ID : null);
@@ -438,10 +446,10 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
         if (method === 'GET' && p === '/enter') return enter(request, env);
         if (method === 'GET' && p === '/health') {
           const built = await shared(request, env, ctx);
-          const { counts, warnings, experiments = [], offers = {}, presets = {} } = built;
+          const { counts, warnings, experiments = [], offered = {}, withheld = [], presets = {} } = built;
           return new Response(JSON.stringify({ ok: counts.served > 0, worker: 'txfeed', counts, warnings,
             events: Boolean(env.SUPABASE_SERVICE_KEY), prefs: Boolean(env.SUPABASE_SERVICE_KEY) && built.prefsReady === true, ga4: Boolean(ga4(env)),
-            experiments: experiments.map((x) => x.key), offers: Object.keys(offers), presets: Object.keys(presets) }),
+            experiments: experiments.map((x) => x.key), offers: Object.keys(offered), offers_withheld: withheld, presets: Object.keys(presets) }),
             { status: counts.served > 0 ? 200 : 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
         }
         return new Response('not found', { status: 404 });
