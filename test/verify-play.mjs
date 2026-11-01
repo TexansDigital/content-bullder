@@ -138,6 +138,24 @@ t('closing it under reduced motion does not start an inline player', await rm.pg
 t('no page errors under reduced motion', rm.errs.length === 0);
 await rm.ctx.close();
 
+/* ---------- framed on a phone, with only part of the iframe on screen ---------- */
+// The production regression: on houstontexans.com the feed is an iframe below a header, and a
+// phone showed less than 60% of it. Observed against the top-level viewport no card ever
+// intersected, so a visitor got a dead poster and reloaded four times. The scroll container is
+// the root now, so a snapped card is always fully "visible" whatever the host shows.
+const hostCtx = await b.newContext({ viewport: { width: 430, height: 400 } });
+const host = await hostCtx.newPage();
+const hostEv = [];
+host.on('request', (r) => { if (r.method() === 'POST' && r.url().endsWith('/api/events')) { try { hostEv.push(...(JSON.parse(r.postData() || '{}').events || [])); } catch {} } });
+await host.route(/youtube(-nocookie)?\.com/, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>yt</title>' }));
+await host.route(/a\.example\//, (r) => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+await host.setContent(`<div style="height:120px"></div><iframe src="${B}/feed" style="width:430px;height:820px;border:0"></iframe>`, { waitUntil: 'networkidle' });
+await host.waitForTimeout(3500);
+const framed = host.frames().find((f) => f.url().includes('/feed'));
+t('a card framed mostly off the host screen still counts as viewed', hostEv.some((e) => e.event === 'card_view'));
+t('and still mounts its player', (await framed.evaluate(() => document.querySelectorAll('iframe.yt').length)) === 1);
+await hostCtx.close();
+
 await b.close();
 console.log('PASS ' + ok.length); ok.forEach((x) => console.log('  + ' + x));
 if (bad.length) { console.log('FAIL ' + bad.length); bad.forEach((x) => console.log('  - ' + x)); }

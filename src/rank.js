@@ -12,8 +12,14 @@
 
 /** Catalogue cards sit at this sortIndex; anything below it is an editorial decision. */
 export const RANKABLE_FROM = 1_000_000;
-/** Fewer events than this and the profile is noise; the shared order is better. */
-export const MIN_EVENTS = 3;
+/**
+ * Fewer card events than this and the profile is noise; the shared order is better. Card
+ * events are the ones that name a video (view, complete, play, like...), which is what
+ * feed_rollup_profiles counts. Three was too few: a visitor who saw one card and left had a
+ * profile of one player and a "personal" feed that was that player ten times over. Six is
+ * roughly three cards watched through.
+ */
+export const MIN_EVENTS = 6;
 
 export function affinity(item, profile) {
   const ew = profile?.entity_weights || {};

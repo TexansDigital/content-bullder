@@ -34,14 +34,14 @@ t('every card is still present exactly once', ids.length === items.length && new
 t('an old evergreen card outranks an old timely one', ids.indexOf('yt-old-evergreen') < ids.indexOf('yt-old-timely'));
 t('a brand-new card the fan has no affinity for still beats a stale one', ids.indexOf('yt-new-toro') < ids.indexOf('yt-old-timely'));
 
-const thin = rankFeed(items, { events: 2, entity_weights: { 'player:will-anderson-jr': 1 } }, { now: NOW });
-t('two events is too thin: the shared order is returned untouched', thin.ranked === false && thin.items === items);
+const thin = rankFeed(items, { events: 5, entity_weights: { 'player:will-anderson-jr': 1 } }, { now: NOW });
+t('five card events is too thin: the shared order is returned untouched', thin.ranked === false && thin.items === items);
 t('no profile: untouched', rankFeed(items, null).ranked === false && rankFeed(items, undefined).items === items);
 t('garbage profile: untouched', rankFeed(items, 'x').ranked === false && rankFeed(items, { events: 'lots' }).ranked === false);
 t('empty feed: empty, not a throw', rankFeed([], stroudFan).items.length === 0 && rankFeed(null, stroudFan).items.length === 0);
 t('one catalogue card: nothing to rank', rankFeed([items[0], items[2]], stroudFan).ranked === false);
 
-const andersonFan = { events: 5, entity_weights: { 'player:will-anderson-jr': 1 }, content_type_weights: {} };
+const andersonFan = { events: 6, entity_weights: { 'player:will-anderson-jr': 1 }, content_type_weights: {} };
 t('a different fan gets a different first card', rankFeed(items, andersonFan, { now: NOW }).items[2].id === 'yt-anderson');
 
 t('affinity sums player, opponent and type with their weights',

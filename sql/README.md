@@ -7,10 +7,12 @@ Project: `texans-youtube-dashboard` (`xisvulbabqsyxnlyuwcz`). Run in order in th
 | `010-feed-fan-signal-tables.sql` | Creates `feed_entity_aliases`, `feed_video_entities`, `feed_events`, `feed_profiles`, RLS, and the `excluded_players` trigger | applied 31 Oct 2026 |
 | `020-aliases-roster.sql` | 166 roster aliases, tiers 1 and 2 | applied 31 Oct 2026 |
 | `030-aliases-former.sql` | former players, coach, GM. Full-name only | applied 31 Oct 2026 |
-| `040-feed-items.sql` | `feed_items`: studio-published cards mirrored for the public Worker. Anon reads published rows only | **not yet applied** (connector prompt timed out) |
+| `040-feed-items.sql` | `feed_items`: studio-published cards mirrored for the public Worker. Anon reads published rows only | applied 31 Oct 2026 |
+| `050-feed-rollup-counts.sql` | `feed_rollup_profiles` counts card events only and recomputes the count each run instead of adding to it (the first scheduled run had doubled every profile) | applied 1 Nov 2026 |
 
 Already applied as functions: `feed_rx_escape`, `feed_tag_videos(since)` (honours `excluded_players`),
-`feed_rollup_profiles(lookback)`, `feed_prune_events()`.
+`feed_rollup_profiles(lookback)` (current body in `050`), `feed_prune_events()`.
+The Worker ranks a session only once its profile holds six or more card events (`MIN_EVENTS` in `src/rank.js`).
 
 First tagging pass ran 31 Oct 2026 over 36 months: 1,871 of 2,401 Shorts tagged, 2,474 labels
 (1,007 player, 1,467 opponent from the schedule). Nightly pg_cron jobs at 08:10, 08:25 and
