@@ -8,7 +8,8 @@ Project: `texans-youtube-dashboard` (`xisvulbabqsyxnlyuwcz`). Run in order in th
 | `020-aliases-roster.sql` | 166 roster aliases, tiers 1 and 2 | applied 31 Oct 2026 |
 | `030-aliases-former.sql` | former players, coach, GM. Full-name only | applied 31 Oct 2026 |
 | `040-feed-items.sql` | `feed_items`: studio-published cards mirrored for the public Worker. Anon reads published rows only | applied 31 Oct 2026 |
-| `060-feed-preferences-experiments.sql` | `feed_preferences` (what a fan picked, service key only), `feed_presets` (TORO's picks seeded), `feed_boost_offers` (time-boxed "more of X until date" offers), `feed_experiments` (knob arms assigned per visitor by hash). Public rows are only the active/running config | **run in the SQL editor** (connector prompt expired twice) |
+| `070-feed-preferences-questions.sql` | `going` and `watch` on `feed_preferences`; `feed_week(sid)` for the weekly card (service role only) | applied 1 Nov 2026 |
+| `060-feed-preferences-experiments.sql` | `feed_preferences` (what a fan picked, service key only), `feed_presets` (TORO's picks seeded), `feed_boost_offers` (time-boxed "more of X until date" offers), `feed_experiments` (knob arms assigned per visitor by hash). Public rows are only the active/running config | applied 1 Nov 2026 |
 | `050-feed-rollup-counts.sql` | `feed_rollup_profiles` counts card events only and recomputes the count each run instead of adding to it (the first scheduled run had doubled every profile) | applied 1 Nov 2026 |
 
 Already applied as functions: `feed_rx_escape`, `feed_tag_videos(since)` (honours `excluded_players`),

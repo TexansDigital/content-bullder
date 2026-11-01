@@ -136,6 +136,128 @@ t('open and close are reported against the capture card', c.ev.some((e) => e.eve
 t('no page errors on the capture flow', c.errs.length === 0);
 await c.ctx.close();
 
+/* ---------- the two questions ---------- */
+const q = await open({ pid: `sess_${RUN}_questions` });
+t('the picker asks about going to a game and how the fan watches', await q.pg.evaluate(() => document.querySelectorAll('.pk .going .opt').length === 3 && document.querySelectorAll('.pk .watch .opt').length === 3)
+  && (await q.pg.locator('.pk .going .opt').allTextContents()).join() === 'Yes,Maybe,Not this year' && (await q.pg.locator('.pk .watch .opt').allTextContents()).join() === 'At NRG,At home,On the go');
+await q.pg.locator('.pk .going .opt', { hasText: 'Yes' }).click();
+await q.pg.locator('.pk .watch .opt', { hasText: 'On the go' }).click();
+await q.pg.locator('.pk .save').click(); await q.pg.waitForTimeout(900);
+const saved = (await j(`/api/feed?sid=sess_${RUN}_questions`)).prefs;
+t('answers alone make a feed: saved, and the order is personal with no player picked', saved.going === 'yes' && saved.watch === 'go' && saved.players.length === 0);
+await settle(q.pg);
+t('the save reports both answers', q.ev.some((e) => e.event === 'prefs_save' && e.params.pref_going === 'yes' && e.params.pref_watch === 'go' && e.params.save_source === 'picker'));
+await q.pg.locator('.chip.mine').click(); await q.pg.waitForTimeout(300);
+t('they come back pressed in the picker', (await q.pg.locator('.pk .going .opt[aria-pressed="true"]').textContent()) === 'Yes' && (await q.pg.locator('.pk .watch .opt[aria-pressed="true"]').textContent()) === 'On the go');
+t('no page errors', q.errs.length === 0);
+await q.ctx.close();
+
+/* ---------- a boost that has run out ---------- */
+const XP = `sess_${RUN}_expiry`;
+await j('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: XP, players: ['will-anderson-jr'], boosts: [{ key: 'draft-week', until: '2026-10-01T00:00:00Z', label: 'Draft news' }] }) });
+const x = await open({ pid: XP });
+let xo = await ids(x.pg);
+t('a lapsed boost gets a card that says so, right after the first card', xo[1] === 'sys-expiry' && (await x.pg.locator('.slide[data-id="sys-expiry"] h2').textContent()) === 'Draft news is over.' && /Back to your picks: Will Anderson Jr/.test(await x.pg.locator('.slide[data-id="sys-expiry"] p').first().textContent()));
+await x.pg.locator('.slide[data-id="sys-expiry"] .ok').click(); await x.pg.waitForTimeout(300);
+t('"Got it" closes the loop', !(await ids(x.pg)).includes('sys-expiry'));
+await settle(x.pg);
+t('seeing it is reported with the boost key', x.ev.some((e) => e.event === 'boost_expired_seen' && e.params.offer_key === 'draft-week'));
+await x.pg.reload({ waitUntil: 'networkidle' }); await x.pg.waitForTimeout(600);
+t('and it does not come back', !(await ids(x.pg)).includes('sys-expiry'));
+await x.ctx.close();
+const xh = await open({ pid: XP, knobs: { expiry_position: -1 } });
+t('a knob can hide the expiry card', !(await ids(xh.pg)).includes('sys-expiry'));
+await xh.ctx.close();
+
+/* ---------- an offer, to a fan who already has a feed ---------- */
+const OF = `sess_${RUN}_offer`;
+await j('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: OF, players: ['c-j-stroud'] }) });
+const offer = { key: 'giants-week', label: 'Giants week', blurb: 'All things Giants before Sunday.', content_types: ['opponent_week'], keywords: ['giants'], ends_at: '2099-11-09T23:00:00Z' };
+async function openWithOffer(pid, knobs = null) {
+  const ctx = await b.newContext({ viewport: { width: 390, height: 780 } });
+  const pg = await ctx.newPage(); const errs = [], ev = [];
+  pg.on('pageerror', (e) => errs.push(e.message));
+  pg.on('request', (r) => { if (r.method() === 'POST' && (r.url().endsWith('/api/events') || r.url().endsWith('/api/prefs'))) { try { const body = JSON.parse(r.postData() || '{}'); if (r.url().endsWith('/api/prefs')) ev.push({ event: '__prefs_post', params: body }); else ev.push(...(body.events || [])); } catch {} } });
+  await pg.addInitScript(() => { navigator.sendBeacon = () => false; });
+  await pg.route(/a\.example\//, (r) => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+  await pg.route(/\/api\/feed/, async (r) => {
+    const res = await r.fetch(); const body = await res.json();
+    await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...body, picker: { ...(body.picker || {}), offers: [offer] }, ...(knobs ? { knobs: { ...body.knobs, ...knobs } } : {}) }) });
+  });
+  await pg.goto(`${B}/feed?pid=${pid}`, { waitUntil: 'networkidle' }); await pg.waitForTimeout(600);
+  return { pg, ctx, errs, ev };
+}
+const o = await openWithOffer(OF);
+let oo = await ids(o.pg);
+t('a fan with a feed meets the live offer as its own card, in the picker\'s slot', oo[2] === 'sys-offer' && !oo.includes('sys-picker') && (await o.pg.locator('.slide[data-id="sys-offer"] h2').textContent()) === 'Giants week?'
+  && /until Nov 9, then your feed goes back to normal/.test(await o.pg.locator('.slide[data-id="sys-offer"] p').first().textContent()));
+t('the yes button carries the date', /^Yes, until Nov 9/.test(await o.pg.locator('.slide[data-id="sys-offer"] .yes').textContent()));
+await o.pg.locator('.slide[data-id="sys-offer"] .yes').click(); await o.pg.waitForTimeout(900);
+const post = o.ev.find((e) => e.event === '__prefs_post');
+t('one tap saves the boost with its end date and label, and keeps the pick', post && post.params.source === 'offer' && post.params.boosts.length === 1 && post.params.boosts[0].key === 'giants-week' && post.params.boosts[0].label === 'Giants week' && /2099-11-09/.test(post.params.boosts[0].until) && post.params.players.join() === 'c-j-stroud');
+t('the offer card is gone and a toast says how long it runs', !(await ids(o.pg)).includes('sys-offer') && /Giants week is on until Nov 9\. Then back to your picks\./.test(await o.pg.locator('#toast').textContent()));
+await settle(o.pg);
+t('accepting is reported, then the save', o.ev.some((e) => e.event === 'offer_accept' && e.params.offer_key === 'giants-week') && o.ev.some((e) => e.event === 'prefs_save' && e.params.save_source === 'offer' && e.params.boosts_n === 1));
+t('no page errors on the offer', o.errs.length === 0);
+await o.ctx.close();
+const OD = `sess_${RUN}_offerno`;
+await j('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: OD, players: ['c-j-stroud'] }) });
+const od = await openWithOffer(OD);
+await od.pg.locator('.slide[data-id="sys-offer"] .no').click(); await od.pg.waitForTimeout(300);
+t('"No thanks" removes it', !(await ids(od.pg)).includes('sys-offer'));
+await od.pg.reload({ waitUntil: 'networkidle' }); await od.pg.waitForTimeout(600);
+t('and it stays away', !(await ids(od.pg)).includes('sys-offer'));
+await od.ctx.close();
+const on = await openWithOffer(`sess_${RUN}_offernew`);
+t('a fan with no feed yet meets the offer inside the picker, not as a second card', (await ids(on.pg)).includes('sys-picker') && !(await ids(on.pg)).includes('sys-offer') && (await on.pg.locator('.pk .offer').count()) === 1);
+await on.ctx.close();
+
+/* ---------- the fan's week ---------- */
+const WK = `sess_${RUN}_week`;
+await j('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: WK, players: ['c-j-stroud'] }) });
+const week = { views: 14, players: [{ slug: 'c-j-stroud', name: 'C J Stroud', n: 9 }, { slug: 'will-anderson-jr', name: 'Will Anderson Jr', n: 3 }], types: [{ type: 'mascot_skits', name: 'TORO skits', lane: 'fun', n: 5 }] };
+async function openWithWeek(pid, w = week) {
+  const ctx = await b.newContext({ viewport: { width: 390, height: 780 } });
+  const pg = await ctx.newPage(); const errs = [], ev = [];
+  pg.on('pageerror', (e) => errs.push(e.message));
+  pg.on('request', (r) => { if (r.method() === 'POST' && (r.url().endsWith('/api/events') || r.url().endsWith('/api/prefs'))) { try { const body = JSON.parse(r.postData() || '{}'); if (r.url().endsWith('/api/prefs')) ev.push({ event: '__prefs_post', params: body }); else ev.push(...(body.events || [])); } catch {} } });
+  await pg.addInitScript(() => { navigator.sendBeacon = () => false; });
+  await pg.route(/a\.example\//, (r) => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+  await pg.route(/\/api\/feed/, async (r) => { const res = await r.fetch(); const body = await res.json(); await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...body, week: w }) }); });
+  await pg.goto(`${B}/feed?pid=${pid}`, { waitUntil: 'networkidle' }); await pg.waitForTimeout(600);
+  return { pg, ctx, errs, ev };
+}
+const wkp = await openWithWeek(WK);
+t('a fan with a week gets it back as a card at the fifth slot', (await ids(wkp.pg))[4] === 'sys-week' && (await wkp.pg.locator('.slide[data-id="sys-week"] p').first().textContent()) === '14 clips this week: 9 C J Stroud, 3 Will Anderson Jr and 5 TORO skits.');
+t('and is offered more of what they watched but have not asked for: the lane and the other player, not the one already picked', (await wkp.pg.locator('.slide[data-id="sys-week"] .more .opt').allTextContents()).join('|') === 'More fun & toro|More Will Anderson Jr');
+await wkp.pg.locator('.slide[data-id="sys-week"] .more .opt', { hasText: 'Will Anderson' }).click(); await wkp.pg.waitForTimeout(900);
+const wpost = wkp.ev.find((e) => e.event === '__prefs_post');
+t('one tap adds the player to the picks and keeps the rest', wpost && wpost.params.source === 'week' && wpost.params.players.join() === 'c-j-stroud,will-anderson-jr');
+t('the card is gone, the feed moved, the toast says what came first', !(await ids(wkp.pg)).includes('sys-week') && /^Done\. First up: because you picked/.test(await wkp.pg.locator('#toast').textContent()));
+await settle(wkp.pg);
+t('the save says it came from the week card', wkp.ev.some((e) => e.event === 'prefs_save' && e.params.save_source === 'week' && e.params.week_more === 'player:will-anderson-jr'));
+await wkp.pg.reload({ waitUntil: 'networkidle' }); await wkp.pg.waitForTimeout(600);
+t('once a week: it does not return this week', !(await ids(wkp.pg)).includes('sys-week'));
+t('no page errors on the week', wkp.errs.length === 0);
+await wkp.ctx.close();
+const thin = await openWithWeek(`sess_${RUN}_thinweek`, { views: 3, players: [], types: [] });
+t('three views is not a week worth showing', !(await ids(thin.pg)).includes('sys-week'));
+await thin.ctx.close();
+
+/* ---------- the capture card, personal ---------- */
+const CP = `sess_${RUN}_capturemine`;
+await j('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: CP, players: ['will-anderson-jr'] }) });
+const cp = await open({ pid: CP, knobs: { picker_position: -1, capture_card: { position: 1, headline: 'Win {{player}} gear', blurb: 'Signed by {{player}}.', cta: 'Enter for {{player}}', form: 'fan_preference_web' } } });
+t('{{player}} becomes the fan\'s first pick on the headline, blurb and button', (await cp.pg.locator('.slide[data-id="sys-enter"] h2').textContent()) === 'Win Will Anderson Jr gear' && (await cp.pg.locator('.slide[data-id="sys-enter"] p').first().textContent()) === 'Signed by Will Anderson Jr.' && (await cp.pg.locator('.slide[data-id="sys-enter"] .go').textContent()) === 'Enter for Will Anderson Jr');
+await cp.pg.locator('.slide[data-id="sys-enter"] .go').click(); await cp.pg.waitForTimeout(400);
+t('the entry form is opened with the player as the term', /term=will-anderson-jr/.test(await cp.pg.locator('#player iframe').getAttribute('src')));
+await cp.pg.keyboard.press('Escape'); await settle(cp.pg);
+t('capture_open names the player', cp.ev.some((e) => e.event === 'capture_open' && e.params.pref_player === 'will-anderson-jr'));
+await cp.ctx.close();
+const cn = await open({ pid: `sess_${RUN}_capturenone`, knobs: { picker_position: -1, capture_card: { position: 1, headline: 'Win {{player}} gear', form: 'fan_preference_web' } } });
+t('with no pick the placeholder reads Texans', (await cn.pg.locator('.slide[data-id="sys-enter"] h2').textContent()) === 'Win Texans gear');
+await cn.ctx.close();
+
 /* ---------- nobody to save for ---------- */
 const anon = await b.newPage({ viewport: { width: 390, height: 780 } });
 await anon.route(/a\.example\//, (r) => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));

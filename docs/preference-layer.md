@@ -21,12 +21,12 @@ device id), once, and again after seven days if they said "not now".
 | 4 | **Follow TORO's picks.** | A preset: a named weight set a fan can adopt. A player's own picks need that player's sign-off before the row exists. | live (TORO seeded) |
 | 5 | **Time-boxed boost.** "Draft news until Apr 24? Yes." Then back to normal. | The most honest kind of personalization: a promise with an end date, offered when news breaks. Editorial creates the offer; the fan accepts in one tap. | live (needs an offer row) |
 
-Two more questions worth testing, each one tap, each tied to a KPI:
+Two more questions, each one tap, each tied to a KPI (approved 1 Nov, **live**):
 
-| Question | KPI | How it would work |
+| Question | KPI | What it does |
 |---|---|---|
-| **"Going to a game this season?"** Yes / Maybe / Not this year | Ticket intent | "Yes" lifts gameday cards with a ticket action; "Maybe" surfaces the schedule card next; "Not this year" suppresses ticket pushes, which is itself a kindness fans notice. |
-| **"How do you watch?"** At NRG · At home · On the go | Depth | Shapes pacing: at-home fans get longer clips earlier; on-the-go fans get a tighter feed and sound-off captions first. |
+| **"Going to a game this season?"** Yes / Maybe / Not this year | Ticket intent | "Yes" lifts gameday and ticket cards and says "Gameday, since you're going"; "Maybe" nudges the schedule and gameday cards with "Gameday, if you go"; "Not this year" quietly puts every ticket push last, which is itself a kindness fans notice. Stored as `going`. |
+| **"How do you watch?"** At NRG · At home · On the go | Depth | Shapes pacing without a word: on-the-go fans get clips of 30 seconds or less first, at-home fans the longer ones, NRG fans a gameday nudge. Stored as `watch`. |
 
 ## What the fan sees for answering
 
@@ -41,15 +41,18 @@ Explicit beats implicit. In `src/rank.js`: a picked player is worth 2.0 on a car
 
 ## Keeping the value visible over time
 
-- **Weekly "your week" card** (proposal): "This week you watched 14 Tank Dell clips and 3 TORO skits. Want more community content?" One card, one tap, one more signal.
-- **Boost expiry card** (proposal): when a boost ends, say so: "Draft week is over. Back to your picks." It closes the loop the offer opened.
-- **Follow a week** (proposal): "Follow Giants week": a seven-day boost on the next opponent, offered on the schedule and roster placements.
-- **Contest tied to preferences** (ready): the capture card opens the club's Eloqua form at `/enter` with the fan's pseudonymous id in a hidden field. A sweepstakes themed on the fan's picked player ("Win Tank's signed jersey") is the data-capture play with the best odds, because the ask is already about what they told us they love.
+All four approved 1 Nov and **live**. Each is a system card the feed inserts itself, placed by a
+knob so the daily review can move or hide it per arm.
+
+- **Weekly "your week" card** (`sys-week`, knob `week_position`, default the fifth slot). "14 clips this week: 9 C.J. Stroud, 3 Will Anderson Jr and 5 TORO skits." Then "Want more?" with up to three one-tap buttons: the lanes behind what they watched but have not asked for, and a player they watched but have not picked. One tap saves it, the feed moves, the toast says what came first. Once a week, and only with five or more views (`feed_week` in Supabase, service key only).
+- **Boost expiry card** (`sys-expiry`, knob `expiry_position`, default right after the first card). When a boost's date passes: "Draft news is over. Back to your picks: Will Anderson Jr." with "Got it" and "Edit my feed". Boosts keep the offer's label when saved, so this works after the offer itself has stopped being served.
+- **Follow a week** (`sys-offer`, knob `offer_position`, default the picker's slot). A fan who already has a feed meets each live offer as its own card: "Giants week? All things Giants before Sunday. We'll lift it until Nov 9, then your feed goes back to normal." Yes carries the date on the button; No is remembered for seven days. Fans without a feed meet offers inside the picker instead. Editorial or the daily review creates the offer row (`feed_boost_offers`): key, label, blurb, content types, keywords, end date.
+- **Contest tied to preferences** (`sys-enter`, knob `capture_card`). `{{player}}` in the headline, blurb or button becomes the fan's first pick, or the page's player on a player page, or "Texans": "Win C.J. Stroud gear" to a Stroud fan. The entry form gets the player's slug in `utm_term`, so Eloqua knows which player drove each entry. The form is `fan_preference_web`.
 
 ## Data the program needs next
 
 1. **Email ↔ pocket id**, only through the Eloqua form (NFL privacy block, Adam's language). The hidden `pocket_id` field makes the join possible later; nothing else does.
-2. **Ticket intent as a declared field** (question above), joined to D1 clicks and purchases by session id.
+2. **Ticket intent as a declared field**: `going`, **live**; to be joined to D1 clicks and purchases by session id in the daily review.
 3. **Article engagement**, once article cards exist, to make "Watch or read?" pay off.
 4. **Which placement** a session came from (feed, roster, player, schedule), as `feed_placement` on `feed_load`, plus `feed_layout`, `feed_focus` and the returning-fan fields `visit_n`, `returning`, `days_since`. **Live**; see [roster-placement.md](roster-placement.md).
 

@@ -83,6 +83,23 @@ const lapsed = rankFeed(items, null, { now: NOW + 10 * 86400e3, prefs: makePrefs
 t('a lapsed boost does nothing', lapsed.ranked === true ? lapsed.items[2].id !== 'yt-old-timely' : true);
 t('an unknown boost key is ignored', explain(items[8], { prefs: makePrefs({ boosts: ['nothing'] }), offers, now: NOW }).why === null);
 
+/* ---------- the two questions ---------- */
+const ticket = cat('yt-tickets', [], null, 'calendar', 6, { action: { url: 'https://www.houstontexans.com/tickets', label: 'Get tickets' }, collection: 'gameday' });
+const withTicket = [...items, ticket];
+const going = rankFeed(withTicket, null, { now: NOW, prefs: makePrefs({ going: 'yes' }), names });
+t('"going: yes" is explicit on its own and lifts the ticket card, saying why', going.ranked === true && going.items[2].id === 'yt-tickets' && going.items[2].why?.label === "Gameday, since you're going");
+const notGoing = rankFeed(withTicket, null, { now: NOW, prefs: makePrefs({ going: 'no', players: ['c-j-stroud'] }), names });
+t('"going: no" quietly spares the fan the ticket push: last, no reason', notGoing.items[notGoing.items.length - 1].id === 'yt-tickets' && !notGoing.items.find((i) => i.id === 'yt-tickets').why);
+const maybe = rankFeed(withTicket, null, { now: NOW, prefs: makePrefs({ going: 'maybe' }), names });
+t('"maybe" nudges the schedule card up with a softer reason', maybe.items[2].id === 'yt-tickets' && maybe.items[2].why?.label === 'Gameday, if you go');
+const shortClip = cat('yt-short', [], null, 'trends', 4, { durationSeconds: 20 });
+const longClip = cat('yt-long', [], null, 'trends', 4, { durationSeconds: 60 });
+const onTheGo = rankFeed([items[0], shortClip, longClip], null, { now: NOW, prefs: makePrefs({ watch: 'go' }), names }).items.map((i) => i.id);
+const atHome = rankFeed([items[0], shortClip, longClip], null, { now: NOW, prefs: makePrefs({ watch: 'home' }), names }).items.map((i) => i.id);
+t('"on the go" puts the short clip first and "at home" the long one, with no pill either way', onTheGo[1] === 'yt-short' && atHome[1] === 'yt-long' && !rankFeed([items[0], shortClip, longClip], null, { now: NOW, prefs: makePrefs({ watch: 'go' }) }).items[1].why);
+t('answers are coerced like everything else', makePrefs({ going: 'Yes' }).going === null && makePrefs({ going: 'maybe', watch: 'go' }).watch === 'go' && makePrefs({ watch: 'nrg' }).explicit === true);
+t('a boost may carry a label', makePrefs({ boosts: [{ key: 'draft-week', label: ' Draft news ' }] }).boosts[0].label === 'Draft news');
+
 /* ---------- the page's player ---------- */
 const onPage = rankFeed(items, null, { now: NOW, focus: 'will-anderson-jr', names });
 t('a player page ranks with no profile and no prefs: that player leads', onPage.ranked === true && onPage.focus === 'will-anderson-jr' && onPage.items[2].id === 'yt-anderson');

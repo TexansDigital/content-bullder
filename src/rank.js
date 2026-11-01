@@ -65,10 +65,13 @@ export function makePrefs(p) {
     follow: SLUG.test(String(p.follow ?? '')) ? String(p.follow) : null,
     boosts: (Array.isArray(p.boosts) ? p.boosts : []).map((b) => (typeof b === 'string' ? { key: b } : b))
       .filter((b) => b && typeof b === 'object' && KEY.test(String(b.key ?? '')))
-      .map((b) => ({ key: String(b.key), until: Number.isFinite(Date.parse(b.until || '')) ? new Date(b.until).toISOString() : null }))
+      .map((b) => ({ key: String(b.key), until: Number.isFinite(Date.parse(b.until || '')) ? new Date(b.until).toISOString() : null,
+        ...(typeof b.label === 'string' && b.label.trim() ? { label: b.label.trim().slice(0, 60) } : {}) }))
       .slice(0, 8),
+    going: GOING.includes(p.going) ? p.going : null,
+    watch: WATCH.includes(p.watch) ? p.watch : null,
   };
-  out.explicit = Boolean(out.players.length || out.wants.length || out.follow || out.boosts.length);
+  out.explicit = Boolean(out.players.length || out.wants.length || out.follow || out.boosts.length || out.going || out.watch);
   return out;
 }
 
@@ -103,6 +106,25 @@ const lead = (item) => item.entities?.players?.[0] || null;
 export const PICK = 2.0;
 export const BOOST = 2.5;
 export const LANE = 0.8;
+/** "Going to a game?" Yes lifts gameday and ticket cards and says so; No quietly spares the fan
+ *  every ticket push; Maybe nudges the schedule and gameday cards. */
+export const GOING = ['yes', 'maybe', 'no'];
+export const GOING_LIFT = 0.8;
+export const GOING_SPARE = -1.0;
+/** "How do you watch?" Shapes pacing, quietly: no reason pill, a small nudge on clip length. */
+export const WATCH = ['nrg', 'home', 'go'];
+export const WATCH_NUDGE = 0.3;
+/** Fewer views than this in a week and there is no "your week" to show. */
+export const WEEK_MIN_VIEWS = 5;
+/** Short, human names for the catalogue's content types, for the weekly card. */
+export const TYPE_NAMES = {
+  game_action: 'game action', fun_trends: 'fun', hype_brand: 'hype', player_stories: 'player stories', offseason_camp: 'camp',
+  pranks: 'pranks', draft_roster: 'draft & roster', coaches: 'coaches', mascot_skits: 'TORO skits', trends: 'trends',
+  opponent_week: 'opponent week', challenges: 'challenges', calendar: 'schedule', player_pranks: 'player pranks', mascot: 'TORO',
+  workout_camp: 'workouts', front_office: 'front office', community: 'community',
+};
+/** The lane a content type belongs to, for "want more of this?" */
+export const laneOf = (type) => Object.entries(LANES).find(([, l]) => (l.types || []).includes(type))?.[0] || null;
 /** The player whose page the feed is framed on. The page is the intent: it outranks a pick
  *  plus the strongest history (2.0 + 2.1 + 0.35), so their cards lead on their own page. */
 export const FOCUS = 5.0;
@@ -179,7 +201,22 @@ export function explain(item, { profile, prefs, presets = {}, offers = {}, names
     }
   }
 
-  const score = reasons.reduce((s, r) => s + r.score, 0) + 0.35 * freshness(item, now);
+  // The two quiet questions. "Going" has a voice (it reorders visibly and says why, or spares
+  // the fan ticket pushes without a word); "watch" only tilts ties by clip length.
+  let quiet = 0;
+  if (prefs?.explicit) {
+    const G = LANES.gameday || {};
+    const gameday = (G.types || []).includes(item.contentType) || (G.collections || []).includes(item.collection);
+    const ticket = Boolean(item.action?.url);
+    if (prefs.going === 'yes' && (gameday || ticket)) add(GOING_LIFT, 'going', 'yes', "Gameday, since you're going");
+    else if (prefs.going === 'maybe' && (gameday || item.contentType === 'calendar')) add(GOING_LIFT * 0.6, 'going', 'maybe', 'Gameday, if you go');
+    else if (prefs.going === 'no' && ticket) quiet += GOING_SPARE;
+    const secs = Number(item.durationSeconds) || 0;
+    if (prefs.watch === 'go' && secs > 0 && secs <= 30) quiet += WATCH_NUDGE;
+    if (prefs.watch === 'home' && secs >= 45) quiet += WATCH_NUDGE;
+    if (prefs.watch === 'nrg' && gameday) quiet += WATCH_NUDGE;
+  }
+  const score = reasons.reduce((s, r) => s + r.score, 0) + quiet + 0.35 * freshness(item, now);
   // Explicit reasons always win the label; a fan who picked a player should read that, not
   // "because you watch", even when their history says the same thing louder.
   const explicit = reasons.filter((r) => r.kind !== 'watch' && r.kind !== 'affinity').sort((a, b) => b.score - a.score)[0];
@@ -246,8 +283,15 @@ export const KNOB_DEFAULTS = {
   reason_pills: 'explicit',
   /** Nudge once per session when the first video starts muted. */
   sound_hint: false,
-  /** A data-capture card: { position, headline, blurb, cta, form, campaign } or null. */
+  /** A data-capture card: { position, headline, blurb, cta, form, campaign } or null. {{player}} in the
+   *  headline, blurb or cta becomes the fan's first pick (or the page's player). */
   capture_card: null,
+  /** Where a live boost offer is shown to a fan who already has preferences; -1 hides it. */
+  offer_position: 2,
+  /** Where "X week is over, back to your picks" appears after a boost lapses; -1 hides it. */
+  expiry_position: 1,
+  /** Where the weekly "your week" card appears; -1 hides it. */
+  week_position: 4,
 };
 
 export function fnv1a(str) {

@@ -290,7 +290,7 @@ const server = createServer(async (req, res) => {
       if (!who) return json(res, 400, { error: 'no id' });
       const pr = makePrefs(body);
       const all = await loadPrefs();
-      all[who] = { players: pr.players, wants: pr.wants, format: pr.format, follow: pr.follow, boosts: pr.boosts, updated_at: new Date().toISOString() };
+      all[who] = { players: pr.players, wants: pr.wants, format: pr.format, follow: pr.follow, boosts: pr.boosts, going: pr.going, watch: pr.watch, updated_at: new Date().toISOString() };
       await writeFile(prefsPath(), JSON.stringify(all, null, 2));
       return json(res, 200, { ok: true, prefs: all[who] });
     }
@@ -462,7 +462,7 @@ const server = createServer(async (req, res) => {
         collections: liveCollections(items),
         clips: only ? live.filter((i) => i.collection === only) : live,
         prefs: prefRow ? { ...prefRow } : null,
-        picker, experiments: {}, knobs,
+        picker, week: null, experiments: {}, knobs,
       }, { public: !who });
     }
 

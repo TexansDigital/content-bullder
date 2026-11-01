@@ -37,6 +37,9 @@ const PRESETS = [{ slug: 'toro', name: "TORO's picks", blurb: 'The fun side.', e
 const OFFERS = [{ key: 'draft-week', label: 'Draft news', blurb: '', content_types: ['draft_roster'], keywords: ['draft'], ends_at: '2099-04-24T00:00:00Z' },
   { key: 'stale', label: 'Over', blurb: '', content_types: [], keywords: [], ends_at: '2020-01-01T00:00:00Z' }];
 const EXPERIMENTS = [{ key: 'picker_pos', arms: { control: 1, early: 1 }, knobs: { early: { picker_position: 0, bogus: 1 } }, traffic: 1 }];
+const WEEKS = {
+  'sess_1792089626000_k3j9xq2ab': { views: 14, players: [{ slug: 'tank-dell', n: 9 }, { slug: 'nobody-known', n: 2 }], types: [{ type: 'mascot_skits', n: 5 }, { type: 'not_a_type', n: 1 }] },
+};
 const PREFS = {
   'sess_1792089626000_prefsfan1': { players: ['c-j-stroud'], wants: ['fun'], format: 'video', follow: null, boosts: [], updated_at: '2026-11-01T00:00:00Z' },
   'sess_1792089626000_prefsfan2': { players: ['tank-dell'], wants: [], format: null, follow: null, boosts: [], updated_at: '2026-11-01T00:00:00Z' },
@@ -47,6 +50,10 @@ const mock = (over = {}) => async (url, opts = {}) => {
   const path = url.split('/rest/v1/')[1] || '';
   const table = path.split('?')[0];
   if (over[table]) return over[table](url, opts);
+  if (table === 'rpc/feed_week') {
+    const sid = JSON.parse(opts.body || '{}').sid;
+    return { ok: true, status: 200, json: async () => (WEEKS[sid] || { views: 0, players: [], types: [] }) };
+  }
   if (opts.method === 'POST' && table === 'feed_events') return { ok: true, status: 201, json: async () => [] };
   const body = table === 'videos' ? VIDEOS
     : table === 'feed_items' ? ITEMS
@@ -67,7 +74,7 @@ const mock = (over = {}) => async (url, opts = {}) => {
 const waits = [];
 const ctx = { waitUntil: (p) => waits.push(p) };
 const ENV = { SUPABASE_SERVICE_KEY: 'service-secret' };
-const ENTER = '<!doctype html><title>{{TITLE}}</title><form name="{{FORM_NAME}}"><input name="elqCampaignId" value="{{CAMPAIGN_ID}}"><input name="pocket_id" value="{{POCKET_ID}}"><input name="utm_content" value="{{UTM_CONTENT}}"></form>';
+const ENTER = '<!doctype html><title>{{TITLE}}</title><form name="{{FORM_NAME}}"><input name="elqCampaignId" value="{{CAMPAIGN_ID}}"><input name="pocket_id" value="{{POCKET_ID}}"><input name="utm_content" value="{{UTM_CONTENT}}"><input name="utm_term" value="{{UTM_TERM}}"></form>';
 const app = (deps = {}) => createApp({ feedHtml: '<!doctype html><title>feed</title>', enterHtml: ENTER, deps: { fetch: mock(), cache: null, ...deps } });
 const req = (path, init) => new Request(`https://feed.htow.nz${path}`, init);
 
@@ -169,7 +176,7 @@ await a1.fetch(req('/api/feed'), ENV, ctx);
 t('a second /api/feed within the window is served from cache with no Supabase calls', calls.length === n1 && store.size === 1);
 calls.length = 0;
 await a1.fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx);
-t('a personal request reuses the shared cache and only adds the profile and preference reads', calls.length === 2 && calls.every((c) => /feed_profiles|feed_preferences/.test(c.url)) && store.size === 1);
+t('a personal request reuses the shared cache and only adds the profile, preference and week reads', calls.length === 3 && calls.every((c) => /feed_profiles|feed_preferences|rpc\/feed_week/.test(c.url)) && store.size === 1);
 
 // ---- events ----
 calls.length = 0;
@@ -242,6 +249,25 @@ const row = wr ? JSON.parse(wr.opts.body) : {};
 t('a save is accepted and echoed back', save.status === 200 && saved.ok === true && saved.prefs.players.join() === 'tank-dell,c-j-stroud,x');
 t('the row is an upsert on session_id with the service key', wr && /on_conflict=session_id/.test(wr.url) && /merge-duplicates/.test(wr.opts.headers.prefer) && wr.opts.headers.apikey === 'service-secret');
 t('unknown lanes, presets and offers never reach the table', row.wants.join() === 'fun' && row.follow === 'toro' && row.boosts.length === 1 && row.boosts[0].key === 'draft-week' && row.boosts[0].until === '2099-04-24T00:00:00Z');
+t('a boost keeps the offer\'s label, so the feed can say when it is over', row.boosts[0].label === 'Draft news');
+
+/* ---------- the two questions and the week ---------- */
+const qs = await app({ fetch: rankMock() }).fetch(req('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: 'sess_1792089626000_k3j9xq2ab', players: [], going: 'yes', watch: 'bogus', source: 'week' }) }), ENV, ctx);
+const qrow = JSON.parse(calls.filter((c) => /feed_preferences/.test(c.url) && c.opts.method === 'POST').pop().opts.body);
+t('"going" and "watch" are saved as answered, an unknown answer as nothing, and the source is kept', qs.status === 200 && qrow.going === 'yes' && qrow.watch === null && qrow.source === 'week');
+const wk = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
+t('a known fan gets their week back, named, with only players and types we can name', wk.week && wk.week.views === 14 && wk.week.players.length === 1 && wk.week.players[0].name === 'Tank Dell' && wk.week.players[0].n === 9
+  && wk.week.types.length === 1 && wk.week.types[0].name === 'TORO skits' && wk.week.types[0].lane === 'fun');
+t('the week read goes out with the service key, never the publishable one', calls.filter((c) => /rpc\/feed_week/.test(c.url)).every((c) => c.opts.headers.apikey === 'service-secret'));
+const noWeek = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_prefsfan1'), ENV, ctx)).json();
+t('a fan with no views this week has no week card', noWeek.week === null);
+const wkDown = await (await app({ fetch: rankMock({ 'rpc/feed_week': async () => ({ ok: false, status: 500, json: async () => ({}) }) }) }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
+t('a failing week read still serves the feed, ranked, without a week', wkDown.analytics.rank === 'implicit' && wkDown.week === null);
+t('an anonymous request never asks for a week', (calls.length = 0, await app({ fetch: rankMock() }).fetch(req('/api/feed'), ENV, ctx), !calls.some((c) => /rpc\/feed_week/.test(c.url))));
+const termEnter = await (await app().fetch(req('/enter?pid=sess_1792089626000_k3j9xq2ab&term=tank-dell'), ENV, ctx)).text();
+t('/enter carries the picked player into utm_term', /name="utm_term" value="tank-dell"/.test(termEnter));
+const badTerm = await (await app().fetch(req('/enter?term=' + encodeURIComponent('<b>x')), ENV, ctx)).text();
+t('and a malformed term is dropped', /name="utm_term" value=""/.test(badTerm));
 t('the write is stamped with the source and a time', row.source === 'edit' && row.session_id === 'sess_1792089626000_k3j9xq2ab' && typeof row.updated_at === 'string');
 t('a save with no usable id is a 400', (await app({ fetch: rankMock() }).fetch(req('/api/prefs', { method: 'POST', body: JSON.stringify({ players: ['tank-dell'] }) }), ENV, ctx)).status === 400);
 t('a save with bad JSON is a 400', (await app().fetch(req('/api/prefs', { method: 'POST', body: '{nope' }), ENV, ctx)).status === 400);

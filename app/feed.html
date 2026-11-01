@@ -330,11 +330,20 @@ function visitParams() {
 /* ---------- knobs ------------------------------------------------------------
  * The dials an experiment may turn, with their defaults. /api/feed hands back the values for
  * this visitor's arms; anything it names that is not here is ignored. */
-const KNOB_DEFAULTS = { picker_position: 2, picker_reoffer_days: 7, reason_pills: 'explicit', sound_hint: false, capture_card: null };
+const KNOB_DEFAULTS = { picker_position: 2, picker_reoffer_days: 7, reason_pills: 'explicit', sound_hint: false, capture_card: null,
+  offer_position: 2, expiry_position: 1, week_position: 4 };
+/** Fewer views than this in a week and there is no "your week" to show. Mirrors WEEK_MIN_VIEWS in src/rank.js. */
+const WEEK_MIN = 5;
 let knobs = { ...KNOB_DEFAULTS };
 let forcePicker = false;
 let soundHinted = false;
 const skipKey = 'txfeed.prefs.skip';
+/** Things the fan has already seen or declined: "boost:draft-week", "week:2970", "offer:giants-week". */
+const seenKey = 'txfeed.seen';
+const seenAll = () => { try { return JSON.parse(localStorage.getItem(seenKey) || '{}') || {}; } catch { return {}; } };
+const seen = (kind, key, withinMs = Infinity) => { const t = Number(seenAll()[`${kind}:${key}`] || 0); return t > 0 && Date.now() - t < withinMs; };
+const markSeen = (kind, key) => { try { const all = seenAll(); all[`${kind}:${key}`] = Date.now(); localStorage.setItem(seenKey, JSON.stringify(all)); } catch {} };
+const weekStamp = () => Math.floor(Date.now() / (7 * 86400e3));
 const skippedRecently = () => {
   try { const t = Number(localStorage.getItem(skipKey) || 0); return t > 0 && (Date.now() - t) < (Number(knobs.picker_reoffer_days) || 7) * 86400e3; }
   catch { return false; }
@@ -857,6 +866,14 @@ const whyFor = (c) => {
   return `<small class="why">${esc(w.label)}</small>`;
 };
 const firstReason = () => ROWS.find((r) => r.why?.label && !r.system)?.why.label || '';
+/** The player this fan is about: their first pick, else the page's player, else nobody. */
+function myPlayer() {
+  const slug = DATA.prefs?.players?.[0] || DATA.focus?.slug || null;
+  if (!slug) return null;
+  const name = DATA.picker?.players?.find((p) => p.slug === slug)?.name || (DATA.focus?.slug === slug ? DATA.focus.name : null) || slug.replace(/-/g, ' ');
+  return { slug, name };
+}
+const personal = (text) => String(text || '').replaceAll('{{player}}', myPlayer()?.name || 'Texans');
 
 const systemCard = (id, headline, system, extra = {}) => ({ id, source: 'system', status: 'published', collection: 'gameday', headline,
   caption: null, media: { kind: 'none' }, poster: [], durationSeconds: 0, duration: '', publishedAt: null, action: null, sponsor: null,
@@ -872,9 +889,49 @@ function withSystemCards(base) {
   if (offer) rows.splice(forcePicker ? 0 : pos(knobs.picker_position, rows.length), 0, systemCard('sys-picker', DATA.prefs ? 'Your feed' : 'Make it yours', 'picker'));
   const cap = knobs.capture_card;
   if (cap && typeof cap === 'object' && cap.form) {
-    rows.splice(pos(cap.position ?? 5, rows.length), 0, systemCard('sys-enter', String(cap.headline || 'Enter to win').slice(0, 80), 'enter', cap));
+    // {{player}} becomes the fan's own player: "Win C.J. Stroud gear" to a Stroud fan.
+    rows.splice(pos(cap.position ?? 5, rows.length), 0, systemCard('sys-enter', personal(String(cap.headline || 'Enter to win')).slice(0, 80), 'enter',
+      { ...cap, blurb: personal(cap.blurb), cta: personal(cap.cta) }));
+  }
+  const me = whoAmI();
+  const nowMs = Date.now();
+  // A boost was a promise with a date on it. When the date passes, say so, once.
+  const lapsed = (DATA.prefs?.boosts || []).find((b) => b.until && Date.parse(b.until) <= nowMs && !seen('boost', b.key));
+  if (lapsed && me && Number(knobs.expiry_position) >= 0) {
+    rows.splice(pos(knobs.expiry_position, rows.length), 0, systemCard('sys-expiry', `${lapsed.label || 'That boost'} is over.`, 'expiry', lapsed));
+  }
+  // A live offer for a fan who already has a feed; everyone else meets offers inside the picker.
+  if (!offer && DATA.prefs && me && Number(knobs.offer_position) >= 0) {
+    const have = new Set((DATA.prefs.boosts || []).map((b) => b.key));
+    const o = (DATA.picker?.offers || []).find((x) => !have.has(x.key) && !seen('offer', x.key, (Number(knobs.picker_reoffer_days) || 7) * 86400e3));
+    if (o) rows.splice(pos(knobs.offer_position, rows.length), 0, systemCard('sys-offer', `${o.label}?`, 'offer', o));
+  }
+  // The fan's week, once a week, when there is enough of one to show.
+  const w = DATA.week;
+  if (w && w.views >= WEEK_MIN && me && Number(knobs.week_position) >= 0 && !seen('week', weekStamp())) {
+    rows.splice(pos(knobs.week_position, rows.length), 0, systemCard('sys-week', 'Your week', 'week', w));
   }
   return rows;
+}
+
+/** "14 clips this week: 9 Tank Dell and 5 TORO skits." */
+function weekSentence(w) {
+  const parts = [...(w.players || []).slice(0, 2).map((p) => `${p.n} ${p.name}`), ...(w.types || []).slice(0, 1).map((t) => `${t.n} ${t.name}`)];
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0] || '';
+  return `${w.views} clips this week${list ? `: ${list}` : ''}.`;
+}
+/** What the week suggests asking for next: up to two lanes or a player the fan has not picked. */
+function weekMore(w) {
+  const pr = DATA.prefs || {}, have = new Set(pr.wants || []), picked = new Set(pr.players || []);
+  const lanes = DATA.picker?.lanes || [];
+  const out = [];
+  for (const t of w.types || []) {
+    const lane = lanes.find((l) => l.key === t.lane);
+    if (lane && !have.has(lane.key) && !out.some((x) => x.k === lane.key)) out.push({ kind: 'lane', k: lane.key, label: `More ${lane.name.toLowerCase()}` });
+  }
+  const p = (w.players || []).find((x) => !picked.has(x.slug));
+  if (p && (pr.players || []).length < (Number(DATA.picker?.max_players) || 3)) out.push({ kind: 'player', k: p.slug, label: `More ${p.name}` });
+  return out.slice(0, 3);
 }
 
 function pickerMarkup() {
@@ -892,6 +949,10 @@ function pickerMarkup() {
     <div class="opts lanes">${(pk.lanes || []).map((l) => opt(l.key, l.name, wants.has(l.key))).join('')}</div>
     <h3>Watch or read?</h3>
     <div class="opts format">${[['video', 'Mostly video'], ['both', 'Mix in articles']].map(([k, n]) => opt(k, n, (pr.format || 'video') === k)).join('')}</div>
+    <h3>Going to a game this season?</h3>
+    <div class="opts going">${[['yes', 'Yes'], ['maybe', 'Maybe'], ['no', 'Not this year']].map(([k, n]) => opt(k, n, pr.going === k)).join('')}</div>
+    <h3>How do you watch?</h3>
+    <div class="opts watch">${[['nrg', 'At NRG'], ['home', 'At home'], ['go', 'On the go']].map(([k, n]) => opt(k, n, pr.watch === k)).join('')}</div>
     ${(pk.presets || []).length ? `<h3>Follow</h3><div class="opts follow">${pk.presets.map((p) => opt(p.slug, p.name, pr.follow === p.slug)).join('')}</div>` : ''}
     ${(pk.offers || []).map((o) => `<div class="offer"><b>${esc(o.label)}${o.blurb ? ` · ${esc(o.blurb)}` : ''} · until ${esc(fmtDay(o.ends_at))}</b>${opt(o.key, boosted.has(o.key) ? 'On' : 'Yes', boosted.has(o.key))}</div>`).join('')}
     <div class="acts"><button class="save" type="button">${DATA.prefs ? 'Update my feed' : 'Set my feed'}</button><button class="skip" type="button">${DATA.prefs ? 'Cancel' : 'Not now'}</button></div>
@@ -904,6 +965,24 @@ function systemMarkup(c, i, total) {
     role="article" aria-posinset="${i + 1}" aria-setsize="${total}" aria-label="${esc(c.headline)}">${generated(c.id)}<div class="st"></div>`;
   if (c.system === 'picker') return open + pickerMarkup() + '</article>';
   const x = c.extra || {};
+  if (c.system === 'expiry') {
+    const picks = (DATA.prefs?.players || []).map((slug) => DATA.picker?.players?.find((p) => p.slug === slug)?.name || slug.replace(/-/g, ' '));
+    return open + `<div class="pk enter"><h2>${esc(c.headline)}</h2><p>Back to your picks${picks.length ? `: ${esc(picks.join(', '))}` : ''}.</p>
+      <div class="acts"><button class="save ok" type="button">Got it</button><button class="skip edit" type="button">Edit my feed</button></div></div><p class="flash" hidden></p></article>`;
+  }
+  if (c.system === 'offer') {
+    const until = fmtDay(x.ends_at);
+    return open + `<div class="pk enter"><h2>${esc(c.headline)}</h2><p>${esc(x.blurb ? `${x.blurb} ` : '')}We'll lift it until ${esc(until)}, then your feed goes back to normal.</p>
+      <div class="acts"><button class="save yes" type="button">Yes, until ${esc(until)}</button><button class="skip no" type="button">No thanks</button></div>
+      <p class="note">One tap. Your picks stay as they are.</p></div><p class="flash" hidden></p></article>`;
+  }
+  if (c.system === 'week') {
+    const more = weekMore(x);
+    return open + `<div class="pk enter week"><h2>${esc(c.headline)}</h2><p>${esc(weekSentence(x))}</p>
+      ${more.length ? `<h3>Want more?</h3><div class="opts more">${more.map((m) => `<button class="opt" type="button" data-kind="${esc(m.kind)}" data-k="${esc(m.k)}">${esc(m.label)}</button>`).join('')}</div>` : ''}
+      <div class="acts"><button class="skip" type="button">Not now</button></div>
+      <p class="note">One tap changes the feed and says why on the cards it moved.</p></div><p class="flash" hidden></p></article>`;
+  }
   return open + `<div class="pk enter"><h2>${esc(c.headline)}</h2><p>${esc(x.blurb || '')}</p>
     <div class="acts"><button class="save go" type="button">${esc(x.cta || 'Enter')}</button></div>
     <p class="note">Opens the entry form. Your details go to the Houston Texans under their privacy policy.</p></div><p class="flash" hidden></p></article>`;
@@ -939,14 +1018,68 @@ async function reload(prefs, why) {
   track('feed_load', loadParams(why));
 }
 
+/**
+ * One save for every way a fan tells us something: the picker (everything at once), an offer
+ * (one boost), the weekly card (one lane or player). Starts from what is saved, applies the
+ * change, posts, reports, reloads the feed as them.
+ */
+async function savePrefs(changes, source, card, at, extra = {}) {
+  const base = DATA.prefs || {};
+  const body = { players: base.players || [], wants: base.wants || [], format: base.format || null, follow: base.follow || null,
+    boosts: (base.boosts || []).map((b) => ({ key: b.key, until: b.until, label: b.label })), going: base.going || null, watch: base.watch || null,
+    ...changes, source, ...(pocketId ? { pocket_id: pocketId } : {}), ...(mintDevice() ? { device_id: deviceId } : {}) };
+  const r = await fetch('/api/prefs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(String(r.status));
+  const res = await r.json();
+  track('prefs_save', { ...cardParams(card, at), players_n: body.players.length, wants_n: body.wants.length,
+    pref_format: body.format || '', pref_follow: body.follow || '', boosts_n: body.boosts.length,
+    pref_going: body.going || '', pref_watch: body.watch || '', save_source: source, ...extra });
+  await reload(res.prefs, 'prefs');
+  return res;
+}
+
 function wireSystem(s, card, at) {
+  const x = card.extra || {};
   if (card.system === 'enter') {
     s.querySelector('.go').onclick = () => {
-      const x = card.extra || {};
-      const q = new URLSearchParams({ pid: whoAmI() || '', form: String(x.form || ''), cid: String(x.campaign || ''), card: card.id, title: card.headline });
+      const mine = myPlayer();
+      const q = new URLSearchParams({ pid: whoAmI() || '', form: String(x.form || ''), cid: String(x.campaign || ''), card: card.id, title: card.headline, ...(mine ? { term: mine.slug } : {}) });
       openFrame(`/enter?${q}`, card.headline);
-      track('capture_open', cardParams(card, at));
+      track('capture_open', { ...cardParams(card, at), ...(mine ? { pref_player: mine.slug } : {}) });
     };
+    return;
+  }
+  if (card.system === 'expiry') {
+    s.querySelector('.ok').onclick = () => { markSeen('boost', x.key); track('boost_expired_seen', { ...cardParams(card, at), offer_key: x.key }); render(); };
+    s.querySelector('.edit').onclick = () => { markSeen('boost', x.key); track('boost_expired_edit', { ...cardParams(card, at), offer_key: x.key }); forcePicker = true; render(); $('#feed').scrollTop = 0; };
+    return;
+  }
+  if (card.system === 'offer') {
+    const yes = s.querySelector('.yes');
+    yes.onclick = async () => {
+      yes.disabled = true;
+      track('offer_accept', { ...cardParams(card, at), offer_key: x.key });
+      try {
+        await savePrefs({ boosts: [...(DATA.prefs?.boosts || []).map((b) => ({ key: b.key, until: b.until, label: b.label })), { key: x.key, until: x.ends_at, label: x.label }] }, 'offer', card, at, { offer_key: x.key });
+        toast(`${x.label} is on until ${fmtDay(x.ends_at)}. Then back to your picks.`);
+      } catch { yes.disabled = false; flashOn(s, 'Could not save. Try again.'); }
+    };
+    s.querySelector('.no').onclick = () => { markSeen('offer', x.key); track('offer_decline', { ...cardParams(card, at), offer_key: x.key }); render(); };
+    return;
+  }
+  if (card.system === 'week') {
+    s.querySelectorAll('.more .opt').forEach((b) => (b.onclick = async () => {
+      b.disabled = true;
+      const kind = b.dataset.kind, k = b.dataset.k;
+      const changes = kind === 'lane' ? { wants: [...(DATA.prefs?.wants || []), k] } : { players: [...(DATA.prefs?.players || []), k] };
+      try {
+        markSeen('week', weekStamp());
+        await savePrefs(changes, 'week', card, at, { week_more: `${kind}:${k}` });
+        const why = firstReason();
+        toast(why ? `Done. First up: ${why.toLowerCase()}.` : 'Done. Your feed has moved.');
+      } catch { b.disabled = false; flashOn(s, 'Could not save. Try again.'); }
+    }));
+    s.querySelector('.skip').onclick = () => { markSeen('week', weekStamp()); track('week_skip', cardParams(card, at)); render(); };
     return;
   }
   const pk = s.querySelector('.pk');
@@ -957,7 +1090,7 @@ function wireSystem(s, card, at) {
     if (on && limit > 1 && pk.querySelectorAll(`.${name} .opt[aria-pressed="true"]`).length >= limit) { flashOn(s, `Up to ${limit} players`); return; }
     b.setAttribute('aria-pressed', String(on || limit === 1));
   }));
-  group('players', max); group('lanes', 99); group('format', 1); group('follow', 1);
+  group('players', max); group('lanes', 99); group('format', 1); group('follow', 1); group('going', 1); group('watch', 1);
   pk.querySelectorAll('.offer .opt').forEach((b) => (b.onclick = () => {
     const on = b.getAttribute('aria-pressed') !== 'true';
     b.setAttribute('aria-pressed', String(on)); b.textContent = on ? 'On' : 'Yes';
@@ -966,21 +1099,21 @@ function wireSystem(s, card, at) {
   const picks = (name) => [...pk.querySelectorAll(`.${name} .opt[aria-pressed="true"]`)].map((b) => b.dataset.k);
   const save = pk.querySelector('.save');
   save.onclick = async () => {
-    const body = { players: picks('players'), wants: picks('lanes'), format: picks('format')[0] || null, follow: picks('follow')[0] || null,
-      boosts: picks('offer'), source: DATA.prefs ? 'edit' : 'picker',
-      ...(pocketId ? { pocket_id: pocketId } : {}), ...(mintDevice() ? { device_id: deviceId } : {}) };
+    // The picker replaces everything: boosts the fan left pressed keep their dates and labels.
+    const kept = new Map((DATA.prefs?.boosts || []).map((b) => [b.key, b]));
+    const offers = DATA.picker?.offers || [];
+    const boosts = picks('offer').map((k) => kept.get(k) || { key: k, until: offers.find((o) => o.key === k)?.ends_at, label: offers.find((o) => o.key === k)?.label });
+    const changes = { players: picks('players'), wants: picks('lanes'), format: picks('format')[0] || null, follow: picks('follow')[0] || null,
+      boosts, going: picks('going')[0] || null, watch: picks('watch')[0] || null };
     save.disabled = true;
+    const wasForced = forcePicker;
     try {
-      const r = await fetch('/api/prefs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-      if (!r.ok) throw new Error(String(r.status));
-      const res = await r.json();
-      track('prefs_save', { ...cardParams(card, at), players_n: body.players.length, wants_n: body.wants.length,
-        pref_format: body.format || '', pref_follow: body.follow || '', boosts_n: body.boosts.length });
       forcePicker = false;
-      await reload(res.prefs, 'prefs');
+      await savePrefs(changes, DATA.prefs ? 'edit' : 'picker', card, at);
       const why = firstReason();
       toast(why ? `Your feed is set. First up: ${why.toLowerCase()}.` : 'Your feed is set.');
     } catch {
+      forcePicker = wasForced;
       save.disabled = false;
       flashOn(s, 'Could not save. Try again.');
     }

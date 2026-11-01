@@ -19,7 +19,7 @@
  */
 import { makeItem, feedSort, liveCollections, STATUS } from '../../../src/content.js';
 import catalogue, { excludedMatchers } from '../../../src/adapters/catalogue.js';
-import { rankFeed, makePrefs, resolveExperiments, displayName, LANES, MAX_PICKS, MIN_EVENTS } from '../../../src/rank.js';
+import { rankFeed, makePrefs, resolveExperiments, displayName, LANES, MAX_PICKS, MIN_EVENTS, TYPE_NAMES, laneOf } from '../../../src/rank.js';
 
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
 /** A player slug as the dictionary spells it: the page the feed is framed on names one. */
@@ -204,7 +204,7 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
     if (!who || !env.SUPABASE_SERVICE_KEY || !ID_SHAPE.test(who)) return null;
     try {
       const rows = await rest(env,
-        `feed_preferences?select=players,wants,format,follow,boosts,updated_at&session_id=eq.${encodeURIComponent(who)}&limit=1`,
+        `feed_preferences?select=players,wants,format,follow,boosts,going,watch,updated_at&session_id=eq.${encodeURIComponent(who)}&limit=1`,
         env.SUPABASE_SERVICE_KEY);
       return Array.isArray(rows) && rows[0] ? rows[0] : null;
     } catch (e) {
@@ -213,8 +213,36 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
     }
   }
 
+  /**
+   * One fan's last seven days, for the "your week" card: views, top players, top content types,
+   * from the feed_week function (service key only). Named here so the page never sees a slug it
+   * has to spell out. Any failure is "no week", never an error in the feed.
+   */
+  async function weekFor(env, who, names = {}) {
+    if (!who || !env.SUPABASE_SERVICE_KEY || !ID_SHAPE.test(who)) return null;
+    try {
+      const { base } = supa(env);
+      const r = await get(`${base}/rest/v1/rpc/feed_week`, {
+        method: 'POST',
+        headers: { apikey: env.SUPABASE_SERVICE_KEY, authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`, 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ sid: who }),
+      });
+      if (!r.ok) throw new Error(`rpc ${r.status}`);
+      const w = await r.json();
+      if (!w || typeof w !== 'object') return null;
+      return {
+        views: Number(w.views) || 0,
+        players: (Array.isArray(w.players) ? w.players : []).filter((p) => names[p.slug]).map((p) => ({ slug: p.slug, name: displayName(p.slug, names), n: Number(p.n) || 0 })),
+        types: (Array.isArray(w.types) ? w.types : []).filter((t) => TYPE_NAMES[t.type]).map((t) => ({ type: t.type, name: TYPE_NAMES[t.type], lane: laneOf(t.type), n: Number(t.n) || 0 })),
+      };
+    } catch (e) {
+      console.error('feed_week read', e?.message);
+      return null;
+    }
+  }
+
   /** The shape the page gets back: what was saved, nothing about how it is stored. */
-  const publicPrefs = (p) => (p ? { players: p.players, wants: p.wants, format: p.format, follow: p.follow, boosts: p.boosts, updated_at: p.updated_at || null } : null);
+  const publicPrefs = (p) => (p ? { players: p.players, wants: p.wants, format: p.format, follow: p.follow, boosts: p.boosts, going: p.going ?? null, watch: p.watch ?? null, updated_at: p.updated_at || null } : null);
 
   async function apiFeed(request, env, ctx) {
     const url = new URL(request.url);
@@ -227,7 +255,7 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
     // dictionary knows counts, so an excluded or misspelled slug changes nothing.
     const wanted = url.searchParams.get('focus') || '';
     const focus = SLUG.test(wanted) && names[wanted] ? wanted : null;
-    const [profile, prefRow] = await Promise.all([profileFor(env, who), prefsFor(env, who)]);
+    const [profile, prefRow, week] = await Promise.all([profileFor(env, who), prefsFor(env, who), weekFor(env, who, names)]);
     const prefs = prefRow ? makePrefs(prefRow) : null;
     const { items, ranked, focus: focused } = rankFeed(live, profile, { prefs, presets, offers, names, focus, now: now().getTime() });
     const assigned = resolveExperiments(experiments, who);
@@ -243,6 +271,7 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
       prefs: prefs ? publicPrefs({ ...prefs, updated_at: prefRow?.updated_at }) : null,
       // The picker needs an id to save against; with none it is not offered.
       picker: who && env.SUPABASE_SERVICE_KEY && prefsReady ? picker : null,
+      week: week && week.views > 0 ? week : null,
       experiments: assigned.experiments,
       knobs: assigned.knobs,
       ...(warnings.length ? { warnings } : {}),
@@ -328,8 +357,14 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
       wants: p.wants,
       format: p.format,
       follow: p.follow && presets[p.follow] ? p.follow : null,
-      boosts: p.boosts.filter((b) => offers[b.key]).map((b) => ({ key: b.key, until: offers[b.key].ends_at })),
-      source: body?.source === 'edit' ? 'edit' : 'picker',
+      // A boost keeps the offer's end date and label, so the feed can say "Draft week is over"
+      // after the offer itself has stopped being served.
+      boosts: p.boosts.filter((b) => offers[b.key] || b.label).map((b) => (offers[b.key]
+        ? { key: b.key, until: offers[b.key].ends_at, label: offers[b.key].label }
+        : { key: b.key, until: b.until, label: b.label })),
+      going: p.going,
+      watch: p.watch,
+      source: ['edit', 'offer', 'week'].includes(body?.source) ? body.source : 'picker',
       updated_at: now().toISOString(),
     };
     const { base } = supa(env);
@@ -365,6 +400,7 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
       .replaceAll('{{FORM_NAME}}', escHtml(pick(q.get('form'), FORM_NAME) || env.ELOQUA_FORM_NAME || ''))
       .replaceAll('{{CAMPAIGN_ID}}', escHtml(pick(q.get('cid'), FORM_NAME) || env.ELOQUA_CAMPAIGN_ID || ''))
       .replaceAll('{{UTM_CONTENT}}', escHtml(pick(q.get('card'), /^[A-Za-z0-9._:-]{1,80}$/)))
+      .replaceAll('{{UTM_TERM}}', escHtml(pick(q.get('term'), SLUG)))
       .replaceAll('{{TITLE}}', escHtml(pick(q.get('title'), /^[^<>]{1,80}$/) || 'Enter'));
     return new Response(html, {
       headers: {
