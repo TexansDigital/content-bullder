@@ -103,6 +103,11 @@ const p = await open(`layout=rail&placement=player&focus=will-anderson-jr&pid=se
 ts = await tiles(p.pg);
 t('on a player\'s page their cards lead the rail', ts[0] === items[2].id && ts[1] === items[4].id);
 t('and the tile says whose page this is', (await p.pg.locator('#tiles .tile').first().locator('.why').textContent()) === 'Will Anderson Jr');
+t('the reason is said once per run: the second Anderson tile in a row does not repeat it', (await p.pg.locator('#tiles .tile').nth(1).locator('.why').count()) === 0 && ts[1] === items[4].id);
+t('a tile is a picture with a solid band under it, our type never on the picture, no play button over a face', await p.pg.evaluate(() => {
+  const t = document.querySelector('#tiles .tile'); const art = t.querySelector('.art').getBoundingClientRect(); const band = t.querySelector('.tb').getBoundingClientRect();
+  return band.top >= art.bottom - 1 && getComputedStyle(t.querySelector('.tb')).backgroundColor !== 'rgba(0, 0, 0, 0)' && !t.querySelector('.tplay') && t.querySelector('.tb h3') !== null;
+}));
 t('a card about someone else carries no reason', (await p.pg.locator(`#tiles .tile[data-id="${items[0].id}"] .why`).count()) === 0);
 await p.pg.locator('#tiles .tile[data-id="sys-picker"]').click(); await p.pg.waitForTimeout(300);
 t('the picker opens with that player already pressed: the page is the first pick', (await p.pg.locator('.pk .players .opt[aria-pressed="true"]').textContent()) === 'Will Anderson Jr');

@@ -245,24 +245,32 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .rail-mode .tiles::-webkit-scrollbar{display:none}
 .tile{flex:none;height:100%;aspect-ratio:9/16;position:relative;border:1px solid var(--line);padding:0;background:#000;
   color:#fff;cursor:pointer;overflow:hidden;text-align:left;scroll-snap-align:start;font:inherit}
-.tile>img,.tile>.gen{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.tile>img{z-index:1}
-.tile .tsb{position:absolute;inset:0;background:linear-gradient(0deg,rgba(2,17,24,.97) 0%,rgba(2,17,24,.78) 26%,rgba(2,17,24,.2) 55%,transparent 75%)}
-.tile .tb{position:absolute;left:10px;right:10px;bottom:10px;z-index:2}
-.tile .tb h3{font:900 13px/.95 var(--display);text-transform:uppercase;letter-spacing:-.01em;margin:0;text-wrap:balance;
+/* A photo tile is a picture with a solid band under it. Our type never sits on the picture:
+   Shorts thumbnails carry their own burned-in text and score bugs, and two layers of type on
+   236 pixels is unreadable. The band holds the headline and, once per run, the reason. */
+.tile{display:flex;flex-direction:column}
+.tile .art{position:relative;flex:1;min-height:0;overflow:hidden;background:#000}
+.tile .art>img,.tile .art>.gen{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tile .art>img{z-index:1}
+.tile .tb{flex:none;background:var(--steel);border-top:1px solid var(--line);padding:9px 10px 10px;min-height:74px;display:flex;
+  flex-direction:column;justify-content:flex-start;gap:3px}
+.tile .tb h3{font:900 12px/1.02 var(--display);text-transform:uppercase;letter-spacing:-.01em;margin:0;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.tile .tb p{margin:4px 0 0;font-size:11px;line-height:1.35;color:var(--body);display:-webkit-box;-webkit-line-clamp:2;
+.tile .tb .why{display:block;font:500 8.5px/1.3 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#4fb3ff;margin:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .tb p{margin:0;font-size:11px;line-height:1.35;color:var(--body);display:-webkit-box;-webkit-line-clamp:2;
   -webkit-box-orient:vertical;overflow:hidden}
 .tile .tcoll{position:absolute;top:8px;left:8px;z-index:2;font:900 8px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;
   background:var(--red);padding:4px 6px}
-.tile.sys{background:#021018 var(--plate) center/cover no-repeat;border-color:var(--line)}
-.tile.sys .tsb{background:linear-gradient(0deg,rgba(2,17,24,.85) 0%,rgba(2,17,24,.35) 45%,transparent 70%)}
-.tile.sys .tb{border-top:3px solid var(--red);padding-top:10px}
+.tile .tdur{position:absolute;right:8px;bottom:8px;z-index:2;display:inline-flex;align-items:center;gap:4px;background:rgba(2,17,24,.82);
+  color:#fff;font:500 9px/1 var(--mono);letter-spacing:.08em;padding:4px 6px}
+.tile .tdur svg{width:9px;height:9px;fill:#fff}
+.tile.sys{background:#021018 var(--plate) center/cover no-repeat;border-color:var(--line);justify-content:flex-end;position:relative}
+.tile.sys .tsb{position:absolute;inset:0;background:linear-gradient(0deg,rgba(2,17,24,.85) 0%,rgba(2,17,24,.35) 45%,transparent 70%)}
+.tile.sys .tb{position:relative;z-index:2;background:none;border-top:3px solid var(--red);padding:10px;min-height:0;margin:0 10px 10px}
+.tile.sys .tb h3{font-size:13px}
 .tile.sys .stamp{margin-bottom:8px;font-size:9px}
 .tile.sys .stat{display:block;font:900 44px/.86 var(--display);letter-spacing:-.02em;color:#ff0000;margin:0 0 4px}
-.tile .tplay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(2,17,24,.72);
-  box-shadow:0 0 0 1px rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;z-index:2;pointer-events:none}
-.tile .tplay svg{width:18px;height:18px;margin-left:2px;fill:#fff}
 .tile:hover{border-color:var(--red)}
 .tile:focus-visible{outline:2px solid var(--red);outline-offset:2px}
 .rail-mode .stage{display:none;position:fixed;inset:0;z-index:35;background:var(--steel);padding:0}
@@ -1438,25 +1446,28 @@ function render() {
  * feed at that card; the feed's own observer then records the view at that position, so a
  * rail session slices exactly like a feed session, plus rail_open and rail_close.
  */
-function tileMarkup(c, i, name) {
+function tileMarkup(c, i, name, prevWhy = '') {
   // The same poster chain the card uses: YouTube's largest size is often missing for a Short,
   // so the tile walks the list on error rather than showing a broken glyph.
   const posters = c.system ? [] : (c.media?.kind === 'image' ? [c.media.url] : (c.poster || [])).map(safeUrl).filter(Boolean);
   const poster = posters[0] || '';
   if (c.system) return systemTile(c, i);
-  return `<button class="tile" type="button" data-index="${i}" data-id="${esc(c.id)}"
-    aria-label="${esc(c.headline)}">${poster ? `<img src="${esc(poster)}" alt="" loading="lazy" data-fallback="${esc(JSON.stringify(posters.slice(1)))}">` : ''}${generated(c.id)}<div class="tsb"></div>
-    <span class="tcoll">${esc(c.sponsor ? [c.sponsor.label, c.sponsor.name].filter(Boolean).join(' ') : name(c.collection))}</span>
-    ${c.media?.kind === 'youtube' || c.media?.kind === 'cloudinary' || c.media?.kind === 'file' ? `<span class="tplay">${IC.play}</span>` : ''}
-    <div class="tb">${whyFor(c)}<h3>${esc(c.headline)}</h3></div></button>`;
+  // The reason appears once per run: three Anderson tiles in a row say it on the first only.
+  const why = prevWhy === (c.why?.label || '') ? '' : whyFor(c);
+  const playable = c.media?.kind === 'youtube' || c.media?.kind === 'cloudinary' || c.media?.kind === 'file';
+  return `<button class="tile" type="button" data-index="${i}" data-id="${esc(c.id)}" aria-label="${esc(c.headline)}">
+    <div class="art">${poster ? `<img src="${esc(poster)}" alt="" loading="lazy" data-fallback="${esc(JSON.stringify(posters.slice(1)))}">` : ''}${generated(c.id)}
+      <span class="tcoll">${esc(c.sponsor ? [c.sponsor.label, c.sponsor.name].filter(Boolean).join(' ') : name(c.collection))}</span>
+      ${playable ? `<span class="tdur">${IC.play}${c.duration ? `<span>${esc(c.duration)}</span>` : ''}</span>` : ''}</div>
+    <div class="tb">${why}<h3>${esc(c.headline)}</h3></div></button>`;
 }
 
 /** A system card as a tile: the flag plate, the stamp, the headline, one line, and a stat where there is one. */
 function systemTile(c, i) {
   const x = c.extra || {};
   const face = c.system === 'picker' ? { stamp: DATA.prefs ? 'Your feed // edit' : 'Your feed // 3 taps', line: DATA.prefs ? 'Change anything. The feed moves on the spot.' : 'Pick players, lanes, how you watch.' }
-    : c.system === 'week' ? { stamp: 'Your week // clips', stat: String(x.views), line: weekSentence(x).replace(/\.$/, '') }
-    : c.system === 'offer' ? { stamp: `Offer // until ${fmtDay(x.ends_at)}`, stat: Number(x.cards) > 0 ? String(x.cards) : null, line: Number(x.cards) > 0 ? `clips ready. ${x.blurb || ''}`.trim() : (x.blurb || 'One tap. Back to normal after.') }
+    : c.system === 'week' ? { stamp: 'Your week', stat: String(x.views), line: `clips this week. ${weekSentence(x).replace(/\.$/, '')}` }
+    : c.system === 'offer' ? { stamp: `Offer // until ${fmtDay(x.ends_at)}`, line: `${Number(x.cards) > 0 ? `${x.cards} clips ready. ` : ''}${x.blurb || 'One tap. Back to normal after.'}` }
     : c.system === 'expiry' ? { stamp: 'Your feed // update', line: 'Back to your picks.' }
     : { stamp: 'Enter // Houston Texans', line: x.blurb || '' };
   return `<button class="tile sys" type="button" data-index="${i}" data-id="${esc(c.id)}" aria-label="${esc(c.headline)}"><div class="tsb"></div>
@@ -1468,7 +1479,7 @@ const TILE_MAX = 40;
 function renderTiles(rows, name) {
   const el = $('#tiles');
   closeRail(false);
-  el.innerHTML = rows.slice(0, TILE_MAX).map((c, i) => tileMarkup(c, i, name)).join('');
+  el.innerHTML = rows.slice(0, TILE_MAX).map((c, i) => tileMarkup(c, i, name, i > 0 && !rows[i - 1].system ? (rows[i - 1].why?.label || '') : '')).join('');
   el.querySelectorAll('.tile').forEach((t) => (t.onclick = () => openRail(Number(t.dataset.index) || 0)));
   el.querySelectorAll('img[data-fallback]').forEach((img) => {
     let queue;
