@@ -81,6 +81,19 @@ t('Escape closes it too', !(await r.pg.evaluate(() => document.querySelector('#s
 t('no page errors', r.errs.length === 0);
 await r.ctx.close();
 
+/* ---------- a long feed, a short strip ---------- */
+const many = await b.newContext({ viewport: { width: 1200, height: 560 } });
+const mp = await many.newPage();
+await mp.route(/a\.example\//, (r) => r.fulfill({ status: 200, contentType: 'image/png', body: PNG }));
+await mp.route(/\/api\/feed/, async (r) => {
+  const res = await r.fetch(); const body = await res.json();
+  const clips = Array.from({ length: 120 }, (_, i) => ({ ...body.clips[i % body.clips.length], id: `many-${i}` }));
+  await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...body, clips }) });
+});
+await mp.goto(`${B}/feed?layout=rail&pid=sess_${RUN}_many`, { waitUntil: 'networkidle' }); await mp.waitForTimeout(600);
+t('a long feed shows forty tiles at most while the feed behind it keeps every card', (await mp.evaluate(() => document.querySelectorAll('#tiles .tile').length)) === 40 && (await mp.evaluate(() => document.querySelectorAll('#feed .slide').length)) > 100);
+await many.close();
+
 /* ---------- a player's page ---------- */
 const p = await open(`layout=rail&placement=player&focus=will-anderson-jr&pid=sess_${RUN}_railplayer`);
 ts = await tiles(p.pg);

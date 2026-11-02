@@ -1293,10 +1293,12 @@ function tileMarkup(c, i, name) {
     <div class="tb">${whyFor(c)}<h3>${esc(c.headline)}</h3>${blurb ? `<p>${esc(blurb)}</p>` : ''}</div></button>`;
 }
 
+/** The strip shows this many tiles; the feed behind it still holds every card. */
+const TILE_MAX = 40;
 function renderTiles(rows, name) {
   const el = $('#tiles');
   closeRail(false);
-  el.innerHTML = rows.map((c, i) => tileMarkup(c, i, name)).join('');
+  el.innerHTML = rows.slice(0, TILE_MAX).map((c, i) => tileMarkup(c, i, name)).join('');
   el.querySelectorAll('.tile').forEach((t) => (t.onclick = () => openRail(Number(t.dataset.index) || 0)));
   el.querySelectorAll('img[data-fallback]').forEach((img) => {
     let queue;
