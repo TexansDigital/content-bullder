@@ -20,7 +20,7 @@
 
   window.houModules = window.houModules || {};
   var state = window.houModules['txfeed-handshake'] = {
-    v: 2, owner: 'DSaC', block: 'js', expires: 'evergreen',
+    v: 3, owner: 'DSaC', block: 'js', expires: 'evergreen',
     hellos: 0, answered: 0, declined: 0
   };
 
@@ -47,7 +47,18 @@
     try { id = window.localStorage.getItem(POCKET_KEY); } catch (err) { id = null; }
     if (id && !ID_PATTERN.test(id)) id = null;
 
-    e.source.postMessage({ source: 'txfeed-host', pocketId: id, consent: true }, FEED_ORIGIN);
+    // v3: the Eloqua visitor GUID the site's own attribution script already records beside the
+    // pocket id (the GUID= part of the ELOQUA cookie). For a fan who has ever clicked a club
+    // email it resolves to a contact in Eloqua, so the feed's session can be recognised with
+    // no ask at all. Sent only with consent, only to the feed, 32 hex characters or nothing.
+    var guid = null;
+    try {
+      var m = (document.cookie || '').match(/(?:^|;\s*)ELOQUA=([^;]*)/);
+      var g = m ? decodeURIComponent(m[1]).match(/GUID=([0-9A-Fa-f]{32})/) : null;
+      guid = g ? g[1] : null;
+    } catch (err) { guid = null; }
+
+    e.source.postMessage({ source: 'txfeed-host', pocketId: id, consent: true, eloquaGuid: guid }, FEED_ORIGIN);
     state.answered++;
   });
 }());

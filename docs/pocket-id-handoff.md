@@ -20,6 +20,15 @@ There are two ways to do it. **Either one is enough; you do not need both.**
 
 ---
 
+## v3, 2 Nov 2026: the Eloqua GUID rides along
+
+The script in [`txfeed-handshake.html`](txfeed-handshake.html) is now v3. Beside the pocket id
+it passes the Eloqua visitor GUID from the `ELOQUA` cookie, the same value the site's own
+attribution script already records with every click and session. The feed stores it once, on
+the identity event, against the pocket id. For a fan who has ever clicked a club email, Eloqua
+resolves that GUID to a contact, so the session is recognised without asking the fan anything.
+Nothing else changes for the CMS: replace the handshake block's contents with the v3 file.
+
 ## Option A — the script (preferred)
 
 The feed posts a `hello` message to its parent as soon as it loads. The host page answers

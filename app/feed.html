@@ -450,6 +450,14 @@ function loadGA(id) {
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
 
 let pocketId = null;
+/**
+ * The Eloqua visitor GUID the host passes with the pocket id (handshake v3). A pseudonymous
+ * visitor key Eloqua already holds; for a fan who has ever clicked a club email it resolves to
+ * a contact there, so the session can be recognised without asking. Shape-checked, sent once
+ * on the identity event, never used here for anything else.
+ */
+let eloquaGuid = null;
+const ELQ_GUID = /^[0-9A-Fa-f]{32}$/;
 
 /**
  * Minting our own id is the same act the host site gates behind OneTrust performance
@@ -520,7 +528,7 @@ function flush(how) {
   pending = [];
   // Identity first, so a consumer knows who the events that follow belong to. It goes
   // through payloadFor like everything else; emitted raw, it carried no ids at all.
-  if (how) emit('identity', payloadFor({ identity_source: how }));
+  if (how) emit('identity', payloadFor({ identity_source: how, ...(eloquaGuid ? { eloqua_guid: eloquaGuid } : {}) }));
   for (const [event, params] of queued) emit(event, payloadFor(params));
 }
 
@@ -614,6 +622,7 @@ addEventListener('message', (e) => {
     onIdentified?.();
     return;
   }
+  if (typeof d.eloquaGuid === 'string' && ELQ_GUID.test(d.eloquaGuid)) eloquaGuid = d.eloquaGuid.toLowerCase();
   if (d.pocketId == null) { flush('device'); return; }
   setPocketId(d.pocketId, 'host-message');
 });

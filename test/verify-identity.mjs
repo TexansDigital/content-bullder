@@ -189,6 +189,31 @@ t('a private window still renders the feed',
 t('and still reports, just without an id',
   (await evsOf(s2)).some((e) => e.event === 'feed_load'));
 
+/* ---------- handshake v3: the Eloqua visitor GUID rides with the pocket id ---------- */
+const guidHost = (guid) => `
+  <script>
+    window.__ev = [];
+    addEventListener('message', function (e) {
+      if (!e.data || e.data.source !== 'txfeed') return;
+      window.__ev.push(e.data);
+      if (e.data.event !== 'hello') return;
+      e.source.postMessage({ source: 'txfeed-host', pocketId: 'sess_1792089626000_k3j9xq2ab', consent: true, eloquaGuid: ${JSON.stringify(guid)} }, '*');
+    });
+  <\/script>
+  <iframe id="x" src="${B}/feed" style="width:430px;height:820px;border:0"></iframe>`;
+{
+  const pg = await openHost(guidHost('ABCDEF0123456789abcdef0123456789'));
+  const evs = await evsOf(pg);
+  const idEv = evs.find((e) => e.event === 'identity');
+  t('a host that passes an Eloqua GUID has it recorded once, on the identity event, lower-cased', idEv && idEv.params.eloqua_guid === 'abcdef0123456789abcdef0123456789' && idEv.params.pocket_id === 'sess_1792089626000_k3j9xq2ab');
+  t('and on nothing else', !evs.some((e) => e.event !== 'identity' && e.params?.eloqua_guid));
+  await pg.close();
+  const bad = await openHost(guidHost('GUID=not-hex-at-all-0123456789'));
+  const badEvs = await evsOf(bad);
+  t('a GUID that is not 32 hex characters is dropped, the pocket id still lands', !badEvs.some((e) => e.params?.eloqua_guid) && badEvs.some((e) => e.event === 'identity' && e.params.pocket_id === 'sess_1792089626000_k3j9xq2ab'));
+  await bad.close();
+}
+
 /* ---------- verification traffic is marked ---------- */
 {
   const ctx = await b.newContext({ viewport: { width: 390, height: 780 } });
