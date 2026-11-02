@@ -139,7 +139,7 @@ await c.ctx.close();
 /* ---------- the two questions ---------- */
 const q = await open({ pid: `sess_${RUN}_questions` });
 t('the picker asks about going to a game and how the fan watches', await q.pg.evaluate(() => document.querySelectorAll('.pk .going .opt').length === 3 && document.querySelectorAll('.pk .watch .opt').length === 3)
-  && (await q.pg.locator('.pk .going .opt').allTextContents()).join() === 'Yes,Maybe,Not this year' && (await q.pg.locator('.pk .watch .opt').allTextContents()).join() === 'At NRG,At home,On the go');
+  && (await q.pg.locator('.pk .going .opt').allTextContents()).join() === 'Yes,Maybe,Not this year' && (await q.pg.locator('.pk .watch .opt').allTextContents()).join() === 'At Reliant Stadium,At home,On the go');
 await q.pg.locator('.pk .going .opt', { hasText: 'Yes' }).click();
 await q.pg.locator('.pk .watch .opt', { hasText: 'On the go' }).click();
 await q.pg.locator('.pk .save').click(); await q.pg.waitForTimeout(900);
@@ -257,6 +257,20 @@ await cp.ctx.close();
 const cn = await open({ pid: `sess_${RUN}_capturenone`, knobs: { picker_position: -1, capture_card: { position: 1, headline: 'Win {{player}} gear', form: 'fan_preference_web' } } });
 t('with no pick the placeholder reads Texans', (await cn.pg.locator('.slide[data-id="sys-enter"] h2').textContent()) === 'Win Texans gear');
 await cn.ctx.close();
+
+/* ---------- who the capture card is for ---------- */
+const AUD = `sess_${RUN}_audience`;
+await j('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: AUD, players: ['c-j-stroud'] }) });
+const emailCard = { position: 1, headline: 'Your feed, in your inbox', blurb: '{{player}} clips before kickoff.', cta: 'Send me my feed', form: 'fan_preference_web', audience: 'prefs' };
+const au = await open({ pid: AUD, knobs: { capture_card: emailCard } });
+t('an audience of "prefs" shows the card to a fan who has set their feed, personalised', (await ids(au.pg))[1] === 'sys-enter' && (await au.pg.locator('.slide[data-id="sys-enter"] p').first().textContent()) === 'C J Stroud clips before kickoff.');
+await au.ctx.close();
+const an = await open({ pid: `sess_${RUN}_audiencenew`, knobs: { capture_card: emailCard } });
+t('and not to a fan who has not: the ask comes after the payoff, never instead of it', !(await ids(an.pg)).includes('sys-enter') && (await ids(an.pg)).includes('sys-picker'));
+await an.ctx.close();
+const anew = await open({ pid: `sess_${RUN}_audiencenew2`, knobs: { picker_position: -1, capture_card: { ...emailCard, audience: 'new' } } });
+t('an audience of "new" is the mirror image', (await ids(anew.pg))[1] === 'sys-enter');
+await anew.ctx.close();
 
 /* ---------- nobody to save for ---------- */
 const anon = await b.newPage({ viewport: { width: 390, height: 780 } });

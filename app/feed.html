@@ -888,7 +888,10 @@ function withSystemCards(base) {
   const offer = DATA.picker?.players?.length && whoAmI() && (forcePicker || (!DATA.prefs && !skippedRecently() && Number(knobs.picker_position) >= 0));
   if (offer) rows.splice(forcePicker ? 0 : pos(knobs.picker_position, rows.length), 0, systemCard('sys-picker', DATA.prefs ? 'Your feed' : 'Make it yours', 'picker'));
   const cap = knobs.capture_card;
-  if (cap && typeof cap === 'object' && cap.form) {
+  // audience: 'all' (default), 'prefs' (only fans who have set their feed: the email ask comes
+  // after the web payoff, never instead of it), 'new' (only fans who have not).
+  const audienceOk = !cap?.audience || cap.audience === 'all' || (cap.audience === 'prefs' ? Boolean(DATA.prefs) : cap.audience === 'new' ? !DATA.prefs : true);
+  if (cap && typeof cap === 'object' && cap.form && audienceOk) {
     // {{player}} becomes the fan's own player: "Win C.J. Stroud gear" to a Stroud fan.
     rows.splice(pos(cap.position ?? 5, rows.length), 0, systemCard('sys-enter', personal(String(cap.headline || 'Enter to win')).slice(0, 80), 'enter',
       { ...cap, blurb: personal(cap.blurb), cta: personal(cap.cta) }));
@@ -952,7 +955,7 @@ function pickerMarkup() {
     <h3>Going to a game this season?</h3>
     <div class="opts going">${[['yes', 'Yes'], ['maybe', 'Maybe'], ['no', 'Not this year']].map(([k, n]) => opt(k, n, pr.going === k)).join('')}</div>
     <h3>How do you watch?</h3>
-    <div class="opts watch">${[['nrg', 'At NRG'], ['home', 'At home'], ['go', 'On the go']].map(([k, n]) => opt(k, n, pr.watch === k)).join('')}</div>
+    <div class="opts watch">${[['stadium', 'At Reliant Stadium'], ['home', 'At home'], ['go', 'On the go']].map(([k, n]) => opt(k, n, pr.watch === k)).join('')}</div>
     ${(pk.presets || []).length ? `<h3>Follow</h3><div class="opts follow">${pk.presets.map((p) => opt(p.slug, p.name, pr.follow === p.slug)).join('')}</div>` : ''}
     ${(pk.offers || []).map((o) => `<div class="offer"><b>${esc(o.label)}${o.blurb ? ` · ${esc(o.blurb)}` : ''} · until ${esc(fmtDay(o.ends_at))}</b>${opt(o.key, boosted.has(o.key) ? 'On' : 'Yes', boosted.has(o.key))}</div>`).join('')}
     <div class="acts"><button class="save" type="button">${DATA.prefs ? 'Update my feed' : 'Set my feed'}</button><button class="skip" type="button">${DATA.prefs ? 'Cancel' : 'Not now'}</button></div>

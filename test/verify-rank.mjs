@@ -105,7 +105,7 @@ const longClip = cat('yt-long', [], null, 'trends', 4, { durationSeconds: 60 });
 const onTheGo = rankFeed([items[0], shortClip, longClip], null, { now: NOW, prefs: makePrefs({ watch: 'go' }), names }).items.map((i) => i.id);
 const atHome = rankFeed([items[0], shortClip, longClip], null, { now: NOW, prefs: makePrefs({ watch: 'home' }), names }).items.map((i) => i.id);
 t('"on the go" puts the short clip first and "at home" the long one, with no pill either way', onTheGo[1] === 'yt-short' && atHome[1] === 'yt-long' && !rankFeed([items[0], shortClip, longClip], null, { now: NOW, prefs: makePrefs({ watch: 'go' }) }).items[1].why);
-t('answers are coerced like everything else', makePrefs({ going: 'Yes' }).going === null && makePrefs({ going: 'maybe', watch: 'go' }).watch === 'go' && makePrefs({ watch: 'nrg' }).explicit === true);
+t('answers are coerced like everything else', makePrefs({ going: 'Yes' }).going === null && makePrefs({ going: 'maybe', watch: 'go' }).watch === 'go' && makePrefs({ watch: 'stadium' }).explicit === true && makePrefs({ watch: 'arena' }).watch === null);
 t('a boost may carry a label', makePrefs({ boosts: [{ key: 'draft-week', label: ' Draft news ' }] }).boosts[0].label === 'Draft news');
 
 /* ---------- the page's player ---------- */

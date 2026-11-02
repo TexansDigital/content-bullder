@@ -1,7 +1,7 @@
 -- Two more one-tap questions and the fan's week.
 --
 -- going   "Going to a game this season?"  yes | maybe | no   (ticket intent, declared)
--- watch   "How do you watch?"             nrg | home | go    (pacing)
+-- watch   "How do you watch?"             stadium | home | go    (pacing; see 080, which renamed the first value)
 -- feed_week(sid)  what one fan watched in the last seven days: views, top players, top content
 --                 types. Service key only; it reads feed_events for one session id.
 

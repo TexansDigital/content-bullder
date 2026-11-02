@@ -24,7 +24,7 @@ Not a dashboard. A content intelligence platform.
 | `excluded_players` | 3 | A denylist that already exists |
 
 **`videos.tags` is useless for entities.** 2,060 of ~2,780 Shorts carry the same fifteen
-boilerplate tags (Nick Caserio, Cal McNair, NRG Park, Touchdown). Entities must come from
+boilerplate tags (Nick Caserio, Cal McNair, the stadium's name, Touchdown). Entities must come from
 titles and transcripts.
 
 ## D1 `ht-attribution` (`99dd013c-…`)

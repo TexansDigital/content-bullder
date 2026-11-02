@@ -111,8 +111,9 @@ export const LANE = 0.8;
 export const GOING = ['yes', 'maybe', 'no'];
 export const GOING_LIFT = 0.8;
 export const GOING_SPARE = -1.0;
-/** "How do you watch?" Shapes pacing, quietly: no reason pill, a small nudge on clip length. */
-export const WATCH = ['nrg', 'home', 'go'];
+/** "How do you watch?" At Reliant Stadium, at home, on the go. Shapes pacing, quietly: no reason pill,
+ *  a small nudge on clip length. The stadium is Reliant Stadium. */
+export const WATCH = ['stadium', 'home', 'go'];
 export const WATCH_NUDGE = 0.3;
 /** Fewer views than this in a week and there is no "your week" to show. */
 export const WEEK_MIN_VIEWS = 5;
@@ -227,7 +228,7 @@ export function explain(item, { profile, prefs, presets = {}, offers = {}, names
     const secs = Number(item.durationSeconds) || 0;
     if (prefs.watch === 'go' && secs > 0 && secs <= 30) quiet += WATCH_NUDGE;
     if (prefs.watch === 'home' && secs >= 45) quiet += WATCH_NUDGE;
-    if (prefs.watch === 'nrg' && gameday) quiet += WATCH_NUDGE;
+    if (prefs.watch === 'stadium' && gameday) quiet += WATCH_NUDGE;
   }
   const score = reasons.reduce((s, r) => s + r.score, 0) + quiet + 0.35 * freshness(item, now);
   // Explicit reasons always win the label; a fan who picked a player should read that, not
@@ -296,8 +297,9 @@ export const KNOB_DEFAULTS = {
   reason_pills: 'explicit',
   /** Nudge once per session when the first video starts muted. */
   sound_hint: false,
-  /** A data-capture card: { position, headline, blurb, cta, form, campaign } or null. {{player}} in the
-   *  headline, blurb or cta becomes the fan's first pick (or the page's player). */
+  /** A data-capture card: { position, headline, blurb, cta, form, campaign, audience } or null. {{player}} in
+   *  the headline, blurb or cta becomes the fan's first pick (or the page's player); audience is 'all',
+   *  'prefs' (only fans who have set their feed) or 'new' (only fans who have not). */
   capture_card: null,
   /** Where a live boost offer is shown to a fan who already has preferences; -1 hides it. */
   offer_position: 2,

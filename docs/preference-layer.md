@@ -26,7 +26,7 @@ Two more questions, each one tap, each tied to a KPI (approved 1 Nov, **live**):
 | Question | KPI | What it does |
 |---|---|---|
 | **"Going to a game this season?"** Yes / Maybe / Not this year | Ticket intent | "Yes" lifts gameday and ticket cards and says "Gameday, since you're going"; "Maybe" nudges the schedule and gameday cards with "Gameday, if you go"; "Not this year" quietly puts every ticket push last, which is itself a kindness fans notice. Stored as `going`. |
-| **"How do you watch?"** At NRG · At home · On the go | Depth | Shapes pacing without a word: on-the-go fans get clips of 30 seconds or less first, at-home fans the longer ones, NRG fans a gameday nudge. Stored as `watch`. |
+| **"How do you watch?"** At Reliant Stadium · At home · On the go | Depth | Shapes pacing without a word: on-the-go fans get clips of 30 seconds or less first, at-home fans the longer ones, stadium fans a gameday nudge. Stored as `watch`. |
 
 ## What the fan sees for answering
 
