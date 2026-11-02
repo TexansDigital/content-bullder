@@ -48,8 +48,9 @@ you with offers and content that we think may be of interest to you".
 2. **Consent category.** The `ELOQUA` cookie is classified in OneTrust under one category. If
    it is Performance (C0002), the gate is right as built. If it is Targeting (C0004), tell us and
    the gate moves to C0004 in one line.
-3. **Retention.** Is 90 days on the feed's event rows acceptable, or should the id be dropped
-   sooner once it has been joined?
+3. **Retention.** Decided by Adam, 2 Nov: 90 days, the same prune as every other feed event. A
+   30-day option exists if the privacy owner asks: resolve the id to a contact nightly, keep the
+   resolved key, drop the raw id.
 
 ## What is not in scope
 
