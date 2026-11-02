@@ -238,7 +238,7 @@ t('an identified visitor gets the picker: the catalogue\'s players, named', with
 t('initials are preferred for names', withId.picker.players.find((p) => p.slug === 'c-j-stroud')?.name === 'C.J. Stroud');
 t(`only lanes with cards behind them are offered: community here, never an empty one (got ${withId.picker.lanes.map((l) => l.key).join()})`, withId.picker.lanes.map((l) => l.key).join() === 'community');
 t('lanes, presets and only live offers ride along', withId.picker.lanes.length === 1 && withId.picker.presets[0].slug === 'toro' && withId.picker.offers.map((o) => o.key).join() === 'draft-week');
-t('an offer says how many cards it would move', withId.picker.offers[0].cards === 1);
+t('an offer says how many cards it would move, and carries the posters it has', withId.picker.offers[0].cards === 1 && Array.isArray(withId.picker.offers[0].preview) && withId.picker.offers[0].preview.every((u) => /^https?:/.test(u)));
 t('an offer with no card to lift yet is withheld, not promised', !withId.picker.offers.some((o) => o.key === 'chargers-week'));
 t('a running experiment assigns an arm and its knobs', ['control', 'early'].includes(withId.experiments.picker_pos) && (withId.experiments.picker_pos === 'early' ? withId.knobs.picker_position === 0 : withId.knobs.picker_position === 2) && !('bogus' in withId.knobs));
 const same = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_0000000000000_nobodyyet'), ENV, ctx)).json();

@@ -322,6 +322,25 @@ export function mixFormats(items, { every = 4 } = {}) {
 }
 export const mixEvery = (format) => (format === 'both' ? 3 : format === 'read' ? 2 : format === 'video' ? 6 : 4);
 
+/** "Tank is BACK 🔥" and "Tank is BACK 🙌" are the same title to a fan: letters and digits only. */
+export const titleKey = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+/**
+ * Two cards with the same title back to back read as a repeat, whatever the ids say. The first
+ * occurrence keeps its place; later ones go to the end of the pool, where they still exist for
+ * a fan who gets that far. Editorial cards never move.
+ */
+export function dedupeTitles(items) {
+  if (!Array.isArray(items)) return items || [];
+  const fixed = items.filter((i) => (i.sortIndex ?? 0) < RANKABLE_FROM);
+  const pool = items.filter((i) => (i.sortIndex ?? 0) >= RANKABLE_FROM);
+  const seen = new Set(), keep = [], later = [];
+  for (const i of pool) {
+    const k = titleKey(i.headline);
+    if (k && seen.has(k)) later.push(i); else { seen.add(k); keep.push(i); }
+  }
+  return [...fixed, ...keep, ...later];
+}
+
 /* ---------- experiments ----------
  * A visitor lands in one arm of each running experiment by hashing their id with the key, so
  * the same person sees the same feed on every visit and nothing is stored to make that so.
@@ -348,6 +367,9 @@ export const KNOB_DEFAULTS = {
   expiry_position: 1,
   /** Where the weekly "your week" card appears; -1 hides it. */
   week_position: 4,
+  /** Where one follow-up question (more of, going, how you watch) is asked of a fan who has set
+   *  their feed but not answered it yet; one per visit; -1 asks nothing. */
+  ask_position: 7,
 };
 
 export function fnv1a(str) {

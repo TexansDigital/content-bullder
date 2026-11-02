@@ -20,7 +20,7 @@
 import { makeItem, feedSort, liveCollections, STATUS } from '../../../src/content.js';
 import catalogue, { excludedMatchers } from '../../../src/adapters/catalogue.js';
 import { fetchPocket, pocketItems } from '../../../src/adapters/pocket.js';
-import { rankFeed, makePrefs, resolveExperiments, displayName, MAX_PICKS, MIN_EVENTS, TYPE_NAMES, laneOf, offerHit, lanesWithCards, mixFormats, mixEvery } from '../../../src/rank.js';
+import { rankFeed, makePrefs, resolveExperiments, displayName, MAX_PICKS, MIN_EVENTS, TYPE_NAMES, laneOf, offerHit, lanesWithCards, mixFormats, mixEvery, dedupeTitles } from '../../../src/rank.js';
 
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
 /** A player slug as the dictionary spells it: the page the feed is framed on names one. */
@@ -166,8 +166,10 @@ export function createApp({ feedHtml, enterHtml, assets = {}, deps = {} } = {}) 
     // Every live offer still ranks a boost already accepted, so content arriving later counts.
     const offered = {}, withheld = [];
     for (const [key, o] of Object.entries(offers)) {
-      const cards = live.filter((i) => offerHit(i, o)).length;
-      if (cards > 0) offered[key] = { ...o, cards }; else withheld.push(key);
+      const hits = live.filter((i) => offerHit(i, o));
+      // The card shows what it promises: the first three posters it would lift.
+      const preview = hits.map((i) => (i.media?.kind === 'image' ? i.media.url : (i.poster || [])[0]) || null).filter(Boolean).slice(0, 3);
+      if (hits.length > 0) offered[key] = { ...o, cards: hits.length, preview }; else withheld.push(key);
     }
     // The picker offers the players this feed actually has cards about, most-tagged first,
     // named from the dictionary. The dictionary refuses excluded names, so none can appear.
@@ -181,7 +183,7 @@ export function createApp({ feedHtml, enterHtml, assets = {}, deps = {} } = {}) 
       // Only lanes with cards behind them: an empty lane is a choice that moves nothing.
       lanes: lanesWithCards(live),
       presets: Object.values(presets).map((p) => ({ slug: p.slug, name: p.name, blurb: p.blurb || '' })),
-      offers: Object.values(offered).map((o) => ({ key: o.key, label: o.label, blurb: o.blurb || '', ends_at: o.ends_at, cards: o.cards })),
+      offers: Object.values(offered).map((o) => ({ key: o.key, label: o.label, blurb: o.blurb || '', ends_at: o.ends_at, cards: o.cards, preview: o.preview })),
       max_players: MAX_PICKS,
     };
     return { live, counts: { curated: editorial.length, catalogue: shorts.length, pocket: pocket.length, served: live.length }, warnings,
@@ -289,7 +291,7 @@ export function createApp({ feedHtml, enterHtml, assets = {}, deps = {} } = {}) 
     const ranked0 = rankFeed(live, profile, { prefs, presets, offers, names, focus, now: now().getTime() });
     const { ranked, focus: focused } = ranked0;
     // Stories and podcasts take at most one slot in every few, by the fan's answer.
-    const items = mixFormats(ranked0.items, { every: mixEvery(prefs?.format) });
+    const items = dedupeTitles(mixFormats(ranked0.items, { every: mixEvery(prefs?.format) }));
     const assigned = resolveExperiments(experiments, who);
     const only = url.searchParams.get('collection');
     // ?formats=video,listen keeps only those card formats: the news page lists its own stories.

@@ -63,6 +63,13 @@ const settle = (pg) => pg.waitForTimeout(2300);
 const a = await open();
 let order = await ids(a.pg);
 t('the picker is offered as the third card, after two cards have had their say', order[2] === 'sys-picker' && order.length === 6);
+// The button must be visible without scrolling the card: measured against the card itself,
+// since the picker is card three and sits below the viewport until the fan reaches it.
+const quick = await a.pg.evaluate(() => { const card = document.querySelector('.slide[data-id="sys-picker"]').getBoundingClientRect(); const save = document.querySelector('.pk .save').getBoundingClientRect();
+  return { quick: !!document.querySelector('.pk.quick'), moreHidden: document.querySelector('.pk .more')?.hidden, saveInCard: save.bottom <= card.bottom + 1 && save.top >= card.top, players: document.querySelectorAll('.pk .players .opt').length, toggle: document.querySelector('.pk .moretoggle')?.textContent }; });
+t(`first time, one question: the players and the button in view, everything else behind More options (${JSON.stringify(quick)})`, quick.quick && quick.moreHidden === true && quick.saveInCard && quick.players === 2 && quick.toggle === 'More options');
+await a.pg.locator('.pk .moretoggle').click(); await a.pg.waitForTimeout(150);
+t('More options opens the rest', await a.pg.evaluate(() => document.querySelector('.pk .more').hidden === false && document.querySelector('.pk .moretoggle').textContent === 'Fewer options'));
 t('it shows the catalogue\'s players, the lanes, watch-or-read', await a.pg.evaluate(() =>
   document.querySelectorAll('.pk .players .opt').length === 2 && document.querySelectorAll('.pk .lanes .opt').length === 3 && document.querySelectorAll('.pk .format .opt').length === 2));
 t('an empty lane is not offered: no community chip until a community card exists', !(await a.pg.locator('.pk .lanes .opt').allTextContents()).includes('Community'));
@@ -143,6 +150,7 @@ await c.ctx.close();
 
 /* ---------- the two questions ---------- */
 const q = await open({ pid: `sess_${RUN}_questions` });
+await q.pg.locator('.pk .moretoggle').click(); await q.pg.waitForTimeout(150);
 t('the picker asks about going to a game and how the fan watches', await q.pg.evaluate(() => document.querySelectorAll('.pk .going .opt').length === 3 && document.querySelectorAll('.pk .watch .opt').length === 3)
   && (await q.pg.locator('.pk .going .opt').allTextContents()).join() === 'Yes,Maybe,Not this year' && (await q.pg.locator('.pk .watch .opt').allTextContents()).join() === 'At Reliant Stadium,At home,On the go');
 await q.pg.locator('.pk .going .opt', { hasText: 'Yes' }).click();
@@ -156,6 +164,30 @@ await q.pg.locator('.chip.mine').click(); await q.pg.waitForTimeout(300);
 t('they come back pressed in the picker', (await q.pg.locator('.pk .going .opt[aria-pressed="true"]').textContent()) === 'Yes' && (await q.pg.locator('.pk .watch .opt[aria-pressed="true"]').textContent()) === 'On the go');
 t('no page errors', q.errs.length === 0);
 await q.ctx.close();
+
+/* ---------- one more question, later ---------- */
+const AQ = `sess_${RUN}_ask`;
+await j('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: AQ, players: ['c-j-stroud'] }) });
+const aq = await open({ pid: AQ, knobs: { ask_position: 1 } });
+let ao = await ids(aq.pg);
+t('a fan who set their feed but answered nothing else gets one question as a card: lanes first', ao[1] === 'sys-ask' && (await aq.pg.locator('.slide[data-id="sys-ask"] h2').textContent()) === 'More of?' && (await aq.pg.locator('.slide[data-id="sys-ask"] .answers .opt').count()) === 3);
+t('and only one such card', ao.filter((x) => x === 'sys-ask').length === 1);
+await aq.pg.locator('.slide[data-id="sys-ask"] .answers .opt', { hasText: 'Game action' }).click(); await aq.pg.waitForTimeout(900);
+t('one tap saves the answer and the card is gone', (await j(`/api/feed?sid=${AQ}`)).prefs.wants.join() === 'game_action' && !(await ids(aq.pg)).includes('sys-ask'));
+t('a toast says what moved', /^Noted\. First up:/.test(await aq.pg.locator('#toast').textContent()));
+await settle(aq.pg);
+t('the save says which question it answered', aq.ev.some((e) => e.event === 'prefs_save' && e.params.save_source === 'ask' && e.params.ask_q === 'lanes' && e.params.ask_a === 'game_action'));
+await aq.pg.reload({ waitUntil: 'networkidle' }); await aq.pg.waitForTimeout(600);
+t('on the next visit the next unanswered question comes: going to a game?', (await ids(aq.pg))[1] === 'sys-ask' && (await aq.pg.locator('.slide[data-id="sys-ask"] h2').textContent()) === 'Going to a game this season?');
+await aq.pg.locator('.slide[data-id="sys-ask"] .skip').click(); await aq.pg.waitForTimeout(300);
+t('"Not now" removes it and does not ask the next question in the same sitting', !(await ids(aq.pg)).includes('sys-ask'));
+await aq.pg.reload({ waitUntil: 'networkidle' }); await aq.pg.waitForTimeout(600);
+t('next visit, the skipped question stays away and the last one is asked', (await aq.pg.locator('.slide[data-id="sys-ask"] h2').textContent()) === 'How do you watch?');
+t('no page errors', aq.errs.length === 0);
+await aq.ctx.close();
+const anq = await open({ pid: `sess_${RUN}_asknone`, knobs: { ask_position: 1 } });
+t('a fan with no feed yet is not asked follow-ups: the picker comes first', !(await ids(anq.pg)).includes('sys-ask'));
+await anq.ctx.close();
 
 /* ---------- a boost that has run out ---------- */
 const XP = `sess_${RUN}_expiry`;
@@ -177,7 +209,7 @@ await xh.ctx.close();
 /* ---------- an offer, to a fan who already has a feed ---------- */
 const OF = `sess_${RUN}_offer`;
 await j('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: OF, players: ['c-j-stroud'] }) });
-const offer = { key: 'giants-week', label: 'Giants week', blurb: 'All things Giants before Sunday.', content_types: ['opponent_week'], keywords: ['giants'], ends_at: '2099-11-09T23:00:00Z' };
+const offer = { key: 'giants-week', label: 'Giants week', blurb: 'All things Giants before Sunday.', content_types: ['opponent_week'], keywords: ['giants'], ends_at: '2099-11-09T23:00:00Z', cards: 12, preview: ['https://a.example/p1.jpg', 'https://a.example/p2.jpg', 'https://a.example/p3.jpg'] };
 async function openWithOffer(pid, knobs = null) {
   const ctx = await b.newContext({ viewport: { width: 390, height: 780 } });
   const pg = await ctx.newPage(); const errs = [], ev = [];
@@ -197,6 +229,7 @@ let oo = await ids(o.pg);
 t('a fan with a feed meets the live offer as its own card, in the picker\'s slot', oo[2] === 'sys-offer' && !oo.includes('sys-picker') && (await o.pg.locator('.slide[data-id="sys-offer"] h2').textContent()) === 'Giants week?'
   && /until Nov 9, then your feed goes back to normal/.test(await o.pg.locator('.slide[data-id="sys-offer"] p').first().textContent()));
 t('the yes button carries the date', /^Yes, until Nov 9/.test(await o.pg.locator('.slide[data-id="sys-offer"] .yes').textContent()));
+t('the card shows what it promises: three posters of the clips it would lift, and the count', (await o.pg.locator('.slide[data-id="sys-offer"] .peek img').count()) === 3 && /12 clips ready and counting/.test(await o.pg.locator('.slide[data-id="sys-offer"] p').first().textContent()));
 await o.pg.locator('.slide[data-id="sys-offer"] .yes').click(); await o.pg.waitForTimeout(900);
 const post = o.ev.find((e) => e.event === '__prefs_post');
 t('one tap saves the boost with its end date and label, and keeps the pick', post && post.params.source === 'offer' && post.params.boosts.length === 1 && post.params.boosts[0].key === 'giants-week' && post.params.boosts[0].label === 'Giants week' && /2099-11-09/.test(post.params.boosts[0].until) && post.params.players.join() === 'c-j-stroud');
@@ -284,6 +317,15 @@ const lk2 = await open({ pid: `sess_${RUN}_likenone` });
 await lk2.pg.locator(`.slide[data-id="${items[0].id}"] .like`).click(); await lk2.pg.waitForTimeout(300);
 t('liking a card with no other card about that player changes nothing and says nothing', (await ids(lk2.pg)).join() === [items[0].id, items[1].id, 'sys-picker', items[2].id, items[3].id, items[4].id].join() && await lk2.pg.locator('#toast').isHidden());
 await lk2.ctx.close();
+// A look-alike title is never lifted: "Anderson sack 🔥" after liking "Anderson sack".
+await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: items[3].id, changes: { headline: 'Anderson sack 🔥', entities: { players: ['will-anderson-jr'] } } }) });
+const lk3 = await open({ pid: `sess_${RUN}_likedup` });
+await lk3.pg.evaluate((id) => document.querySelector(`.slide[data-id="${id}"]`).scrollIntoView(), items[2].id); await lk3.pg.waitForTimeout(700);
+await lk3.pg.locator(`.slide[data-id="${items[2].id}"] .like`).click(); await lk3.pg.waitForTimeout(400);
+const lo3 = await ids(lk3.pg);
+t('a card with the same title as the liked one is not lifted next; the different one is', lo3.indexOf(items[4].id) === lo3.indexOf(items[2].id) + 1 && lo3.indexOf(items[3].id) === lo3.indexOf(items[4].id) + 1);
+await lk3.ctx.close();
+await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: items[3].id, changes: { headline: 'Camp day', entities: { players: [] } } }) });
 
 /* ---------- who the capture card is for ---------- */
 const AUD = `sess_${RUN}_audience`;

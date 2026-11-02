@@ -108,6 +108,15 @@ t('"on the go" puts the short clip first and "at home" the long one, with no pil
 t('answers are coerced like everything else', makePrefs({ going: 'Yes' }).going === null && makePrefs({ going: 'maybe', watch: 'go' }).watch === 'go' && makePrefs({ watch: 'stadium' }).explicit === true && makePrefs({ watch: 'arena' }).watch === null);
 t('a boost may carry a label', makePrefs({ boosts: [{ key: 'draft-week', label: ' Draft news ' }] }).boosts[0].label === 'Draft news');
 
+/* ---------- look-alike titles ---------- */
+{
+  const { dedupeTitles, titleKey } = await import('../src/rank.js');
+  const T = (id, h, d) => cat(id, [], null, 'game_action', d, { headline: h });
+  const out = dedupeTitles([items[0], T('a', 'Tank is BACK 🔥', 1), T('b', 'Tank is BACK 🙌', 2), T('c', 'Other clip', 3), T('d', 'tank is back', 4)]).map((i) => i.id);
+  t('the same title twice reads as a repeat: later ones go to the end, the first keeps its place', out.join() === 'promo-1,a,c,b,d');
+  t('emoji and case do not make a title different', titleKey('Tank is BACK 🔥') === titleKey('tank is back 🙌'));
+}
+
 /* ---------- the page's player ---------- */
 const onPage = rankFeed(items, null, { now: NOW, focus: 'will-anderson-jr', names });
 t('a player page ranks with no profile and no prefs: that player leads', onPage.ranked === true && onPage.focus === 'will-anderson-jr' && onPage.items[2].id === 'yt-anderson');

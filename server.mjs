@@ -18,7 +18,7 @@ import { extname, join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listAdapters, pull } from './src/adapters/index.js';
 import { makeItem, validate, feedSort, liveCollections, STATUS, COLLECTIONS } from './src/content.js';
-import { rankFeed, makePrefs, displayName, MAX_PICKS, KNOB_DEFAULTS, lanesWithCards, mixFormats, mixEvery } from './src/rank.js';
+import { rankFeed, makePrefs, displayName, MAX_PICKS, KNOB_DEFAULTS, lanesWithCards, mixFormats, mixEvery, dedupeTitles } from './src/rank.js';
 import { TEMPLATES, templatePatch, templateFromItem } from './src/templates.js';
 import { builder, publicId } from './src/cloudinary.js';
 
@@ -450,7 +450,7 @@ const server = createServer(async (req, res) => {
       const r0 = rankFeed(shared, null, { prefs, names: {}, focus });
       const { ranked, focus: focused } = r0;
       const wantedF = new Set(String(url.searchParams.get('formats') || '').split(',').map((s) => s.trim()).filter((s) => ['video', 'read', 'listen'].includes(s)));
-      const mixed = mixFormats(r0.items, { every: mixEvery(prefs?.format) });
+      const mixed = dedupeTitles(mixFormats(r0.items, { every: mixEvery(prefs?.format) }));
       const live = wantedF.size ? mixed.filter((i) => wantedF.has(i.format || 'video')) : mixed;
       const picker = who ? {
         players: Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([slug, cards]) => ({ slug, name: displayName(slug), cards })),
