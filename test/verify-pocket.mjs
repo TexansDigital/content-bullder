@@ -78,7 +78,7 @@ const V = (id) => makeItem({ id, sortIndex: RANKABLE_FROM, media: { kind: 'youtu
 const R = (id) => makeItem({ id, sortIndex: RANKABLE_FROM, media: { kind: 'image', url: 'https://x/y.jpg' }, format: 'read', publishedAt: '2026-10-30T00:00:00Z' });
 const E = makeItem({ id: 'promo', sortIndex: 0, format: 'read' });
 const mixed = mixFormats([E, R('r1'), R('r2'), V('v1'), R('r3'), V('v2'), V('v3'), V('v4'), V('v5')], { every: 4 }).map((i) => i.id);
-t('at most one read in every four, the rest wait their turn, the editorial card never moves', mixed[0] === 'promo' && mixed.slice(1).join() === 'r1,v1,v2,v3,r2,v4,v5,r3');
+t('the opener is a clip, at most one read in every four, the rest wait their turn, the editorial card never moves', mixed[0] === 'promo' && mixed.slice(1).join() === 'v1,v2,v3,r1,v4,v5,r2,r3');
 t('reads with nothing to wait for go at the end', mixFormats([R('a'), R('b'), R('c')], { every: 4 }).map((i) => i.id).join() === 'a,b,c');
 t('the answer sets the spacing', mixEvery('both') === 3 && mixEvery('video') === 6 && mixEvery(null) === 4 && mixEvery('read') === 2);
 t('every = 1 leaves the list alone', mixFormats([R('a'), V('b')], { every: 1 }).length === 2);

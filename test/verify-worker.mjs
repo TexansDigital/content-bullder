@@ -333,7 +333,7 @@ t('players on site cards come from the same dictionary', site.some((c) => c.enti
 const order = withSite.clips.filter((c) => (c.sortIndex ?? 0) >= 1_000_000).map((c) => c.format === 'read' || c.format === 'listen' ? 'R' : 'V').join('');
 // Reads outnumber clips in this fixture (12 to 6), so the leftovers queue at the end; up to
 // there, never two in a row.
-t('reads are spaced: never two in a row until the clips run out', !/RR/.test(order.replace(/R+$/, '')) && /^V?V?R/.test(order) && /R/.test(order));
+t('the opener is a clip and reads are spaced: never two in a row until the clips run out', !/RR/.test(order.replace(/R+$/, '')) && /^VVVR/.test(order));
 const both = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_prefsfan2'), SITE, ctx)).json();
 t('a fan who asked for a mix still never gets two reads in a row until the clips run out', !/RR/.test(both.clips.filter((c) => (c.sortIndex ?? 0) >= 1_000_000).map((c) => c.format === 'video' ? 'V' : 'R').join('').replace(/R+$/, '')));
 const siteDown = await (await app({ fetch: rankMock({ rss: async () => ({ ok: false, status: 503, text: async () => '' }) }) }).fetch(req('/api/feed'), SITE, ctx)).json();

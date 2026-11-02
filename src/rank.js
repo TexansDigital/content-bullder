@@ -299,7 +299,7 @@ export function rankFeed(items, profile, { now = Date.now(), minEvents = MIN_EVE
  * cards, in whatever order the list arrived. A read card that would land too soon waits for
  * the next slot; anything left over goes at the end. Editorial cards (before RANKABLE_FROM)
  * are never moved. `every` comes from the fan's answer: a mix every 3, mostly video every 6,
- * unanswered every 4.
+ * unanswered every 4. The first card is always a clip.
  */
 export function mixFormats(items, { every = 4 } = {}) {
   if (!Array.isArray(items) || every <= 1) return items || [];
@@ -308,7 +308,8 @@ export function mixFormats(items, { every = 4 } = {}) {
   const isRead = (i) => i.format === 'read' || i.format === 'listen';
   const out = [];
   const waiting = [];
-  let sinceRead = every;
+  // Starts at zero, so the opener is always a clip and the first read waits its turn.
+  let sinceRead = 0;
   for (const i of pool) {
     if (isRead(i)) {
       if (sinceRead >= every - 1) { out.push(i); sinceRead = 0; } else waiting.push(i);

@@ -16,14 +16,39 @@ Cloudflare account and the `TexansDigital/forms-on-pocket` repo, not just past c
 
 ---
 
+## 0. Quick start for a new project
+
+1. **Pick the feed:** `https://www.houstontexans.com/rss/{news|galleries|videos|audio}`.
+   Exact spelling: no trailing slash, no `.xml`.
+2. **Know the limits:** each feed is a rolling window (50, 20, 80 or 32 items, about
+   3-7 weeks). There is no history, no paging and no filtering by tag. For older items,
+   read read-next's D1 `articles` table (5a), which holds everything since Aug 16 2026.
+3. **Read it from the right place:**
+   - On a houstontexans.com page (a Pocket block): fetch it directly, since it is
+     same-origin. Follow the Pocket block rules in the project instructions: ASCII only,
+     explicit closing tags, and DOM code inside `DOMContentLoaded`.
+   - Any other website: it works too (`access-control-allow-origin: *`). For
+     caching and one request, use `content-feed` (5b) instead. Its CORS only allows
+     houstontexans.com, so a different origin needs it widened, or its own Worker.
+   - Server-side or in a Worker: fetch directly; set a `user-agent`; cache it yourself.
+   - Email (Eloqua): use a filtered feed (5c, which must be deployed first); expect only
+     core RSS fields to be read (section 6).
+4. **Parse it:** use the helpers in section 7. The image is `enclosure@url`; the tags are
+   the comma-separated `media:keywords`; the key is `guid`.
+5. **Filter it** only on slugified whole tags (section 4). Never use substring matches.
+6. **Treat empty as broken:** a 200 with an empty body has happened before (videos,
+   Sept-Oct).
+
+---
+
 ## 1. The feeds
 
 | Feed | URL | Status (1 Nov 2026) | Items | Window |
 |---|---|---|---|---|
 | News | `https://www.houstontexans.com/rss/news` | Working | ~50 | ~3 weeks (Oct 8 - Oct 28 on last check) |
-| Galleries | `https://www.houstontexans.com/rss/galleries` | Working | ~20 | Several weeks |
+| Galleries | `https://www.houstontexans.com/rss/galleries` | Working | 20 | ~3 weeks (Oct 7 - Oct 25 on last check) |
 | Videos | `https://www.houstontexans.com/rss/videos` | **Working now** (was broken Sept - mid Oct) | 80 | ~3 weeks |
-| Audio | `https://www.houstontexans.com/rss/audio` | Working (was Unpublished until late Oct) | 32 | Texans All-Access episodes |
+| Audio | `https://www.houstontexans.com/rss/audio` | Working (was Unpublished until late Oct) | 32 | ~7 weeks (Sep 12 - Nov 1) |
 
 ### Exact URL rules
 - **No trailing slash.** `/rss/news/` returns a **301**.
@@ -47,10 +72,16 @@ Cloudflare account and the `TexansDigital/forms-on-pocket` repo, not just past c
 
 ## 2. Response headers and delivery
 
-From a Sept 2026 `curl -I`:
+Checked on all four feeds 1 Nov 2026 (same as in Sept):
 
 - Served through Varnish (Fastly) with `cache-control: public, max-age=5` - the feed
   is effectively live; a new article appears within seconds of publish.
+- `vary: X-NFL-Geo,Origin` - the CDN varies on geography; no feed differences by region
+  have been seen.
+- No `etag` or `last-modified`, so conditional requests (`If-None-Match`) do nothing.
+  Poll on a timer and dedupe on `guid`.
+- No auth, no API key, no published rate limit. Still cache on your side.
+- Sizes on 1 Nov: news 54 KB, galleries 24 KB, videos 96 KB, audio 43 KB.
 - `access-control-allow-origin: *` - a browser on any origin can read it. On
   houstontexans.com itself it is same-origin anyway, so **Pocket blocks can fetch the
   feeds directly with no Worker.**
@@ -76,9 +107,10 @@ RSS 2.0 with three namespaces: `atom`, `dc`, and `media` (Media RSS,
 `http://search.yahoo.com/mrss/`).
 
 ### Channel
-`title` (News / Galleries / Videos), `description` ("Latest News"), `atom:link` self,
+`title` (News / Galleries / Videos / Audio), `description` ("Latest News" etc.), `atom:link` self,
 `link` = `https://www.houstontexans.com`, `language` en-US, and an `image` block with the
-NFL team logo SVG.
+NFL team logo SVG. No `lastBuildDate`, no `ttl`, no `itunes:*`. The `dc` namespace is
+declared but unused.
 
 ### Item (news, galleries, videos)
 
@@ -101,7 +133,7 @@ NFL team logo SVG.
 | Field | Notes |
 |---|---|
 | `title` | CDATA. May contain `&`, quotes and curly apostrophes - decode before display |
-| `description` | CDATA dek, one or two sentences. **Can be missing** (seen on a community story) - always fall back |
+| `description` | CDATA dek, one or two sentences. **Can be absent** - the element is missing entirely, not empty (live case: the She's Next London flag clinic story). Always fall back |
 | `link` | Canonical houstontexans.com URL. News is `/news/<slug>`, videos `/video/<slug>`, galleries `/photos/<slug>`, audio `/podcasts/...` |
 | `pubDate` | RFC 822 in **GMT**. Parse with `Date.parse`; format in `America/Chicago` for fans |
 | `guid` | Stable UUID, `isPermaLink="false"`. Use this as the primary key, not the link (slugs can change, e.g. `-x5673` suffixes) |
@@ -114,12 +146,29 @@ for our usual transform: replace `t_editorial_landscape_12_desktop` with
 `w_900,h_506,c_fill,g_center,q_auto,f_auto`. The public_id after `texans/` is the same
 Cloudinary ID used everywhere else.
 
-### Audio item differences
-`/rss/audio` items link to `/podcasts/...` pages, carry an audio `enclosure`, and their
-`media:keywords` lead with the show name. There is **no player embed URL** in the club
-feed, so podcast cards click through to the episode page rather than playing in place.
-(The Omny playlist RSS has embeds but is cross-origin, so it needs a Worker. Kept as a
-fallback only for a show that exists solely on Omny.)
+### Per-feed differences (all four checked live 1 Nov 2026)
+
+| Feed | Channel title | Link pattern | `<source>` text | Extra tags |
+|---|---|---|---|---|
+| news | News | `/news/<slug>` | News | - |
+| galleries | Galleries | `/photos/<slug>` | Galleries | `2026 REG7 - Giants - Photo`, `albums - arrivals` style |
+| videos | Videos | `/video/<slug>` | Videos | `2026 REG7 - Giants - Video`, `All Videos`, `Highlights` |
+| audio | Audio | `/podcasts/<slug>` | Audio | Show names only. `Texans All-Access` is on all 32; one also carries `Texans Matchup` |
+
+**Videos and galleries are thin too.** Video items have no player or embed URL and no
+duration - link to the `/video/<slug>` page. Gallery items have no photo list or count -
+link to the `/photos/<slug>` page.
+
+**The audio feed contains no audio.** Its `<enclosure>` is the episode's cover image
+(`type="image/jpeg"`), the same as every other feed. There is no MP3 URL, no duration and
+no `itunes:*` tags, so it is **not a podcast feed** - Apple, Spotify or an email player
+cannot play from it. Use it to list episodes and link to the `/podcasts/<slug>` page,
+which has the player. For the actual audio, use the Omny playlist RSS
+(`https://omny.fm/shows/texans-all-access/playlists/podcast.rss`): it is cross-origin, so
+a browser needs a Worker to read it (the content-feed v3 has a parser for it).
+
+The `media:content` and `enclosure` URLs can differ in extension (`.png` and `.jpg`) for
+the same item; both resolve.
 
 ### Parsing gotchas
 - `media:keywords` spans **multiple lines** with whitespace around the CDATA - strip
@@ -157,16 +206,29 @@ Any filter has to survive these:
 - **Wrong game codes:** London (Week 6) stories tagged `2026 REG15 - Jaguars` alongside
   `(2026-REG-6)`; a Week 9 Chargers How to Watch tagged `(2026-PRE-1)`; a Cowboys clip
   tagged `2025 REG4 - Albums - Texans vs Titans`.
-- **Substring traps:** a "contains Bills" rule also matches
-  `Buffalo Bills at Houston Texans`.
+- **Substring traps:** a "contains Giants" rule matches both `2026 REG7 - Giants` and
+  `New York Giants at Houston Texans (2026-REG-7)`, and "contains Stroud" matches every
+  QB clip. Match whole slugs.
 
 So: **normalize every tag to a slug** (lowercase, strip apostrophes, non-alphanumerics to
 `-`, trim dashes) and match whole slugs, never substrings. `2026 REG4 - Cowboys ` becomes
 `2026-reg4-cowboys`; `Ka'imi Fairbairn` becomes `kaimi-fairbairn`.
 
-### Prefer the `(YYYY-REG-N)` game tag
-The long form `... at Houston Texans (2026-REG-6)` is the more reliable game key; the
-short `2026 REGn - Team` form is where the mislabels show up.
+### Game tags: neither format is reliable on its own
+There are two game formats, and both get mislabelled:
+- The short form `2026 REGn - Team` is wrong on 9 London (Week 6) news items, which say
+  `REG15`.
+- The long form `<Away> at <Home> (2026-REG-n)` is wrong on the Week 9 Chargers How to
+  Watch: it says `Los Angeles Chargers at Houston Texans (2026-PRE-1)`, which has the wrong
+  game code and swaps home and away. That item also has no short-form tag at all.
+
+For a game filter, match **either** format and expect misses. Predicting a future game's
+tag: the newsroom pattern is `<YEAR> REG<week> - <Opponent nickname>`, slug
+`2026-reg<week>-<nickname>` (Colts Week 11 would be `2026-reg11-colts`). Treat that as a
+guess until the first story is published. Videos add a `- Video` variant and galleries a
+`- Photo` variant (`2026-reg7-giants-video`, `2026-reg7-giants-photo`). There is no
+published tag list; the full vocabulary seen to date is in read-next's
+`articles.tag_labels`.
 
 ### Richer data lives on the article page, not in the feed
 `utag_data` on each article carries `articleFreeForm1/2/3` (campaign, game, series) and
@@ -192,7 +254,7 @@ devDependency, so commands are `npx wrangler ...`.
 |---|---|
 | URL | `https://read-next.texansdigital.workers.dev` |
 | Source | `TexansDigital/forms-on-pocket`, `workers/read-next/src/index.js` (890 lines). Old versions in `archive/workers/read-next/src/` |
-| Deploy | GitHub Action `.github/workflows/deploy.yml` on push to `main` touching `workers/**`. Merging is the deploy. Last deployed Oct 31 2026 |
+| Deploy | GitHub Action `.github/workflows/deploy.yml` on push to `main` touching `workers/**`, `shared/**`, `forms/**`, `package*.json` or the workflow file. PRs run tests only. Manual run: Actions > deploy > Run workflow (optional single worker). Merging is the deploy. Last deployed Oct 31 2026 |
 | Cron | `15 * * * *` (hourly at :15) runs `ingest()` |
 | Bindings | D1 `DB` = `pocket-registry` (`5ece8636-c2d1-41e0-b72f-5b71ec0042dd`) |
 | Secrets | `YOUTUBE_API_KEY` (YouTube Data API v3). Set from the Mac: `npx wrangler secret put YOUTUBE_API_KEY --config workers/read-next/wrangler.toml` |
@@ -246,11 +308,13 @@ crons = ["15 * * * *"]
 9,935, tray 5,256, widget 3,436, bubble 382, video 523, tickets 109, cta 76, youtube 6.
 
 **Scoring:** IDF over tag slugs (`Homepage CP` on everything scores 0), plus a small
-recency nudge. Items tagged `transaction` / `roster-move` are scaled by 0.35. Pre-game
+recency nudge. Items tagged `transaction` / `roster-move` are scaled by 0.35, unless the article being
+read is itself a transaction. Pre-game
 items (`how-to-watch`, `injury-report`, `inactives`, `game-preview`, `gameday`,
 `five-things-to-watch`, `know-your-foe`) older than the article being read are scaled by
-0.08. At most 1 gallery and 1 video per set; 5 videos are held back for the end-of-run
-reel.
+0.08. At most 1 gallery and 1 video per set. The response also appends an end-of-run reel:
+it tops up to `reelSize` (5) of **each** format, video and short, so up to 10 extra
+items marked `reserved: true` beyond `count`.
 
 **CONFIG (change = Worker deploy, no Pocket edit):** `enabled`, `placement`
 (`below`), `anchor` (`before-related`), `count` 4, `heading` "More from the Texans",
@@ -263,9 +327,30 @@ reel.
 Ticketmaster event ID). Remaining after today: Colts Nov 19, Ravens Nov 29, Jaguars
 Dec 20, Titans Jan 10 (flagged `tbd`).
 
+**Access.** The archive needs a Cloudflare login on the `texansdigital` account (Adam). A
+new Worker bound to `pocket-registry` gets **read-write** access to the whole registry,
+so a read-only route on read-next is safer than sharing the binding.
+
+**Watch out:** `/ingest` is an unauthenticated GET. Anyone who hits it triggers a full
+ingest and spends YouTube API quota. Worth gating (a secret header) if the URL is
+shared outside the team.
+
+**Reading the archive from another project.** There is no public endpoint that lists
+the archive - `/related` only returns recommendations. Options:
+- From the Mac: `npx wrangler d1 execute pocket-registry --remote --command "SELECT guid, url, title, pub_date, type, tags FROM articles WHERE type='news' ORDER BY pub_date DESC LIMIT 100"`
+- From a new Worker: bind the same D1 (`database_id` above) and query it.
+- Or add a read-only route to read-next (e.g. `/archive?tag=<slug>&type=news`).
+
+`articles` columns: `guid` (PK, the feed's guid, equals `utag_data.articleID`), `url`,
+`path`, `title`, `description`, `image`, `pub_date` (ISO), `tags` (comma slugs),
+`tag_labels` (pipe-joined originals), `type` (`news|gallery|video|short`), `first_seen`,
+`last_seen`. Video rows are YouTube, not the club feed: `guid` is `yt-<videoId>`, `url` is a
+youtube.com watch or Shorts link, and `path` is a synthetic `/video/<videoId>`.
+
 **D1 tables it owns:** `articles` (migrations 003, 004 adds `type`, 005 adds
-`tag_labels`), `recommend_clicks` (003), `players` (006). D1 migrations are run from the
+`tag_labels`), `recommend_clicks` (003; `unit` values in use: `widget`, `tray`, `continuation`, `page`, `video`, `tickets`, `bubble`, `cta`, `youtube` - the migration comment lists only the first two), `players` (006). D1 migrations are run from the
 Mac with inline `--command` statements, because `--file` fails silently on this account.
+(The `--file` apply comments inside migrations 003-006 predate that finding; ignore them.)
 
 **Adding `/rss/videos`:** possible now, but read-next already has video from YouTube. Adding
 the club feed would index the club-hosted `/video/` pages as a second video type. Not
@@ -285,11 +370,14 @@ needed unless club-hosted video should be recommended.
 `GET /` returns `{ generated, count, items:[{kind, title, summary, url, img, published, keywords}] }`,
 newest first. Kinds: `story`, `gallery`, `video`. Checked 1 Nov: `count` 150.
 
-**Version gap.** The homepage chat (Oct 29) produced a v3 that adds `/rss/audio` as kind
+**Version gap.** The homepage chat (Oct 29, "Texans website homepage optimization ideas") produced a v3 that adds `/rss/audio` as kind
 `podcast` (plus an Omny parser kept as a fallback). **The live Worker is still v1 - no
 podcasts.** The homepage blocks read `/rss/audio` directly when the Worker is not used.
 But if `CONTENT_URL` is set in the blocks, podcasts will not appear until v3 is deployed.
-Deploy: unzip v3, `cd content-feed`, `npx wrangler deploy`. Or paste `src/index.js` into
+The v3 zip exists only as an attachment in that chat; a new project cannot reach it. To get it, download
+`content-feed-worker.zip` from that chat, or add `{ url: 'https://www.houstontexans.com/rss/audio', kind: 'podcast' }`
+to `FEEDS` in Appendix B. That is enough for listing episodes, since the club audio feed
+has the same shape as the others. Deploy: `cd content-feed`, `npx wrangler deploy`. Or paste `src/index.js` into
 the dashboard editor (Workers & Pages > content-feed > Edit code). Then check that the
 response contains `"kind":"podcast"`.
 
@@ -311,7 +399,9 @@ source in Appendix A.
   survives. The channel title comes from `TITLES` (`vanderblog` maps to "VanderBlog | Houston Texans").
 - `GET /health` returns `ok`.
 - 300s cache; upstream errors return 502 and are not cached.
-- Slugs, as examples: `vanderblog`, `2026-reg9-chargers`, `c-j-stroud`, `john-harris`.
+- Slugs that return items today (news feed, 1 Nov): `vanderblog` 4, `2026-reg7-giants` 8,
+  `transaction` 13, `john-harris` 3, `c-j-stroud` 2, `marc-vandermeer` 1, `youth-football` 1.
+  A slug nobody has tagged yet returns a valid feed with zero items, not an error.
 
 Deploy, either way:
 
@@ -331,13 +421,19 @@ compatibility_date = "2026-10-01"
 workers_dev = true
 ```
 
+Option A needs wrangler: run `npm init -y && npm i -D wrangler && npx wrangler login`
+in that folder first (user-level, no sudo).
+
 ```
 # B) preferred: add to the repo so the Action deploys it
 #   workers/rss-filter/src/index.js  + workers/rss-filter/wrangler.toml
-#   add "rss-filter" to the matrix in .github/workflows/deploy.yml, merge to main
+#   in .github/workflows/deploy.yml: add "rss-filter" to matrix.worker, AND a
+#   health-check line:  rss-filter) url="https://rss-filter.texansdigital.workers.dev/health" ;;
+#   then merge to main
 ```
 
-Limits: only covers the ~50 items in `/rss/news` (about 3 weeks). Today
+Limits: news only (no galleries or videos), one tag per URL (no AND/OR), and only the
+~50 items in `/rss/news` (about 3 weeks). Today
 `/tag/vanderblog` would return 4 items: Bye Week Bounceback Needed, Big Win at Wembley,
 Keylan Rutledge (tagged vanderblog), That's More Like It. For a full VanderBlog archive,
 add a route that reads read-next's `articles` table (`WHERE ',' || tags || ',' LIKE
@@ -358,17 +454,38 @@ houstontexans.com. read-next's continuation mode calls it. Source:
 
 ## 6. Pulling the feed into Eloqua
 
-1. **Eloqua may ignore `media:*`.** Many RSS-to-email consumers read only core RSS:
-   `title`, `description`, `link`, `pubDate`, `guid`, `enclosure`. So `media:keywords`
-   and `media:content` may be invisible. The image survives because Pocket also writes
-   `<enclosure>`. **Test one item in a test send before building on it.**
-2. **Do not filter inside Eloqua.** The tag strings are too messy (section 4). Point
-   Eloqua at an already-filtered feed: `rss-filter/tag/<slug>`, **once it is
-   deployed** (5c).
-3. **Expect gaps in descriptions** - give the email template a fallback when
-   `description` is empty.
-4. **Content lag**: new items reach the feed within seconds and the filter within 5
-   minutes.
+**How Eloqua takes RSS.** Eloqua has no native RSS block in the email editor. The
+supported route is Oracle's **RSS app** (AppCloud), added to an email or landing page as
+a cloud content service. From Oracle's documentation:
+- You set the feed URL, the number of articles, vertical or horizontal layout, and CSS
+  (defaults provided, custom allowed).
+- Content is **captured at send time**. A scheduled send pulls whatever the feed holds at
+  that moment.
+- The newer version of the app shows images. Existing instances do not update
+  themselves: updating one resets custom CSS, so add a fresh instance instead.
+- Atom is supported; nothing else is said about requirements.
+
+Not documented, so **test before relying on it**: which fields it maps (likely
+`title`, `description`, `link`, plus an image), and whether it reads `enclosure` or
+`media:content` for the image. Whether the app is installed on our instance (site
+`5267799`) is also unconfirmed: check Settings > Apps.
+
+Third-party options if the Oracle app is too limited: FeedOtter and SureShot both do
+Eloqua RSS emails with templates and multi-feed digests.
+
+**Rules for our feeds:**
+1. **Don't filter inside Eloqua.** The app takes a URL, not a tag rule, and the tags are
+   messy (section 4). Point it at `rss-filter/tag/<slug>` **once that is deployed** (5c),
+   or at a full feed for "latest news".
+2. **Images:** both `enclosure` and `media:content` carry the same Cloudinary image, so
+   whichever the app reads, an image arrives. They are 12-column desktop crops, so set a
+   width in the app's CSS.
+3. **Descriptions can be missing** - check how the template looks with an empty one.
+4. **Freshness:** new items reach the club feed within seconds, and rss-filter within
+   5 minutes (its cache).
+5. **An empty filtered feed** sends with no articles. Gate the send (e.g. on a
+   VanderBlog having been published), or accept the gap.
+6. Audio links go to `/podcasts/` pages; there is no playable audio in the feed (3).
 
 ---
 
@@ -383,7 +500,10 @@ houstontexans.com. read-next's continuation mode calls it. Source:
   `window.houContentPromise`) rather than letting each block fetch again.
 - Dates: parse the GMT `pubDate`, display in CT with an explicit `timeZone`.
 
-Minimal parser (the one the content-feed Worker uses):
+Minimal parser. This is based on content-feed's, with three differences: it prefers
+`enclosure` for the image (always `.jpg`), where content-feed and read-next prefer
+`media:content`; it adds `guid`; and it does not decode entities. Tested on all four
+snapshots (1 Nov): 50/20/80/32 items, no missing images, guids or dates:
 
 ```js
 function cdata(s){var m=/<!\[CDATA\[([\s\S]*?)\]\]>/.exec(s||'');return (m?m[1]:(s||'')).trim();}
@@ -401,8 +521,10 @@ function parse(xml,kind){
 function slugify(s){return s.toLowerCase().replace(/['\u2018\u2019]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
 ```
 
-(Decode `&amp;` etc. in titles before inserting as text; insert with `textContent`, not
-`innerHTML`.)
+Entities: text inside CDATA is already raw. The feed has titles like "Listen, & Live
+Stream" with a bare `&`, which needs no decoding. Text outside CDATA (rare) may carry
+`&amp;`. Insert into a page with `textContent`, never `innerHTML`. If you rebuild XML
+from parsed strings, escape `& < > "` again.
 
 ---
 
@@ -421,8 +543,9 @@ crawler. Blind spot: a one-off block pasted into a single article would not be d
   `rss-filter` URL.
 - **content-feed live is v1.** Deploy v3 for podcasts, and move the source into the
   repo.
+- Gate read-next `/ingest`, and add a read-only `/archive` route for other projects.
 - Ask Juan whether Pocket can create native filtered feed nodes (e.g. a VanderBlog feed),
-  and flag the tag errors above (`REG15` on Week 6 stories, `PRE-1` on a Week 9 item,
+  and flag the tag errors above (`REG15` on 9 Week 6 stories, `PRE-1` plus swapped home/away on the Week 9 Chargers item,
   `homepge cp`, `homeaage`, the 2025 Titans tag on a Cowboys clip).
 - read-next's `HOME_GAMES` needs a 2027 update after the Titans game.
 - Two article-page bugs found alongside the feed work (Sept 2026): NewsArticle JSON-LD
@@ -656,4 +779,4 @@ export default {
 - Project notes: pocket-module-registry, platform-constraints
 - Live fetch of `/rss/news`, `/rss/videos`, read-next `/stats` and content-feed, 1 Nov 2026
 - Cloudflare account Worker list and deployed `content-feed` source, 1 Nov 2026
-- Repo `TexansDigital/forms-on-pocket` at `1f5502a`: `workers/read-next/`, `workers/article/`, `migrations/003-005`, `.github/workflows/deploy.yml`
+- Repo `TexansDigital/forms-on-pocket` at `1f5502a`: `workers/read-next/`, `workers/article/`, `migrations/003-006`, `.github/workflows/deploy.yml`
