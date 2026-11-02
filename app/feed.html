@@ -630,7 +630,16 @@ addEventListener('message', (e) => {
     onIdentified?.();
     return;
   }
-  if (typeof d.eloquaGuid === 'string' && ELQ_GUID.test(d.eloquaGuid)) eloquaGuid = d.eloquaGuid.toLowerCase();
+  const guid = typeof d.eloquaGuid === 'string' && ELQ_GUID.test(d.eloquaGuid) ? d.eloquaGuid.toLowerCase() : null;
+  // A page can carry two handshake copies for a while (an older one in a shared module, a newer
+  // one in the page). The older answers first, without the GUID. When a later answer brings it,
+  // record it on a second identity event rather than lose it.
+  if (identified && guid && !eloquaGuid && measuring) {
+    eloquaGuid = guid;
+    emit('identity', payloadFor({ identity_source: 'host-message', eloqua_guid: guid }));
+    return;
+  }
+  if (guid) eloquaGuid = guid;
   if (d.pocketId == null) { flush('device'); return; }
   setPocketId(d.pocketId, 'host-message');
 });

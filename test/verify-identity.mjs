@@ -214,6 +214,27 @@ const guidHost = (guid) => `
   await bad.close();
 }
 
+// Two handshake copies on one page: the older answers first without the GUID, the newer brings it.
+const twoHosts = `
+  <script>
+    window.__ev = [];
+    addEventListener('message', function (e) {
+      if (!e.data || e.data.source !== 'txfeed') return;
+      window.__ev.push(e.data);
+      if (e.data.event !== 'hello') return;
+      e.source.postMessage({ source: 'txfeed-host', pocketId: 'sess_1792089626000_k3j9xq2ab', consent: true }, '*');
+      setTimeout(function () { e.source.postMessage({ source: 'txfeed-host', pocketId: 'sess_1792089626000_k3j9xq2ab', consent: true, eloquaGuid: 'ABCDEF0123456789abcdef0123456789' }, '*'); }, 300);
+    });
+  <\/script>
+  <iframe id="x" src="${B}/feed" style="width:430px;height:820px;border:0"></iframe>`;
+{
+  const pg = await openHost(twoHosts);
+  const evs = await evsOf(pg);
+  const ids = evs.filter((e) => e.event === 'identity');
+  t('when an older handshake answers first and a newer one brings the GUID later, the GUID is still recorded, on a second identity event for the same session', ids.length === 2 && !ids[0].params.eloqua_guid && ids[1].params.eloqua_guid === 'abcdef0123456789abcdef0123456789' && ids.every((e) => e.params.pocket_id === 'sess_1792089626000_k3j9xq2ab'));
+  await pg.close();
+}
+
 /* ---------- verification traffic is marked ---------- */
 {
   const ctx = await b.newContext({ viewport: { width: 390, height: 780 } });
