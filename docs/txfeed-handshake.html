@@ -1,11 +1,10 @@
-<script data-hou-module="txfeed-handshake" data-hou-v="3" data-hou-owner="DSaC" data-hou-expires="evergreen">
+<script data-hou-module="txfeed-handshake" data-hou-v="4" data-hou-owner="DSaC" data-hou-expires="evergreen">
 (function () {
   'use strict';
 
   // Answers the preference feed's "hello" with the visitor's pocketID, and with whether
-  // performance consent (C0002) is on. Reads one localStorage key, sends only to
-  // FEED_ORIGIN, only to the frame that asked. Does nothing on pages without the embed.
-  // No cookies, no other keys.
+  // performance consent (C0002) is on. Reads one localStorage key and one cookie, sends only
+  // to FEED_ORIGIN, only to the frame that asked. Does nothing on pages without the embed.
   //
   // The consent flag matters: without it the feed cannot tell "declined measurement" from
   // "no pocketID yet", and would mint its own identifier for someone who said no.
@@ -13,25 +12,27 @@
   // Run once per version. An older copy elsewhere on the page (a shared module) may already
   // have answered; this one answers too, with the GUID, and the feed keeps the richer answer.
   var prev = window.houModules && window.houModules['txfeed-handshake'];
-  if (prev && prev.v >= 3) return;
+  if (prev && prev.v >= 4) return;
   window._houTxfeedHandshake = true;
 
   var FEED_ORIGIN = 'https://feed.htow.nz';
   var POCKET_KEY  = 'pocket_session_id';
   var ID_PATTERN  = /^[A-Za-z0-9._:-]{6,128}$/;
-  var CONSENT_GROUP = 'C0002';
+  var CONSENT_GROUP = 'C0002';   // pocket id: Performance
+  var GUID_GROUP    = 'C0004';   // Eloqua GUID: the ELOQUA cookie is classified Targeting in OneTrust
 
   window.houModules = window.houModules || {};
   var state = window.houModules['txfeed-handshake'] = {
-    v: 3, owner: 'DSaC', block: 'js', expires: 'evergreen',
+    v: 4, owner: 'DSaC', block: 'js', expires: 'evergreen',
     hellos: 0, answered: 0, declined: 0
   };
 
-  function hasConsent() {
+  function hasGroup(group) {
     var g = window.OnetrustActiveGroups || window.OptanonActiveGroups;
     if (typeof g !== 'string' || !g) return null;
-    return g.indexOf(CONSENT_GROUP) !== -1;
+    return g.indexOf(group) !== -1;
   }
+  function hasConsent() { return hasGroup(CONSENT_GROUP); }
 
   window.addEventListener('message', function (e) {
     if (e.origin !== FEED_ORIGIN) return;
@@ -50,12 +51,13 @@
     try { id = window.localStorage.getItem(POCKET_KEY); } catch (err) { id = null; }
     if (id && !ID_PATTERN.test(id)) id = null;
 
-    // v3: the Eloqua visitor GUID the site's own attribution script already records beside the
-    // pocket id (the GUID= part of the ELOQUA cookie). For a fan who has ever clicked a club
-    // email it resolves to a contact in Eloqua, so the feed's session can be recognised with
-    // no ask at all. Sent only with consent, only to the feed, 32 hex characters or nothing.
+    // v3: the Eloqua visitor GUID (the GUID= part of the ELOQUA cookie). For a fan who has ever
+    // clicked a club email it resolves to a contact in Eloqua, so the feed's session can be
+    // recognised with no ask at all. 32 hex characters or nothing, only to the feed.
+    // v4: sent only when the Targeting group is on, because that is the category OneTrust
+    // classifies the ELOQUA cookie under (confirmed in the club's instance, 2 Nov 2026).
     var guid = null;
-    try {
+    if (hasGroup(GUID_GROUP) === true) try {
       var m = (document.cookie || '').match(/(?:^|;\s*)ELOQUA=([^;]*)/);
       var g = m ? decodeURIComponent(m[1]).match(/GUID=([0-9A-Fa-f]{32})/) : null;
       guid = g ? g[1] : null;

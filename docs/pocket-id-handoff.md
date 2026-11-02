@@ -20,6 +20,15 @@ There are two ways to do it. **Either one is enough; you do not need both.**
 
 ---
 
+## v4, 2 Nov 2026: the GUID waits for Targeting consent
+
+The club's OneTrust instance classifies the `ELOQUA` cookie as a Targeting cookie (C0004), not
+Performance. v4 keeps the pocket id on C0002 and sends the Eloqua GUID only when C0004 is also
+on. One copy lives in the header library block `tx-feed-handshake-block`; v4 yields only to a
+copy at v4 or higher, so it runs beside any older copy left on a page. Tests:
+`test/verify-identity.mjs` loads the real v2 (`test/fixtures/handshake-v2.html`) and the current
+file on one page, with and without C0004.
+
 ## v3, 2 Nov 2026: the Eloqua GUID rides along
 
 The script in [`txfeed-handshake.html`](txfeed-handshake.html) is now v3. Beside the pocket id

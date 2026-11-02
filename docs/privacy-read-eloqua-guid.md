@@ -25,10 +25,13 @@ their picks in the feed at any time.
 
 ## How it is gated today
 
-- The id is passed only when the fan has accepted Performance cookies (OneTrust group C0002).
-  This is the same gate the site's existing session-attribution script uses, and that script
-  already records the same Eloqua id against site sessions.
-- Fans who decline optional cookies are never recognised.
+- The pocket session id is passed only when the fan has accepted Performance cookies (OneTrust
+  group C0002), the same gate the site's session-attribution script uses.
+- The Eloqua id is passed only when the fan has also accepted the Selling, Sharing, Targeted
+  Advertising group (C0004), because the club's OneTrust instance classifies the `ELOQUA`
+  cookie as a Targeting cookie (checked 2 Nov 2026). Handshake v4.
+- Fans who decline optional cookies are never recognised; fans who accept Performance alone get
+  a personal feed on this device only.
 - The feed's event rows, where the id lives, are pruned on a 90-day schedule.
 
 ## What the club's Privacy Policy already says
@@ -45,9 +48,9 @@ you with offers and content that we think may be of interest to you".
 
 1. **Coverage.** Does the use above fit under those clauses as written, with no change to the
    notice? Our reading is yes: first-party id, first-party personalisation, already disclosed.
-2. **Consent category.** The `ELOQUA` cookie is classified in OneTrust under one category. If
-   it is Performance (C0002), the gate is right as built. If it is Targeting (C0004), tell us and
-   the gate moves to C0004 in one line.
+2. **Consent category.** Answered 2 Nov: the `ELOQUA` cookie is a Targeting cookie in the
+   club's OneTrust instance, so the id is gated on C0004 as above. Worth a look from the same
+   seat: the site's session-attribution script records the same id under Performance only.
 3. **Retention.** Decided by Adam, 2 Nov: 90 days, the same prune as every other feed event. A
    30-day option exists if the privacy owner asks: resolve the id to a contact nightly, keep the
    resolved key, drop the raw id.
