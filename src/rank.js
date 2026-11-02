@@ -370,6 +370,9 @@ export const KNOB_DEFAULTS = {
   /** Where one follow-up question (more of, going, how you watch) is asked of a fan who has set
    *  their feed but not answered it yet; one per visit; -1 asks nothing. */
   ask_position: 7,
+  /** Rail layout only: how many lead tiles play a muted preview instead of a still (0 to 3). The
+   *  strip is seen and scrolled past; a moving first tile is the invitation to tap. 0 is off. */
+  rail_preview: 0,
 };
 
 export function fnv1a(str) {

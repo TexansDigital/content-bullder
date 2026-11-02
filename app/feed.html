@@ -252,6 +252,8 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .tile .art{position:relative;flex:1;min-height:0;overflow:hidden;background:#000}
 .tile .art>img,.tile .art>.gen{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .tile .art>img{z-index:1}
+.tile .art>.tprev{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;pointer-events:none;border:0;background:transparent;opacity:0;transition:opacity .4s}
+.tile .art>.tprev.on{opacity:1;z-index:2}
 .tile .tb{flex:none;background:var(--steel);border-top:1px solid var(--line);padding:9px 10px 10px;min-height:74px;display:flex;
   flex-direction:column;justify-content:flex-start;gap:3px}
 .tile .tb h3{font:900 12px/1.02 var(--display);text-transform:uppercase;letter-spacing:-.01em;margin:0;
@@ -260,9 +262,9 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tile .tb p{margin:0;font-size:11px;line-height:1.35;color:var(--body);display:-webkit-box;-webkit-line-clamp:2;
   -webkit-box-orient:vertical;overflow:hidden}
-.tile .tcoll{position:absolute;top:8px;left:8px;z-index:2;font:900 8px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;
+.tile .tcoll{position:absolute;top:8px;left:8px;z-index:3;font:900 8px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;
   background:var(--red);padding:4px 6px}
-.tile .tdur{position:absolute;right:8px;bottom:8px;z-index:2;display:inline-flex;align-items:center;gap:4px;background:rgba(2,17,24,.82);
+.tile .tdur{position:absolute;right:8px;bottom:8px;z-index:3;display:inline-flex;align-items:center;gap:4px;background:rgba(2,17,24,.82);
   color:#fff;font:500 9px/1 var(--mono);letter-spacing:.08em;padding:4px 6px}
 .tile .tdur svg{width:9px;height:9px;fill:#fff}
 .tile.sys{background:#021018 var(--plate) center/cover no-repeat;border-color:var(--line);justify-content:flex-end;position:relative}
@@ -1501,11 +1503,60 @@ function renderTiles(rows, name) {
     };
   });
   el.scrollLeft = 0;
+  previewTiles(rows);
+}
+
+/**
+ * Rail: the lead tiles play a muted preview instead of a still, when the knob says so. The strip
+ * is seen and scrolled past (first review, 2 Nov: 17 loads, 0 taps); a moving first tile is the
+ * invitation. Never with save-data or reduced motion on, never for a system card, and the preview
+ * takes no taps, so the tile still opens. One tile_preview event per tile shown this way.
+ */
+const PREVIEW_MAX = 3;
+function previewTiles(rows) {
+  const n = Math.max(0, Math.min(PREVIEW_MAX, Number(knobs.rail_preview) || 0));
+  if (!n) return;
+  try { if (navigator.connection?.saveData || matchMedia('(prefers-reduced-motion: reduce)').matches) return; } catch { /* no preference API: preview */ }
+  let made = 0;
+  for (let i = 0; i < rows.length && made < n && i < TILE_MAX; i++) {
+    const c = rows[i];
+    if (!c || c.system) continue;
+    const art = $('#tiles').querySelector(`.tile[data-index="${i}"] .art`);
+    if (!art || art.querySelector('.tprev')) continue;
+    const m = c.media || {};
+    let el = null;
+    if (m.kind === 'file' || m.kind === 'cloudinary') {
+      const src = safeUrl(m.kind === 'cloudinary' ? m.mp4 : m.url);
+      if (!src) continue;
+      el = document.createElement('video');
+      el.src = src; el.muted = true; el.loop = true; el.autoplay = true; el.playsInline = true; el.preload = 'metadata';
+      el.setAttribute('muted', ''); el.setAttribute('playsinline', ''); el.setAttribute('aria-hidden', 'true');
+      // The still stays until frames actually move; a preview that never loads is just the poster.
+      el.addEventListener('playing', () => el.classList.add('on'), { once: true });
+    } else if (m.kind === 'youtube' && YT_ID.test(String(m.videoId || ''))) {
+      el = document.createElement('iframe');
+      const q = new URLSearchParams({ autoplay: '1', mute: '1', controls: '0', playsinline: '1', loop: '1', playlist: m.videoId,
+        rel: '0', modestbranding: '1', iv_load_policy: '3', disablekb: '1', origin: location.origin });
+      el.src = `https://www.youtube-nocookie.com/embed/${m.videoId}?${q}`;
+      el.allow = 'autoplay; encrypted-media'; el.tabIndex = -1; el.title = ''; el.setAttribute('aria-hidden', 'true');
+      // No playing event crosses the frame boundary: show it once loaded, when YouTube's own poster is up.
+      el.addEventListener('load', () => setTimeout(() => el.classList.add('on'), 400), { once: true });
+    } else continue;
+    el.className = 'tprev';
+    art.appendChild(el);
+    made++;
+    track('tile_preview', { ...cardParams(c, i), preview_kind: m.kind });
+  }
+}
+/** The stage covers the strip: our own previews pause behind it and pick up again on close. */
+function previewsPlaying(on) {
+  document.querySelectorAll('#tiles video.tprev').forEach((v) => { if (on) v.play().catch(() => {}); else v.pause(); });
 }
 
 function openRail(i) {
   const stage = $('#stage'), feed = $('#feed');
   stage.classList.add('open');
+  previewsPlaying(false);
   // Jump before the observer looks: reading clientHeight forces layout, so the first card
   // the observer sees intersecting is the one that was tapped, not card one.
   feed.scrollTop = i * feed.clientHeight;
@@ -1520,6 +1571,7 @@ function closeRail(report = true) {
   if (player.slide) closePlayer(false);
   const card = ROWS[activeIdx];
   stage.classList.remove('open');
+  previewsPlaying(true);
   if (report && card) track('rail_close', cardParams(card, activeIdx));
   const t = $('#tiles').querySelector(`.tile[data-index="${activeIdx}"]`);
   if (t) { t.scrollIntoView({ inline: 'nearest', block: 'nearest' }); t.focus({ preventScroll: true }); }

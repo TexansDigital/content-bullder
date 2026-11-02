@@ -59,3 +59,13 @@ knob so the daily review can move or hide it per arm.
 ## Privacy
 
 The picker stores pseudonymous preferences against a session id. No name, no email, no account. Personal data is collected only through the Eloqua form, which carries the NFL-approved agreement text above its submit button. The feed never stores what the form collects. The exclusion list (`excluded_players`) applies to picks as to everything else: the dictionary refuses an excluded name, so it can never be picked.
+
+## Knob added 2 Nov 2026: `rail_preview`
+
+Rail layout only. How many lead tiles play a muted, looping preview instead of a still (0 to 3,
+default 0). The first review found the rail seen and scrolled past (17 loads, 0 taps by a
+person), so the experiment `rail_preview` runs control 0 against preview 1 at 50/50. A preview
+is our own file when a master exists, else the Short's embed muted with no controls; it stays
+invisible until frames move, takes no taps, pauses while the stage is open, and is skipped for
+fans with save-data or reduced motion on. Event: `tile_preview` (card, position, preview_kind),
+once per previewing tile. Metric: rail_open per rail feed_load.
