@@ -10,7 +10,10 @@
   // The consent flag matters: without it the feed cannot tell "declined measurement" from
   // "no pocketID yet", and would mint its own identifier for someone who said no.
 
-  if (window._houTxfeedHandshake) return;
+  // Run once per version. An older copy elsewhere on the page (a shared module) may already
+  // have answered; this one answers too, with the GUID, and the feed keeps the richer answer.
+  var prev = window.houModules && window.houModules['txfeed-handshake'];
+  if (prev && prev.v >= 3) return;
   window._houTxfeedHandshake = true;
 
   var FEED_ORIGIN = 'https://feed.htow.nz';

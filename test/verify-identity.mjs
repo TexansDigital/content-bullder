@@ -235,6 +235,27 @@ const twoHosts = `
   await pg.close();
 }
 
+// The real scripts: the old v2 copy still in the site's shared modules and the new v3 paste, on
+// one page, with an ELOQUA cookie. The v2 answers first; the v3 must still run and bring the GUID.
+{
+  const { readFileSync } = await import('node:fs');
+  const strip = (html) => html.replace(/<\/?script[^>]*>/g, '').replaceAll('https://feed.htow.nz', B);
+  const v2 = strip(readFileSync('/tmp/claude-0/-home-user-content-bullder/297a51d9-7410-52ce-b947-b0c4d4a39edc/scratchpad/handshake-v2.html', 'utf8'));
+  const v3 = strip(readFileSync(new URL('../docs/txfeed-handshake.html', import.meta.url), 'utf8'));
+  const page = `<script>window.__ev = []; addEventListener('message', function (e) { if (e.data && e.data.source === 'txfeed') window.__ev.push(e.data); });
+      Object.defineProperty(document, 'cookie', { get: function () { return 'ELOQUA=GUID=0123456789ABCDEF0123456789ABCDEF&ELQ=x'; } }); try { localStorage.setItem('pocket_session_id', 'sess_1792089626000_k3j9xq2ab'); } catch (e) {}
+      window.OnetrustActiveGroups = ',C0001,C0002,';<\/script>
+    <script>${v2}<\/script><script>${v3}<\/script>
+    <iframe id="x" src="${B}/feed" style="width:430px;height:820px;border:0"></iframe>`;
+  const pg = await openHost(page);
+  const evs = await evsOf(pg);
+  const ids = evs.filter((e) => e.event === 'identity');
+  const st = await pg.evaluate(() => window.houModules['txfeed-handshake']);
+  t(`with the old v2 copy still on the page, the v3 paste still answers and the GUID lands (identity events ${ids.length}, guid ${ids.some((e) => e.params.eloqua_guid === '0123456789abcdef0123456789abcdef')}, state v${st && st.v})`,
+    ids.some((e) => e.params.eloqua_guid === '0123456789abcdef0123456789abcdef' && e.params.pocket_id === 'sess_1792089626000_k3j9xq2ab') && st && st.v === 3);
+  await pg.close();
+}
+
 /* ---------- verification traffic is marked ---------- */
 {
   const ctx = await b.newContext({ viewport: { width: 390, height: 780 } });
