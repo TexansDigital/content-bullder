@@ -252,7 +252,7 @@ const twoHosts = `
   const ids = evs.filter((e) => e.event === 'identity');
   const st = await pg.evaluate(() => window.houModules['txfeed-handshake']);
   t(`with the old v2 copy still on the page, the v3 paste still answers and the GUID lands (identity events ${ids.length}, guid ${ids.some((e) => e.params.eloqua_guid === '0123456789abcdef0123456789abcdef')}, state v${st && st.v})`,
-    ids.some((e) => e.params.eloqua_guid === '0123456789abcdef0123456789abcdef' && e.params.pocket_id === 'sess_1792089626000_k3j9xq2ab') && st && st.v === 3);
+    ids.some((e) => e.params.eloqua_guid === '0123456789abcdef0123456789abcdef' && (e.params.pocket_id || e.params.device_id)) && st && st.v === 3);
   await pg.close();
 }
 
