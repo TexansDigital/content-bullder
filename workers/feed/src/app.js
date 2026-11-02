@@ -544,6 +544,11 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
         if (method === 'GET' && p === '/api/media') return media.list(request, env);
         if (method === 'GET' && p === '/api/media/lookup') return mediaLookup(request, env, ctx);
         if (method === 'GET' && p === '/api/eloqua/lookup') return eloquaLookup(request, env);
+        if (method === 'GET' && p === '/api/eloqua/probe') {
+          const denied = media.authorized(request, env); if (denied) return denied;
+          const out = await eloqua.probe(env, new URL(request.url).searchParams.get('guid') || '');
+          return new Response(JSON.stringify(out), { status: out.ok ? 200 : 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
+        }
         if (method === 'DELETE' && p === '/api/media') return media.remove(request, env);
         if (method === 'GET' && p === '/studio/upload') return uploadPage(env);
         if (method === 'GET' && p === '/health') {

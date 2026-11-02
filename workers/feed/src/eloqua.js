@@ -70,5 +70,37 @@ export function createEloqua({ fetch: get = (...a) => globalThis.fetch(...a), no
     return { found: true, contactId: String(d.id), firstName: d.firstName ? String(d.firstName).slice(0, 40) : null, fieldCount: (d?.fieldValues || []).length, custom };
   }
 
-  return { configured, login, visitor, contact };
+  /**
+   * Which visitor-search form does this pod accept? Tries the documented variants and reports a
+   * status and an element count for each, never a record. Used once from the diagnostic route.
+   */
+  async function probe(env, guid) {
+    const l = await login(env, { force: true });
+    if (!l.ok) return { ok: false, error: l.error };
+    const raw = await get(LOGIN_URL, { headers: headers(env) }).then((r) => r.json()).catch(() => ({}));
+    const restBase = String(raw?.urls?.apis?.rest?.standard || '').replace('{version}', '1.0').replace(/\/$/, '');
+    const g = String(guid || '').toUpperCase();
+    const tries = [
+      ['base /api/REST/1.0 search=externalId=\'G\'', `${l.base}/api/REST/1.0/data/visitors?search=${encodeURIComponent(`externalId='${g}'`)}`],
+      ['base /api/REST/1.0 search=externalId=G', `${l.base}/api/REST/1.0/data/visitors?search=${encodeURIComponent(`externalId=${g}`)}`],
+      ['base /api/REST/1.0 search=G', `${l.base}/api/REST/1.0/data/visitors?search=${encodeURIComponent(g)}`],
+      ['base /api/REST/1.0 no search, count=1', `${l.base}/api/REST/1.0/data/visitors?count=1`],
+      ['base /API/REST/1.0 search=externalId=\'G\'', `${l.base}/API/REST/1.0/data/visitors?search=${encodeURIComponent(`externalId='${g}'`)}`],
+      ['base /api/REST/2.0 search=externalId=\'G\'', `${l.base}/api/REST/2.0/data/visitors?search=${encodeURIComponent(`externalId='${g}'`)}`],
+      ...(restBase ? [['apis.rest.standard search=externalId=\'G\'', `${restBase}/data/visitors?search=${encodeURIComponent(`externalId='${g}'`)}`]] : []),
+      ['contacts endpoint sanity, count=1', `${l.base}/api/REST/1.0/data/contacts?count=1`],
+    ];
+    const out = [];
+    for (const [label, url] of tries) {
+      try {
+        const r = await get(url, { headers: headers(env) });
+        let elements = null, keys = null, total = null;
+        try { const d = await r.json(); elements = Array.isArray(d?.elements) ? d.elements.length : null; total = d?.total ?? null; keys = d?.elements?.[0] ? Object.keys(d.elements[0]).slice(0, 12) : null; } catch { /* not json */ }
+        out.push({ label, status: r.status, elements, total, keys });
+      } catch (e) { out.push({ label, error: e?.message || 'failed' }); }
+    }
+    return { ok: true, base: l.base, restBase: restBase || null, tries: out };
+  }
+
+  return { configured, login, visitor, contact, probe };
 }

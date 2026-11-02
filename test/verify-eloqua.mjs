@@ -75,5 +75,11 @@ t('with the key, a GUID resolves to a visitor and a contact with a first name, n
 r = await app.fetch(req('/api/eloqua/lookup?guid=abcdef0123456789abcdef0123456789', { headers: { 'x-media-key': 'open-sesame' } }), { MEDIA: {}, MEDIA_UPLOAD_KEY: 'open-sesame' }, ctx);
 t('without the secrets the lookup says what is missing', r.status === 503 && /ELOQUA_SITE/.test(await r.text()));
 
+r = await app.fetch(req('/api/eloqua/probe?guid=abcdef0123456789abcdef0123456789', { headers: { 'x-media-key': 'open-sesame' } }), KEYED, ctx);
+d = await r.json();
+t('the probe tries each search form and reports status and counts, never a record', r.status === 200 && d.tries.length >= 7 && d.tries.every((x) => 'status' in x || 'error' in x) && !JSON.stringify(d).includes('4242') && d.tries[0].elements === 1);
+r = await app.fetch(req('/api/eloqua/probe?guid=x'), KEYED, ctx);
+t('the probe needs the key', r.status === 401);
+
 console.log('PASS ' + ok.length); ok.forEach((x) => console.log('  + ' + x));
 if (bad.length) { console.log('FAIL ' + bad.length); bad.forEach((x) => console.log('  - ' + x)); process.exit(1); }
