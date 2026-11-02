@@ -266,6 +266,16 @@ const twoHosts = `
   t('a load with ?qa=1 marks every event it sends, so reviews can leave it out', ev.length > 0 && ev.every((e) => e.params.qa === true));
   await ctx.close();
 }
+{
+  // On the live site the iframe URL is the host's, so a browser check marks itself by user agent.
+  const ctx = await b.newContext({ viewport: { width: 390, height: 780 }, userAgent: 'Mozilla/5.0 (iPhone) AppleWebKit/605.1.15 Safari/604.1 txfeed-qa' });
+  const pg = await ctx.newPage(); const ev = [];
+  pg.on('request', (r) => { if (r.method() === 'POST' && r.url().endsWith('/api/events')) { try { ev.push(...(JSON.parse(r.postData() || '{}').events || [])); } catch {} } });
+  await pg.addInitScript(() => { navigator.sendBeacon = () => false; });
+  await pg.goto(`${B}/feed?pid=sess_${Date.now()}_uamark`, { waitUntil: 'networkidle' }); await pg.waitForTimeout(2600);
+  t('a browser whose user agent says txfeed-qa marks every event too, with no ?qa=1 in the URL', ev.length > 0 && ev.every((e) => e.params.qa === true));
+  await ctx.close();
+}
 
 console.log('PASS ' + ok.length); ok.forEach((x) => console.log('  + ' + x));
 if (bad.length) { console.log('FAIL ' + bad.length); bad.forEach((x) => console.log('  - ' + x)); }

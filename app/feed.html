@@ -346,7 +346,9 @@ const PAGE = (() => {
     // Only these card formats (video, read, listen): the news page lists its own stories.
     formats: String(q.get('formats') || '').split(',').map((s) => s.trim()).filter((s) => ['video', 'read', 'listen'].includes(s)),
     // Verification traffic: every event from this load says so, and the reviews leave it out.
-    qa: q.get('qa') === '1',
+    // On the live host page the iframe URL is the site's, so a browser run marks itself
+    // with "txfeed-qa" in its user agent instead.
+    qa: q.get('qa') === '1' || /txfeed-qa/.test(navigator.userAgent),
   };
 })();
 if (PAGE.layout === 'rail') document.body.classList.add('rail-mode');
