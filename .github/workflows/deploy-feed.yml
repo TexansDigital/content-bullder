@@ -18,12 +18,16 @@ on:
     paths:
       - "workers/feed/**"
       - "app/feed.html"
+      - "app/upload.html"
+      - "docs/eloqua-enter.html"
       - "src/**"
       - ".github/workflows/deploy-feed.yml"
   pull_request:
     paths:
       - "workers/feed/**"
       - "app/feed.html"
+      - "app/upload.html"
+      - "docs/eloqua-enter.html"
       - "src/**"
   workflow_dispatch:
 
