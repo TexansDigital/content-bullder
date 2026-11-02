@@ -472,6 +472,34 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
     });
   }
 
+  /**
+   * Where a Short stands before a master is uploaded for it: is it a live card, is it in the
+   * catalogue at all, and if it is not live, why (older than the window the feed serves).
+   * GET /api/media/lookup?yt=<videoId>, with the upload key.
+   */
+  async function mediaLookup(request, env, ctx) {
+    const denied = media.authorized(request, env); if (denied) return denied;
+    const yt = new URL(request.url).searchParams.get('yt') || '';
+    if (!/^[A-Za-z0-9_-]{6,20}$/.test(yt)) return new Response(JSON.stringify({ error: 'yt= needs a YouTube video id' }), { status: 400, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
+    const [built, rows] = await Promise.all([
+      shared(request, env, ctx),
+      rest(env, `videos?select=id,title,published_at,duration_seconds&id=eq.${encodeURIComponent(yt)}&limit=1`).catch(() => []),
+    ]);
+    const id = `yt-${yt}`;
+    const card = built.live.find((i) => i.id === id) || null;
+    const row = rows[0] || null;
+    const shorts = built.live.filter((i) => i.id.startsWith('yt-')).map((i) => i.publishedAt).filter(Boolean).sort();
+    const oldest = shorts[0] || null;
+    let why = null;
+    if (!card && row) why = oldest && String(row.published_at) < oldest
+      ? `in the catalogue, but published ${String(row.published_at).slice(0, 10)}, before the oldest Short the feed serves (${oldest.slice(0, 10)}); the feed serves the ${env.CATALOGUE_MAX || 300} newest`
+      : 'in the catalogue but not served, most often because its title names an excluded player';
+    if (!card && !row) why = 'not in the catalogue: the pipeline has not ingested this video';
+    return new Response(JSON.stringify({ id, live: Boolean(card), inCatalogue: Boolean(row), title: card?.headline || row?.title || null,
+      publishedAt: card?.publishedAt || row?.published_at || null, poster: card ? (card.poster || [])[0] || null : null, master: Boolean(card?.flags?.master), why }),
+      { headers: jsonHeaders({ 'cache-control': 'no-store' }) });
+  }
+
   /** The upload page for Adam and Juan. Never framed; the key lives in their browser, not here. */
   function uploadPage(env) {
     if (!uploadHtml) return new Response('not found', { status: 404 });
@@ -497,6 +525,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
         if (method === 'GET' && p.startsWith('/media/')) return media.serve(request, env, p.slice('/media/'.length));
         if (method === 'POST' && p === '/api/media') return media.upload(request, env);
         if (method === 'GET' && p === '/api/media') return media.list(request, env);
+        if (method === 'GET' && p === '/api/media/lookup') return mediaLookup(request, env, ctx);
         if (method === 'DELETE' && p === '/api/media') return media.remove(request, env);
         if (method === 'GET' && p === '/studio/upload') return uploadPage(env);
         if (method === 'GET' && p === '/health') {

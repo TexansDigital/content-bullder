@@ -45,7 +45,7 @@ button.sm{padding:5px 9px;font-size:10px}
 .hit .m i{color:var(--blue-lt);font-style:normal}
 .prog{height:6px;background:var(--s3);margin:10px 0 6px}
 .prog i{display:block;height:100%;background:var(--blue);width:0;transition:width .15s}
-.msg{font-family:var(--mono);font-size:11px;color:var(--mute);min-height:18px;word-break:break-all}
+.msg{font-family:var(--mono);font-size:11px;color:var(--mute);min-height:18px;overflow-wrap:anywhere}
 .msg.bad{color:var(--red)}.msg.ok{color:var(--ok)}
 .preview{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:start;margin:10px 0 14px}
 .preview .frame{aspect-ratio:9/16;background:var(--s3);overflow:hidden;position:relative}
@@ -57,10 +57,13 @@ button.sm{padding:5px 9px;font-size:10px}
 .list .m i{font-style:normal;color:var(--blue-lt)}
 .note{font-size:12px;color:var(--mute);margin:0 0 14px;line-height:1.5}
 .note b{color:var(--w)}
+.blocking{margin:14px 18px 0;border-left:3px solid var(--red);background:rgba(237,0,40,.1);padding:8px 11px;font-size:12px}
+.blocking b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--red);margin-bottom:4px}
 code{font-family:var(--mono);font-size:11px;color:var(--blue-lt)}
 </style></head><body>
 <header><h1>Feed <i>Masters</i></h1><span class="pill" id="st">key needed</span>
   <div class="sp"><input id="key" type="password" placeholder="upload key" style="width:200px" autocomplete="off"><button class="ghost sm" id="savekey" type="button">Use key</button></div></header>
+<div class="blocking" id="nokey"><b>Upload key</b>Paste the upload key in the box at the top right and press Use key. The list and the uploads need it.</div>
 <main>
 <section>
   <h2>Upload</h2>
@@ -69,7 +72,9 @@ code{font-family:var(--mono);font-size:11px;color:var(--blue-lt)}
   <div class="drop" id="drop"><b>Drop a file here</b>MP4, WebM or MOV up to 100 MB. JPG, PNG or WebP for a graphic.<input type="file" id="file" accept="video/mp4,video/webm,video/quicktime,image/jpeg,image/png,image/webp"></div>
   <div class="preview" id="preview" hidden><div class="frame" id="frame"></div><div><div class="msg" id="finfo"></div><label style="margin-top:10px">Poster</label><div class="msg" id="pinfo">A frame is taken from the clip at one second. Replace it by dropping an image after the upload.</div></div></div>
   <div id="masterBox">
-    <div class="field"><label for="q">Which card</label><input id="q" placeholder="search the live feed by headline or id"></div>
+    <div class="field"><label for="yt">YouTube link</label><input id="yt" placeholder="paste the Short's link: youtube.com/shorts/…" autocomplete="off"></div>
+    <div class="msg" id="ytmsg"></div>
+    <div class="field" style="margin-top:12px"><label for="q">Or search the live cards</label><input id="q" placeholder="headline or id"></div>
     <div class="hits" id="hits"></div>
   </div>
   <div id="newBox" hidden>
@@ -105,7 +110,7 @@ let file = null, mode = 'master', picked = null, cards = [], posterBlob = null;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const who = () => { try { return localStorage.getItem('txfeed_media_by') || ''; } catch { return ''; } };
 
-function setStatus(ok, label) { const el = $('#st'); el.textContent = label; el.className = 'pill ' + (ok ? 'ok' : 'bad'); }
+function setStatus(ok, label) { const el = $('#st'); el.textContent = label; el.className = 'pill ' + (ok ? 'ok' : 'bad'); $('#nokey').hidden = ok; }
 function say(text, cls = '') { const m = $('#msg'); m.textContent = text; m.className = 'msg ' + cls; }
 
 $('#savekey').onclick = async () => {
@@ -181,13 +186,37 @@ async function loadCards() {
 $('#q').oninput = (e) => search(e.target.value);
 async function search(q) {
   await loadCards();
-  const terms = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+  // Filler words match every headline; only words that carry meaning count, and a hit needs most of them.
+  const STOP = new Set(['the', 'out', 'him', 'her', 'and', 'for', 'with', 'this', 'that', 'you', 'your', 'from', 'into', 'are', 'was', 'his', 'our', 'off', 'all', 'has', 'have', 'its', 'not']);
+  const terms = String(q || '').toLowerCase().split(/[^a-z0-9.]+/).filter((w) => w.length > 2 && !STOP.has(w));
   const score = (c) => terms.reduce((n, t) => n + (c.headline.toLowerCase().includes(t) ? 2 : 0) + (c.id.toLowerCase().includes(t) ? 3 : 0), 0);
-  const hits = (terms.length ? cards.map((c) => [score(c), c]).filter(([s]) => s > 0).sort((a, b) => b[0] - a[0]).map(([, c]) => c) : cards).slice(0, 40);
+  const need = terms.length ? Math.max(2, Math.ceil(terms.length * 1.2)) : 0;
+  const hits = (terms.length ? cards.map((c) => [score(c), c]).filter(([s]) => s >= need).sort((a, b) => b[0] - a[0]).map(([, c]) => c) : cards).slice(0, 40);
+  if (terms.length && !hits.length) { $('#hits').innerHTML = `<div class="msg" style="padding:9px">No live card matches "${esc(q)}". Paste the Short's YouTube link above to see where it stands.</div>`; return; }
   $('#hits').innerHTML = hits.map((c) => `<div class="hit" role="option" data-id="${esc(c.id)}" aria-selected="${picked && picked.id === c.id}">
     ${c.poster ? `<img src="${esc(c.poster)}" alt="" loading="lazy" onerror="this.removeAttribute('src')">` : '<div style="width:40px;height:50px;background:var(--s3)"></div>'}<div><h3>${esc(c.headline)}</h3><div class="m">${esc(c.id)}${c.master ? ' · <i>has a master</i>' : c.kind === 'youtube' ? ' · youtube' : ''}</div></div></div>`).join('') || '<div class="msg" style="padding:9px">No card matches.</div>';
   $('#hits').querySelectorAll('.hit').forEach((h) => { h.onclick = () => { picked = cards.find((c) => c.id === h.dataset.id) || null; search($('#q').value); ready(); }; });
 }
+
+// ---- a Short by link ----
+const ytId = (s) => { const m = /(?:shorts\/|v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{6,20})/.exec(s) || /^([A-Za-z0-9_-]{6,20})$/.exec(s.trim()); return m ? m[1] : null; };
+$('#yt').oninput = async (e) => {
+  const id = ytId(e.target.value); const m = $('#ytmsg'); m.className = 'msg';
+  if (!id) { m.textContent = e.target.value.trim() ? 'That is not a YouTube link.' : ''; return; }
+  if (!key) { m.textContent = 'Enter the upload key first.'; m.className = 'msg bad'; return; }
+  await loadCards();
+  const live = cards.find((c) => c.id === 'yt-' + id);
+  if (live) { picked = live; $('#q').value = live.headline; await search(live.headline); m.textContent = 'Live card: ' + live.headline + (live.master ? ' (already has a master; a new upload replaces it)' : ''); m.className = 'msg ok'; ready(); return; }
+  m.textContent = 'Checking the catalogue…';
+  try {
+    const r = await fetch('/api/media/lookup?yt=' + encodeURIComponent(id), { headers: { 'x-media-key': key } });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+    picked = null; ready();
+    m.innerHTML = `<span class="bad">Not a live card.</span> ${esc(d.title || id)}: ${esc(d.why || '')}. <button class="ghost sm" type="button" id="asnew">Make it a new card</button>`;
+    $('#asnew').onclick = () => { setMode('new'); $('#headline').value = (d.title || '').replace(/\s*[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]+\s*$/u, '').trim(); $('#collection').value = 'gameday'; $('#shelf').value = 'evergreen'; ready(); $('#headline').focus(); };
+  } catch (err) { m.textContent = err.message; m.className = 'msg bad'; }
+};
 
 // ---- the upload ----
 $('#go').onclick = async () => {

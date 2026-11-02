@@ -38,7 +38,8 @@ const VIDEOS = [{ id: 'Tq3sz_Yf-Nk', title: 'Tank is BACK', description: '', pub
 const mock = async (url) => {
   const path = url.split('/rest/v1/')[1] || '';
   const table = path.split('?')[0];
-  const body = { videos: VIDEOS, excluded_players: [{ name: 'Deshaun Watson' }], feed_items: [], feed_entity_aliases: [], feed_presets: [], feed_boost_offers: [], feed_experiments: [], feed_preferences: [], short_labels: [], feed_video_entities: [], short_content_types: [], texans_games: [] }[table];
+  const idEq = /[?&]id=eq\.([^&]+)/.exec(path);
+  const body = { videos: idEq ? VIDEOS.filter((v) => v.id === decodeURIComponent(idEq[1])) : VIDEOS, excluded_players: [{ name: 'Deshaun Watson' }], feed_items: [], feed_entity_aliases: [], feed_presets: [], feed_boost_offers: [], feed_experiments: [], feed_preferences: [], short_labels: [], feed_video_entities: [], short_content_types: [], texans_games: [] }[table];
   return { ok: body !== undefined, status: body !== undefined ? 200 : 404, json: async () => body || [], text: async () => JSON.stringify(body || []) };
 };
 const MEDIA = fakeBucket();
@@ -144,6 +145,27 @@ const graphic = d.clips.find((c) => c.id === graphicId);
 t('a graphic is an image card that is its own poster', graphic && graphic.media.kind === 'image' && graphic.poster[0] === graphic.media.url);
 r = await app.fetch(req('/health'), ENV, ctx); h = await r.json();
 t('health counts the studio cards that serve, not the excluded one', h.counts.studio === 2 && h.counts.masters === 1);
+
+// ---- where a Short stands, by link ----
+r = await app.fetch(req('/api/media/lookup?yt=Tq3sz_Yf-Nk'), ENV, ctx);
+t('lookup needs the key', r.status === 401);
+r = await app.fetch(req('/api/media/lookup?yt=Tq3sz_Yf-Nk', { headers: { 'x-media-key': 'open-sesame' } }), ENV, ctx);
+d = await r.json();
+t('a live Short answers live, with its headline and poster', r.status === 200 && d.live === true && d.inCatalogue === true && d.title === 'Tank is BACK' && d.id === 'yt-Tq3sz_Yf-Nk' && d.why === null);
+r = await app.fetch(req('/api/media/lookup?yt=notInAnything', { headers: { 'x-media-key': 'open-sesame' } }), ENV, ctx);
+d = await r.json();
+t('a Short the pipeline never saw says so', d.live === false && d.inCatalogue === false && /not in the catalogue/.test(d.why));
+{
+  // In the catalogue but older than the window the feed serves: the answer names the dates.
+  const old = { id: 'EPDJ3lsqwok', title: 'Knocked the SONIC RINGS out of him', published_at: '2025-12-09T17:01:34Z', duration_seconds: 16 };
+  const mock2 = async (url) => { if (/videos\?.*id=eq\.EPDJ3lsqwok/.test(url)) return { ok: true, status: 200, json: async () => [old], text: async () => JSON.stringify([old]) }; return mock(url); };
+  const app2 = createApp({ feedHtml: 'x', deps: { fetch: mock2, cache: null } });
+  r = await app2.fetch(req('/api/media/lookup?yt=EPDJ3lsqwok', { headers: { 'x-media-key': 'open-sesame' } }), ENV, ctx);
+  d = await r.json();
+  t('a Short older than the served window is explained with both dates', d.live === false && d.inCatalogue === true && d.title === old.title && /published 2025-12-09, before the oldest Short the feed serves \(2026-10-20\)/.test(d.why) && /300 newest/.test(d.why));
+}
+r = await app.fetch(req('/api/media/lookup?yt=bad%20id', { headers: { 'x-media-key': 'open-sesame' } }), ENV, ctx);
+t('a malformed id is a 400', r.status === 400);
 
 // ---- the list and removal ----
 r = await app.fetch(req('/api/media'), ENV, ctx);

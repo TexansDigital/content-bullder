@@ -240,5 +240,5 @@ export function createMedia({ now = () => new Date() } = {}) {
     return new Response(obj.body, { status: 200, headers: { ...common, 'content-length': String(size) } });
   }
 
-  return { readIndex, upload, list, remove, serve, base };
+  return { readIndex, upload, list, remove, serve, base, authorized };
 }
