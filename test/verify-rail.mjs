@@ -129,6 +129,10 @@ await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: items[1].id,
 await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: items[3].id, changes: { collection: 'community' } }) });
 const lk = await open(`collection=community&placement=community&pid=sess_${RUN}_locked`, { viewport: { width: 390, height: 780 } });
 t('a page can lock the feed to one collection: only those cards, no chip bar', (await lk.pg.evaluate(() => [...document.querySelectorAll('.slide')].map((s) => s.dataset.id))).join() === items[3].id && await lk.pg.locator('#bar').isHidden() && await lk.pg.evaluate(() => document.body.classList.contains('locked')));
+t('and the feed still has its full height with the bar gone', await lk.pg.evaluate(() => document.querySelector('#feed').getBoundingClientRect().height > 700));
+const lkr = await open(`layout=rail&collection=community&pid=sess_${RUN}_lockedrail`);
+t('the locked rail keeps its tile height too', await lkr.pg.evaluate(() => document.querySelector('#tiles .tile')?.getBoundingClientRect().height > 300));
+await lkr.ctx.close();
 await settle(lk.pg);
 t('and every event says which collection it was', load(lk.ev)?.params.feed_collection === 'community' && load(lk.ev).params.feed_placement === 'community');
 await lk.ctx.close();

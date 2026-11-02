@@ -18,7 +18,7 @@ import { extname, join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listAdapters, pull } from './src/adapters/index.js';
 import { makeItem, validate, feedSort, liveCollections, STATUS, COLLECTIONS } from './src/content.js';
-import { rankFeed, makePrefs, displayName, MAX_PICKS, KNOB_DEFAULTS, lanesWithCards } from './src/rank.js';
+import { rankFeed, makePrefs, displayName, MAX_PICKS, KNOB_DEFAULTS, lanesWithCards, mixFormats, mixEvery } from './src/rank.js';
 import { TEMPLATES, templatePatch, templateFromItem } from './src/templates.js';
 import { builder, publicId } from './src/cloudinary.js';
 
@@ -447,7 +447,9 @@ const server = createServer(async (req, res) => {
       // The player whose page frames the feed; only a tagged slug counts, as in the Worker.
       const wanted = url.searchParams.get('focus') || '';
       const focus = /^[a-z0-9][a-z0-9-]{1,59}$/.test(wanted) && tally[wanted] ? wanted : null;
-      const { items: live, ranked, focus: focused } = rankFeed(shared, null, { prefs, names: {}, focus });
+      const r0 = rankFeed(shared, null, { prefs, names: {}, focus });
+      const { ranked, focus: focused } = r0;
+      const live = mixFormats(r0.items, { every: mixEvery(prefs?.format) });
       const picker = who ? {
         players: Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([slug, cards]) => ({ slug, name: displayName(slug), cards })),
         lanes: lanesWithCards(shared),

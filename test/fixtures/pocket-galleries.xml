@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Galleries</title>
+    <description>Latest Galleries</description>
+    <atom:link href="https://www.houstontexans.com/rss/galleries" rel="self" type="application/rss+xml" />
+    <link>https://www.houstontexans.com</link>
+    <language>en-US</language>
+    <image>
+      <title>Galleries</title>
+      <url>https://static.nfl.com/static/content/public/static/wildcat/assets/img/logos/teams/HOU.svg</url>
+      <link>https://www.houstontexans.com</link>
+    </image>
+      <item>
+        <title><![CDATA[Texans vs. Giants | Week 7, Gameday Action]]></title>
+          <description><![CDATA[Check out the best game action photos from the Houston Texans Week 7 matchup at Reliant Stadium against the New York Giants.]]></description>
+        <link>https://www.houstontexans.com/photos/texans-vs-giants-week-7-gameday-action</link>
+        <pubDate>Sun, 25 Oct 2026 18:15:00 GMT</pubDate>
+        <guid isPermaLink="false">ff12f483-effa-4f39-9ef6-18099fe95509</guid>
+        <source url="https://www.houstontexans.com/rss/galleries">Galleries</source>
+          <media:content url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/nxzuueccmdif1sjg0ldc.jpg" />
+          <enclosure url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/nxzuueccmdif1sjg0ldc.jpg" length="0" type="image/jpeg"></enclosure>
+            <media:keywords>
+              <![CDATA[Homepage CP, 2026 REG7 - Giants, 2026 REG7 - Giants - Photo, New York Giants at Houston Texans (2026-REG-7), Arrivals, albums - arrivals]]>
+            </media:keywords>
+      </item>
+<item>
+        <title><![CDATA[Texans vs. Giants | Week 7, Pregame Gallery]]></title>
+          <description><![CDATA[Check out the best pregame photos of the Houston Texans as they warm-up at Reliant Stadium for their matchup against the New York Giants.]]></description>
+        <link>https://www.houstontexans.com/photos/texans-vs-giants-week-7-pregame-gallery</link>
+        <pubDate>Sun, 25 Oct 2026 15:32:00 GMT</pubDate>
+        <guid isPermaLink="false">22e21f97-20d3-4f02-95dc-cb6c52cdc6ee</guid>
+        <source url="https://www.houstontexans.com/rss/galleries">Galleries</source>
+          <media:content url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/gzlqjwd3jx5gadj9agxc.jpg" />
+          <enclosure url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/gzlqjwd3jx5gadj9agxc.jpg" length="0" type="image/jpeg"></enclosure>
+            <media:keywords>
+              <![CDATA[Homepage CP, 2026 REG7 - Giants, 2026 REG7 - Giants - Photo, New York Giants at Houston Texans (2026-REG-7), Arrivals, albums - arrivals]]>
+            </media:keywords>
+      </item>
+<item>
+        <title><![CDATA[ Texans vs. Giants | Week 7, Player Arrivals]]></title>
+          <description><![CDATA[Check out the best photos of the Houston Texans as they arrive at Reliant Stadium for their matchup against the New York Giants.]]></description>
+        <link>https://www.houstontexans.com/photos/texans-vs-giants-week-7-player-arrivals</link>
+        <pubDate>Sun, 25 Oct 2026 14:17:00 GMT</pubDate>
+        <guid isPermaLink="false">09bf5495-3eec-45ed-a09d-a3444c625a94</guid>
+        <source url="https://www.houstontexans.com/rss/galleries">Galleries</source>
+          <media:content url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/lxabcvucigjvbh669qw9.jpg" />
+          <enclosure url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/lxabcvucigjvbh669qw9.jpg" length="0" type="image/jpeg"></enclosure>
+            <media:keywords>
+              <![CDATA[Homepage CP, 2026 REG7 - Giants, 2026 REG7 - Giants - Photo, New York Giants at Houston Texans (2026-REG-7), Arrivals, albums - arrivals]]>
+            </media:keywords>
+      </item>
+<item>
+        <title><![CDATA[Behind the Scenes: Battle Red Field Painting]]></title>
+          <description><![CDATA[The field is set at Reliant Stadium for the Houston Texans 2026 Battle Red Game presented by Mattress Firm. Get a look at the field ahead of the Texans matchup against the New York Giants on Sunday, October 25, 2026]]></description>
+        <link>https://www.houstontexans.com/photos/behind-the-scenes-battle-red-field-painting</link>
+        <pubDate>Fri, 23 Oct 2026 20:39:00 GMT</pubDate>
+        <guid isPermaLink="false">927f0ccb-c887-4bdc-a7eb-7f33a1ae63a9</guid>
+        <source url="https://www.houstontexans.com/rss/galleries">Galleries</source>
+          <media:content url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/hhlzgkf8mjeofz0wg35l.jpg" />
+          <enclosure url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/hhlzgkf8mjeofz0wg35l.jpg" length="0" type="image/jpeg"></enclosure>
+            <media:keywords>
+              <![CDATA[Homepage CP, 2026 REG7 - Giants, 2026 REG7 - Giants - Photo]]>
+            </media:keywords>
+      </item>
+</channel>
+</rss>

@@ -43,6 +43,13 @@ capture is `/enter`: the club's Eloqua form with the NFL privacy block, served w
 pseudonymous id, opened from a capture card the `capture_card` knob places. GA4 reports into
 the houstontexans.com property (`GA_MEASUREMENT_ID` in `wrangler.toml`).
 
+The site's own content rides along: the four houstontexans.com RSS feeds (news, galleries, the
+club's video pages, the podcast) become cards that open their page, with players and the
+opponent read from the tags, excluded names dropped, and at most one story or podcast in every
+few cards (three for a fan who asked for a mix, six for one who said mostly video). `POCKET_FEEDS`
+in `wrangler.toml` names the feeds; blank turns the source off. Reference:
+[`docs/research/pocket-rss-feeds.md`](docs/research/pocket-rss-feeds.md).
+
 Placements: `?layout=rail` renders the feed as a row of tiles the width of the slot (the roster
 page), `?placement=` names the slot on every load, and `?focus=<player-slug>` on a player's page
 lifts that player's cards above everything, labelled with the name. Every load also says whether
@@ -153,9 +160,9 @@ it competes with what you composed. Override with Show or Hide.
 
 ## Verification
 
-Fifteen suites under [`test/`](test/), each reproducing a specific reported failure so a
+Sixteen suites under [`test/`](test/), each reproducing a specific reported failure so a
 regression names the thing that broke. Three run in plain Node with no server and no network
-(`verify-catalogue.mjs`, `verify-worker.mjs`, `verify-rank.mjs`); the rest drive a headless
+(`verify-catalogue.mjs`, `verify-worker.mjs`, `verify-rank.mjs`, `verify-pocket.mjs`); the rest drive a headless
 browser against a server on 4400. `verify-prefs.mjs` drives the picker, the reason pills, the
 knobs and the capture card against the local server's `prefs.json`. `verify-rail.mjs` drives the
 roster layout: tiles, the open-at-that-card hand-off, a player page's focus, placement and

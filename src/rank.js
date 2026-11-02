@@ -71,7 +71,9 @@ export function makePrefs(p) {
     going: GOING.includes(p.going) ? p.going : null,
     watch: WATCH.includes(p.watch) ? p.watch : null,
   };
-  out.explicit = Boolean(out.players.length || out.wants.length || out.follow || out.boosts.length || out.going || out.watch);
+  // Any answer at all makes the feed explicit, the format answer included: "mostly video" is a
+  // choice about stories, not a default.
+  out.explicit = Boolean(out.players.length || out.wants.length || out.follow || out.boosts.length || out.going || out.watch || out.format);
   return out;
 }
 
@@ -115,6 +117,9 @@ export const GOING_SPARE = -1.0;
  *  a small nudge on clip length. The stadium is Reliant Stadium. */
 export const WATCH = ['stadium', 'home', 'go'];
 export const WATCH_NUDGE = 0.3;
+/** "Watch or read?" A fan who asked for a mix lifts stories and podcasts a little; one who said
+ *  mostly video drops them a little. Unanswered, the mixing rule alone decides. */
+export const FORMAT_NUDGE = 0.6;
 /** Fewer views than this in a week and there is no "your week" to show. */
 export const WEEK_MIN_VIEWS = 5;
 /** Short, human names for the catalogue's content types, for the weekly card. */
@@ -230,6 +235,10 @@ export function explain(item, { profile, prefs, presets = {}, offers = {}, names
     else if (prefs.going === 'maybe' && (gameday || item.contentType === 'calendar')) add(GOING_LIFT * 0.6, 'going', 'maybe', 'Gameday, if you go');
     else if (prefs.going === 'no' && ticket) quiet += GOING_SPARE;
     const secs = Number(item.durationSeconds) || 0;
+    const reads = item.format === 'read' || item.format === 'listen';
+    if (prefs.format === 'both' && reads) add(FORMAT_NUDGE, 'format', 'both', 'A read, as you asked');
+    if (prefs.format === 'read' && reads) add(FORMAT_NUDGE * 1.5, 'format', 'read', 'A read, as you asked');
+    if (prefs.format === 'video' && reads) quiet -= FORMAT_NUDGE;
     if (prefs.watch === 'go' && secs > 0 && secs <= 30) quiet += WATCH_NUDGE;
     if (prefs.watch === 'home' && secs >= 45) quiet += WATCH_NUDGE;
     if (prefs.watch === 'stadium' && gameday) quiet += WATCH_NUDGE;
@@ -284,6 +293,33 @@ export function rankFeed(items, profile, { now = Date.now(), minEvents = MIN_EVE
   }
   return { items: [...fixed, ...out], ranked: true, focus: f };
 }
+
+/**
+ * Stories and podcasts never crowd the clips: at most one non-video card in every `every`
+ * cards, in whatever order the list arrived. A read card that would land too soon waits for
+ * the next slot; anything left over goes at the end. Editorial cards (before RANKABLE_FROM)
+ * are never moved. `every` comes from the fan's answer: a mix every 3, mostly video every 6,
+ * unanswered every 4.
+ */
+export function mixFormats(items, { every = 4 } = {}) {
+  if (!Array.isArray(items) || every <= 1) return items || [];
+  const fixed = items.filter((i) => (i.sortIndex ?? 0) < RANKABLE_FROM);
+  const pool = items.filter((i) => (i.sortIndex ?? 0) >= RANKABLE_FROM);
+  const isRead = (i) => i.format === 'read' || i.format === 'listen';
+  const out = [];
+  const waiting = [];
+  let sinceRead = every;
+  for (const i of pool) {
+    if (isRead(i)) {
+      if (sinceRead >= every - 1) { out.push(i); sinceRead = 0; } else waiting.push(i);
+      continue;
+    }
+    out.push(i); sinceRead++;
+    if (waiting.length && sinceRead >= every - 1) { out.push(waiting.shift()); sinceRead = 0; }
+  }
+  return [...fixed, ...out, ...waiting];
+}
+export const mixEvery = (format) => (format === 'both' ? 3 : format === 'read' ? 2 : format === 'video' ? 6 : 4);
 
 /* ---------- experiments ----------
  * A visitor lands in one arm of each running experiment by hashing their id with the key, so

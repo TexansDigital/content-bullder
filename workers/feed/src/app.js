@@ -19,7 +19,8 @@
  */
 import { makeItem, feedSort, liveCollections, STATUS } from '../../../src/content.js';
 import catalogue, { excludedMatchers } from '../../../src/adapters/catalogue.js';
-import { rankFeed, makePrefs, resolveExperiments, displayName, MAX_PICKS, MIN_EVENTS, TYPE_NAMES, laneOf, offerHit, lanesWithCards } from '../../../src/rank.js';
+import { fetchPocket, pocketItems } from '../../../src/adapters/pocket.js';
+import { rankFeed, makePrefs, resolveExperiments, displayName, MAX_PICKS, MIN_EVENTS, TYPE_NAMES, laneOf, offerHit, lanesWithCards, mixFormats, mixEvery } from '../../../src/rank.js';
 
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
 /** A player slug as the dictionary spells it: the page the feed is framed on names one. */
@@ -86,8 +87,12 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
     const warnings = [];
     // Curated cards need the denylist before they can be filtered, so that pair is one
     // promise: if the list cannot be read, curated cards are not served without it.
-    const curP = rest(env, 'excluded_players?select=name')
-      .then((ex) => curated(env, excludedMatchers(ex.map((e) => e.name))));
+    const banP = rest(env, 'excluded_players?select=name').then((ex) => excludedMatchers(ex.map((e) => e.name)));
+    const curP = banP.then((banned) => curated(env, banned));
+    // The site's own stories, galleries, video pages and podcast, as cards. POCKET_FEEDS names
+    // the feeds to read; blank turns the source off. A feed failing is a warning, not a dark feed.
+    const pocketKeys = String(env.POCKET_FEEDS ?? 'news,galleries,videos,audio').split(',').map((s) => s.trim()).filter(Boolean);
+    const pocketP = pocketKeys.length ? fetchPocket({ feeds: pocketKeys }, { fetch: get }) : Promise.resolve({ entries: [], warnings: [] });
     // The preference layer's public config rides along: player display names for the
     // picker and the reason pills, presets a fan can follow, live boost offers, running
     // experiments. Each is optional; a failure is a warning, never a dark feed.
@@ -98,13 +103,15 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
     const { base, key: anon } = supa(env);
     const probe = get(`${base}/rest/v1/feed_preferences?select=session_id&limit=1`, { headers: { apikey: anon, authorization: `Bearer ${anon}`, accept: 'application/json' } })
       .then((r) => r.status !== 404).catch(() => false);
-    const [cur, cat, aliases, presetRows, offerRows, expRows, ready] = await Promise.allSettled([
+    const [cur, cat, aliases, presetRows, offerRows, expRows, ready, pocketRaw, bannedRes] = await Promise.allSettled([
       curP, catalogue.fetch({ months, max }, { fetch: get, env }),
       side('feed_entity_aliases?select=entity_slug,alias&entity_type=eq.player&tier=eq.1&limit=1000', 'aliases'),
       side('feed_presets?select=slug,name,blurb,entity_weights,content_type_weights&active=is.true&limit=50', 'presets'),
       side('feed_boost_offers?select=key,label,blurb,content_types,keywords,ends_at&active=is.true&limit=20', 'offers'),
       side('feed_experiments?select=key,arms,knobs,traffic&status=eq.running&limit=50', 'experiments'),
       probe,
+      pocketP,
+      banP,
     ]);
     const prefsReady = ready.status === 'fulfilled' && ready.value === true;
     if (!prefsReady) warnings.push('feed_preferences: table not found; the picker is withheld');
@@ -132,12 +139,19 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
     const offers = Object.fromEntries((offerRows.value || [])
       .filter((o) => o?.key && Date.parse(o.ends_at || '') > nowMs).map((o) => [o.key, o]));
     const experiments = (expRows.value || []).filter((x) => x?.key && x?.arms);
+    // Site cards join the pool only with the denylist in hand; without it none are served.
+    let pocket = [];
+    if (pocketRaw.status === 'fulfilled' && bannedRes.status === 'fulfilled') {
+      for (const w of pocketRaw.value.warnings || []) warnings.push(w);
+      pocket = pocketItems(pocketRaw.value.entries, { names, banned: bannedRes.value, max: Number(env.POCKET_MAX) || 40 })
+        .map((i) => ({ ...i, status: STATUS.PUBLISHED, sortIndex: 1_000_000 }));
+    } else if (pocketRaw.status === 'rejected') warnings.push(`pocket: ${pocketRaw.reason?.message}`);
     const taken = new Set(editorial.map((i) => i.id));
     // Catalogue cards rank after every curated card and keep publishedAt order among themselves.
     const shorts = shortsAll
       .filter((i) => !taken.has(i.id))
       .map((i) => ({ ...i, status: STATUS.PUBLISHED, sortIndex: 1_000_000 }));
-    const all = [...editorial, ...shorts];
+    const all = [...editorial, ...shorts, ...pocket.filter((i) => !taken.has(i.id))];
     const unservable = all.filter((i) => !servable(i)).length;
     if (unservable) warnings.push(`${unservable} card(s) skipped: media is not an absolute URL`);
     const live = all.filter(servable).sort(feedSort);
@@ -164,7 +178,7 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
       offers: Object.values(offered).map((o) => ({ key: o.key, label: o.label, blurb: o.blurb || '', ends_at: o.ends_at, cards: o.cards })),
       max_players: MAX_PICKS,
     };
-    return { live, counts: { curated: editorial.length, catalogue: shorts.length, served: live.length }, warnings,
+    return { live, counts: { curated: editorial.length, catalogue: shorts.length, pocket: pocket.length, served: live.length }, warnings,
       names, presets, offers, offered, withheld, experiments, picker, prefsReady };
   }
 
@@ -266,7 +280,10 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
     const focus = SLUG.test(wanted) && names[wanted] ? wanted : null;
     const [profile, prefRow, week] = await Promise.all([profileFor(env, who), prefsFor(env, who), weekFor(env, who, names)]);
     const prefs = prefRow ? makePrefs(prefRow) : null;
-    const { items, ranked, focus: focused } = rankFeed(live, profile, { prefs, presets, offers, names, focus, now: now().getTime() });
+    const ranked0 = rankFeed(live, profile, { prefs, presets, offers, names, focus, now: now().getTime() });
+    const { ranked, focus: focused } = ranked0;
+    // Stories and podcasts take at most one slot in every few, by the fan's answer.
+    const items = mixFormats(ranked0.items, { every: mixEvery(prefs?.format) });
     const assigned = resolveExperiments(experiments, who);
     const only = url.searchParams.get('collection');
     const body = JSON.stringify({

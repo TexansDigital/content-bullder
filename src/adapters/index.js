@@ -12,8 +12,9 @@ import rss from './rss.js';
 import manual from './manual.js';
 import upload from './upload.js';
 import catalogue from './catalogue.js';
+import pocket from './pocket.js';
 
-export const ADAPTERS = { upload, catalogue, youtube, cloudinary, rss, manual };
+export const ADAPTERS = { upload, catalogue, pocket, youtube, cloudinary, rss, manual };
 
 export const listAdapters = () =>
   Object.values(ADAPTERS).map(({ key, label, needs, notes }) => ({ key, label, needs, notes }));

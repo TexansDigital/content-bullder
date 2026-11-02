@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>Videos</title>
+    <description>Latest Videos</description>
+    <atom:link href="https://www.houstontexans.com/rss/videos" rel="self" type="application/rss+xml" />
+    <link>https://www.houstontexans.com</link>
+    <language>en-US</language>
+    <image>
+      <title>Videos</title>
+      <url>https://static.nfl.com/static/content/public/static/wildcat/assets/img/logos/teams/HOU.svg</url>
+      <link>https://www.houstontexans.com</link>
+    </image>
+      <item>
+        <title><![CDATA[Nick Caserio on C.J. Stroud Contract Talks, Trade Deadline & Texans at 2-5]]></title>
+          <description><![CDATA[Caserio addresses C.J. Stroud's contract talks, saying the two sides were "pretty close," while also discussing the trade deadline and what the Texans need to improve moving forward.]]></description>
+        <link>https://www.houstontexans.com/video/nick-caserio-on-c-j-stroud-contract-talks-trade-deadline-texans-at-2-5</link>
+        <pubDate>Mon, 26 Oct 2026 18:45:05 GMT</pubDate>
+        <guid isPermaLink="false">3833dff7-53ce-4ffb-8c64-e946c2e110ff</guid>
+        <source url="https://www.houstontexans.com/rss/videos">Videos</source>
+          <media:content url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/qf371hpyozcvitrxqiw2.png" />
+          <enclosure url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/qf371hpyozcvitrxqiw2.jpg" length="0" type="image/jpeg"></enclosure>
+            <media:keywords>
+              <![CDATA[Nick Caserio, All Videos, press conference, Homepage CP]]>
+            </media:keywords>
+      </item>
+<item>
+        <title><![CDATA[DeMeco Ryans on Accountability & Using the Bye Week to Reset | Full Q&A]]></title>
+          <description><![CDATA[Ryans meets with the media heading into the bye week and takes ownership of where the Texans need to improve.]]></description>
+        <link>https://www.houstontexans.com/video/demeco-ryans-on-accountability-using-the-bye-week-to-reset-full-q-a</link>
+        <pubDate>Mon, 26 Oct 2026 18:44:56 GMT</pubDate>
+        <guid isPermaLink="false">5ca8a524-2520-4479-aac8-feb3e9f7aca5</guid>
+        <source url="https://www.houstontexans.com/rss/videos">Videos</source>
+          <media:content url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/rvzrhb0yqde2juojf9tl.jpg" />
+          <enclosure url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/rvzrhb0yqde2juojf9tl.jpg" length="0" type="image/jpeg"></enclosure>
+            <media:keywords>
+              <![CDATA[DeMeco Ryans, Homepage CP, All Videos, press conference]]>
+            </media:keywords>
+      </item>
+<item>
+        <title><![CDATA[Texans vs. Giants highlights Week 7]]></title>
+          <description><![CDATA[Highlights from the Week 6 matchup between the New York Giants and the Houston Texans.]]></description>
+        <link>https://www.houstontexans.com/video/giants-vs-texans-highlights-week-7</link>
+        <pubDate>Sun, 25 Oct 2026 21:01:21 GMT</pubDate>
+        <guid isPermaLink="false">360b2f26-ea04-4708-9337-3689546916a9</guid>
+        <source url="https://www.houstontexans.com/rss/videos">Videos</source>
+          <media:content url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/jliahwvsigwwpf75xqtj.jpg" />
+          <enclosure url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/jliahwvsigwwpf75xqtj.jpg" length="0" type="image/jpeg"></enclosure>
+            <media:keywords>
+              <![CDATA[2026 REG7 - Giants - Video, 2026 REG7 - Giants, New York Giants at Houston Texans (2026-REG-7), All Videos, Highlights, Homepage CP]]>
+            </media:keywords>
+      </item>
+<item>
+        <title><![CDATA[Stroud's tight-window TD dime to Hutchinson gets Texans within 1]]></title>
+          <description><![CDATA[Houston Texans quarterback C.J. Stroud completes a 3-yard touchdown pass to wide receiver Xavier Hutchinson.]]></description>
+        <link>https://www.houstontexans.com/video/stroud-s-tight-window-td-dime-to-hutchinson-gets-texans-within-1</link>
+        <pubDate>Sun, 25 Oct 2026 20:21:49 GMT</pubDate>
+        <guid isPermaLink="false">ae44eee8-6750-4691-972a-756f44daa281</guid>
+        <source url="https://www.houstontexans.com/rss/videos">Videos</source>
+          <media:content url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/jbp3e2ktltf0sr7ybilj.jpg" />
+          <enclosure url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/jbp3e2ktltf0sr7ybilj.jpg" length="0" type="image/jpeg"></enclosure>
+            <media:keywords>
+              <![CDATA[Xavier Hutchinson, All Videos, C.J. Stroud, Highlights, New York Giants at Houston Texans (2026-REG-7), 2026 REG7 - Giants, 2026 REG7 - Giants - Video]]>
+            </media:keywords>
+      </item>
+</channel>
+</rss>

@@ -28,6 +28,9 @@ ELOQUA_FORM_NAME = "fan_preference_web"
 # How far back the catalogue reaches and how many Shorts it serves at most.
 CATALOGUE_MONTHS = "12"
 CATALOGUE_MAX = "300"
+# The site's RSS feeds served as cards (news, galleries, videos, audio); blank turns them off.
+POCKET_FEEDS = "news,galleries,videos,audio"
+POCKET_MAX = "40"
 
 # Secrets (set once with `npx wrangler secret put <NAME>` from this directory, never commit):
 #   SUPABASE_SERVICE_KEY   service_role key; the only credential that can write feed_events.

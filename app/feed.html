@@ -235,8 +235,9 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .rail-mode .stage .rclose svg{width:20px;height:20px}
 .rail-mode .stage .rclose:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .rclose{display:none}
+/* With the bar gone the stage (or the tiles) is the only grid item, so it takes the one row. */
 .locked .bar{display:none}
-.locked .wrap{grid-template-rows:0 1fr}
+.locked .wrap,.locked.rail-mode .wrap{grid-template-rows:1fr}
 .locked.rail-mode .tiles{padding-top:16px}
 @media(max-width:600px){
   .rail-mode .wrap{grid-template-rows:auto 1fr}

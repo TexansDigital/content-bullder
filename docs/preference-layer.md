@@ -17,7 +17,7 @@ device id), once, and again after seven days if they said "not now".
 |---|---|---|---|
 | 1 | **Pick up to three players.** Chips named from the dictionary, most-tagged first. | The strongest single predictor of what a fan will finish. Also the clearest proof the feed listened: "Because you picked Tank Dell." | live |
 | 2 | **More of:** Game action · Mic'd up & inside · Fun & TORO · Community · Gameday & tickets. | Lanes map to the catalogue's content types, so one tap moves dozens of cards. "Gameday & tickets" is a declared intent we can act on. | live |
-| 3 | **Watch or read?** Mostly video / Mix in articles. | Stored now, used when article cards join the feed. Immediately useful to email and site teams: the fan told us their format. | live (stored) |
+| 3 | **Watch or read?** Mostly video / Mix in articles. | Ranks the site's stories, galleries and podcast against the clips: a mix lifts them with "A read, as you asked" and spaces them every third card; mostly video drops them and spaces them every sixth. | live |
 | 4 | **Follow TORO's picks.** | A preset: a named weight set a fan can adopt. A player's own picks need that player's sign-off before the row exists. | live (TORO seeded) |
 | 5 | **Time-boxed boost.** "Draft news until Apr 24? Yes." Then back to normal. | The most honest kind of personalization: a promise with an end date, offered when news breaks. Editorial creates the offer; the fan accepts in one tap. | live (needs an offer row) |
 
@@ -53,7 +53,7 @@ knob so the daily review can move or hide it per arm.
 
 1. **Email ↔ pocket id**, only through the Eloqua form (NFL privacy block, Adam's language). The hidden `pocket_id` field makes the join possible later; nothing else does.
 2. **Ticket intent as a declared field**: `going`, **live**; to be joined to D1 clicks and purchases by session id in the daily review.
-3. **Article engagement**, once article cards exist, to make "Watch or read?" pay off.
+3. **Article engagement**: story and gallery cards are live (`source: pocket`), so `card_action` on them is the read signal. **Live.**
 4. **Which placement** a session came from (feed, roster, player, schedule), as `feed_placement` on `feed_load`, plus `feed_layout`, `feed_focus` and the returning-fan fields `visit_n`, `returning`, `days_since`. **Live**; see [roster-placement.md](roster-placement.md).
 
 ## Privacy

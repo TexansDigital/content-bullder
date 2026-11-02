@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/">
+  <channel>
+    <title>News</title>
+    <description>Latest News</description>
+    <atom:link href="https://www.houstontexans.com/rss/news" rel="self" type="application/rss+xml" />
+    <link>https://www.houstontexans.com</link>
+    <language>en-US</language>
+    <image>
+      <title>News</title>
+      <url>https://static.nfl.com/static/content/public/static/wildcat/assets/img/logos/teams/HOU.svg</url>
+      <link>https://www.houstontexans.com</link>
+    </image>
+      <item>
+        <title><![CDATA[Houston Texans Transactions (10-28-2026)]]></title>
+          <description><![CDATA[The Houston Texans made roster moves.]]></description>
+        <link>https://www.houstontexans.com/news/houston-texans-transactions-10-28-2026</link>
+        <pubDate>Wed, 28 Oct 2026 20:56:50 GMT</pubDate>
+        <guid isPermaLink="false">4dc6b081-9090-4fa9-8619-fce4f714f00e</guid>
+        <source url="https://www.houstontexans.com/rss/news">News</source>
+          <media:content url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/vcinceg6twjyj3l2qdze.png" />
+          <enclosure url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/vcinceg6twjyj3l2qdze.jpg" length="0" type="image/jpeg"></enclosure>
+            <media:keywords>
+              <![CDATA[Transaction, Homepage CP]]>
+            </media:keywords>
+      </item>
+<item>
+        <title><![CDATA[Bye Week Bounceback Needed | VanderBlog]]></title>
+          <description><![CDATA[DeMeco Ryans has seen some tough circumstances in his head coaching career but this is his biggest challenge yet.]]></description>
+        <link>https://www.houstontexans.com/news/bye-week-bounceback-needed-vanderblog</link>
+        <pubDate>Mon, 26 Oct 2026 19:06:55 GMT</pubDate>
+        <guid isPermaLink="false">6cbba672-8496-4ec7-8e33-a0357a3d8986</guid>
+        <source url="https://www.houstontexans.com/rss/news">News</source>
+          <media:content url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/h9rspol7v7fgwbiedamk.jpg" />
+          <enclosure url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/h9rspol7v7fgwbiedamk.jpg" length="0" type="image/jpeg"></enclosure>
+            <media:keywords>
+              <![CDATA[Homepage CP, vanderblog, New York Giants at Houston Texans (2026-REG-7), 2026 REG7 - Giants]]>
+            </media:keywords>
+      </item>
+<item>
+        <title><![CDATA[Houston Texans at Los Angeles Chargers: How to Watch, Listen, & Live Stream]]></title>
+          <description><![CDATA[All the ways you can watch, stream, and tune-in to Week 9 between the Texans and the Los Angeles Chargers at SoFi Stadium on November 8.]]></description>
+        <link>https://www.houstontexans.com/news/houston-texans-at-los-angeles-chargers-how-to-watch-listen-live-stream</link>
+        <pubDate>Sun, 25 Oct 2026 22:05:34 GMT</pubDate>
+        <guid isPermaLink="false">94d4732b-a186-4e79-849a-43e7dd6fe74d</guid>
+        <source url="https://www.houstontexans.com/rss/news">News</source>
+          <media:content url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/mpn0cqtsm9f8yoxwhzq8.png" />
+          <enclosure url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/mpn0cqtsm9f8yoxwhzq8.jpg" length="0" type="image/jpeg"></enclosure>
+            <media:keywords>
+              <![CDATA[Gameday, How to Watch, Homepage CP, Game, Gameday, los angeles chargers, Los Angeles Chargers at Houston Texans (2026-PRE-1), 2026 Season]]>
+            </media:keywords>
+      </item>
+<item>
+        <title><![CDATA[Texans Inactives: Week 7 vs New York Giants]]></title>
+          <description><![CDATA[The Houston Texans released their inactives list before their Week 7 matchup against the New York Giants.]]></description>
+        <link>https://www.houstontexans.com/news/texans-inactives-week-7-vs-new-york-giants</link>
+        <pubDate>Sun, 25 Oct 2026 15:30:32 GMT</pubDate>
+        <guid isPermaLink="false">2d64a3a5-cae9-4821-a5b2-7001fcb30067</guid>
+        <source url="https://www.houstontexans.com/rss/news">News</source>
+          <media:content url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/lxfa4vbvfluniilvm21h.png" />
+          <enclosure url="https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/lxfa4vbvfluniilvm21h.jpg" length="0" type="image/jpeg"></enclosure>
+            <media:keywords>
+              <![CDATA[Gameday, Inactives, Homepage CP, 2026 REG7 - Giants, New York Giants at Houston Texans (2026-REG-7)]]>
+            </media:keywords>
+      </item>
+</channel>
+</rss>

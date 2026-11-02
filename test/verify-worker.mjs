@@ -4,6 +4,11 @@
  * merge, the ordering, the exclusion, the event write and the headers.
  */
 import { createApp } from '../workers/feed/src/app.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+const here = dirname(fileURLToPath(import.meta.url));
+const RSS = Object.fromEntries(['news', 'galleries', 'videos', 'audio'].map((k) => [`https://www.houstontexans.com/rss/${k}`, readFileSync(join(here, 'fixtures', `pocket-${k}.xml`), 'utf8')]));
 
 const ok = [], bad = [];
 const t = (n, c) => (c ? ok : bad).push(n);
@@ -49,6 +54,7 @@ const PREFS = {
 const calls = [];
 const mock = (over = {}) => async (url, opts = {}) => {
   calls.push({ url, opts });
+  if (RSS[url]) return over.rss ? over.rss(url) : { ok: true, status: 200, text: async () => RSS[url] };
   const path = url.split('/rest/v1/')[1] || '';
   const table = path.split('?')[0];
   if (over[table]) return over[table](url, opts);
@@ -75,7 +81,10 @@ const mock = (over = {}) => async (url, opts = {}) => {
 };
 const waits = [];
 const ctx = { waitUntil: (p) => waits.push(p) };
-const ENV = { SUPABASE_SERVICE_KEY: 'service-secret' };
+// The site feeds are off for the catalogue tests so their counts and order stay about the
+// catalogue; the site-card tests turn them on.
+const ENV = { SUPABASE_SERVICE_KEY: 'service-secret', POCKET_FEEDS: '' };
+const SITE = { SUPABASE_SERVICE_KEY: 'service-secret', POCKET_FEEDS: 'news,galleries,videos,audio' };
 const ENTER = '<!doctype html><title>{{TITLE}}</title><form name="{{FORM_NAME}}"><input name="elqCampaignId" value="{{CAMPAIGN_ID}}"><input name="pocket_id" value="{{POCKET_ID}}"><input name="utm_content" value="{{UTM_CONTENT}}"><input name="utm_term" value="{{UTM_TERM}}"></form>';
 const app = (deps = {}) => createApp({ feedHtml: '<!doctype html><title>feed</title>', enterHtml: ENTER, deps: { fetch: mock(), cache: null, ...deps } });
 const req = (path, init) => new Request(`https://feed.htow.nz${path}`, init);
@@ -314,6 +323,25 @@ const badSlug = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?foc
 t('a malformed focus is ignored', badSlug.analytics.rank === 'shared' && badSlug.focus === undefined);
 const pageFan = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_prefsfan1&focus=tank-dell'), ENV, ctx)).json();
 t('a fan with picks on another player\'s page: the page wins the order, the label stays personal', pageFan.analytics.rank === 'personal' && pageFan.clips[2]?.id === 'yt-Tq3sz_Yf-Nk' && pageFan.clips[2].why?.kind === 'focus' && pageFan.prefs?.players.join() === 'c-j-stroud');
+
+/* ---------- the site's own stories ---------- */
+const withSite = await (await app({ fetch: rankMock() }).fetch(req('/api/feed'), SITE, ctx)).json();
+const site = withSite.clips.filter((c) => c.source === 'pocket');
+t('stories, galleries, video pages and the podcast ride along as cards', site.length === 16 && withSite.counts.pocket === 16 && site.some((c) => c.format === 'read') && site.some((c) => c.format === 'listen'));
+t('a story card opens its page and keeps its dek', site.every((c) => /^https:\/\/www\.houstontexans\.com\//.test(c.action.url)) && site.some((c) => c.caption));
+t('players on site cards come from the same dictionary', site.some((c) => c.entities.players.includes('c-j-stroud')));
+const order = withSite.clips.filter((c) => (c.sortIndex ?? 0) >= 1_000_000).map((c) => c.format === 'read' || c.format === 'listen' ? 'R' : 'V').join('');
+// Reads outnumber clips in this fixture (12 to 6), so the leftovers queue at the end; up to
+// there, never two in a row.
+t('reads are spaced: never two in a row until the clips run out', !/RR/.test(order.replace(/R+$/, '')) && /^V?V?R/.test(order) && /R/.test(order));
+const both = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_prefsfan2'), SITE, ctx)).json();
+t('a fan who asked for a mix still never gets two reads in a row until the clips run out', !/RR/.test(both.clips.filter((c) => (c.sortIndex ?? 0) >= 1_000_000).map((c) => c.format === 'video' ? 'V' : 'R').join('').replace(/R+$/, '')));
+const siteDown = await (await app({ fetch: rankMock({ rss: async () => ({ ok: false, status: 503, text: async () => '' }) }) }).fetch(req('/api/feed'), SITE, ctx)).json();
+t('the site feeds failing is a warning, and the clips still serve', siteDown.counts.pocket === 0 && siteDown.counts.served > 0 && (siteDown.warnings || []).some((w) => /pocket: news 503/.test(w)));
+const siteOff = await (await app({ fetch: rankMock() }).fetch(req('/api/feed'), ENV, ctx)).json();
+t('POCKET_FEEDS blank turns the source off', siteOff.counts.pocket === 0 && !siteOff.clips.some((c) => c.source === 'pocket'));
+const banSite = await (await app({ fetch: rankMock({ excluded_players: async () => ({ ok: true, status: 200, json: async () => [{ name: 'Nick Caserio' }] }) }) }).fetch(req('/api/feed'), SITE, ctx)).json();
+t('an excluded name on a site card drops the card', !banSite.clips.some((c) => /Caserio/.test(c.headline)) && banSite.counts.pocket < 16);
 
 console.log('PASS ' + ok.length); ok.forEach((x) => console.log('  + ' + x));
 if (bad.length) { console.log('FAIL ' + bad.length); bad.forEach((x) => console.log('  - ' + x)); }

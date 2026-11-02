@@ -163,6 +163,9 @@ export function makeItem(partial = {}) {
      * into a per-card control rather than an accident of sort order.
      */
     shelfLife: ['evergreen', 'timely'].includes(partial.shelfLife) ? partial.shelfLife : null,
+    /** What the card asks of the fan: `video` (the default, and anything playable), `read` (a story or
+     *  gallery that opens a page), `listen` (a podcast). The "Watch or read?" answer ranks on it. */
+    format: ['video', 'read', 'listen'].includes(partial.format) ? partial.format : 'video',
     /**
      * `cover` fills the 9:16 frame and crops. `contain` letterboxes the graphic so there is
      * deliberate empty space above and below it for text to sit in — which is what "a text
