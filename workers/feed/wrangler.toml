@@ -14,6 +14,14 @@ type = "Text"
 globs = ["**/*.html"]
 fallthrough = true
 
+# The brand assets the page needs (a 9:16 crop of the steel flag plate, two licensed
+# HelveticaNeueLT Extended cuts, the Texans star) ride in the bundle and are served at
+# /app/assets/*, the same path the local studio serves them from.
+[[rules]]
+type = "Data"
+globs = ["**/*.jpg", "**/*.otf", "**/*.png"]
+fallthrough = true
+
 [vars]
 SUPABASE_URL = "https://xisvulbabqsyxnlyuwcz.supabase.co"
 # Publishable key: built to ship in client code, limited by RLS to the catalogue tables.

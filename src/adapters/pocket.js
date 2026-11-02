@@ -145,7 +145,9 @@ export async function fetchPocket({ feeds = Object.keys(POCKET_FEEDS) } = {}, de
   const warnings = [];
   const lists = await Promise.all(feeds.filter((k) => POCKET_FEEDS[k]).map(async (k) => {
     try {
-      const r = await get(POCKET_FEEDS[k].url, { headers: { accept: 'application/rss+xml, application/xml', 'user-agent': 'txfeed/1' }, redirect: 'follow' });
+      // A slow site must not hold the feed: eight seconds, then the clips serve without it.
+      const r = await get(POCKET_FEEDS[k].url, { headers: { accept: 'application/rss+xml, application/xml', 'user-agent': 'txfeed/1' }, redirect: 'follow',
+        ...(typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(8000) } : {}) });
       if (!r.ok) throw new Error(`pocket: ${k} ${r.status}`);
       return parsePocket(await r.text(), k);
     } catch (e) { warnings.push(e?.message || `pocket: ${k} failed`); return []; }

@@ -449,7 +449,9 @@ const server = createServer(async (req, res) => {
       const focus = /^[a-z0-9][a-z0-9-]{1,59}$/.test(wanted) && tally[wanted] ? wanted : null;
       const r0 = rankFeed(shared, null, { prefs, names: {}, focus });
       const { ranked, focus: focused } = r0;
-      const live = mixFormats(r0.items, { every: mixEvery(prefs?.format) });
+      const wantedF = new Set(String(url.searchParams.get('formats') || '').split(',').map((s) => s.trim()).filter((s) => ['video', 'read', 'listen'].includes(s)));
+      const mixed = mixFormats(r0.items, { every: mixEvery(prefs?.format) });
+      const live = wantedF.size ? mixed.filter((i) => wantedF.has(i.format || 'video')) : mixed;
       const picker = who ? {
         players: Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([slug, cards]) => ({ slug, name: displayName(slug), cards })),
         lanes: lanesWithCards(shared),
@@ -461,7 +463,7 @@ const server = createServer(async (req, res) => {
         generatedAt: new Date().toISOString(),
         analytics: { ga4: GA4, events: '/api/events', rank: !ranked ? 'shared' : prefs?.explicit ? 'personal' : 'focused' },
         ...(focused ? { focus: { slug: focused, name: displayName(focused) } } : {}),
-        collections: liveCollections(items),
+        collections: liveCollections(wantedF.size ? live : items),
         clips: only ? live.filter((i) => i.collection === only) : live,
         prefs: prefRow ? { ...prefRow } : null,
         picker, week: null, experiments: {}, knobs,

@@ -34,6 +34,15 @@ Files sent to the user arrive in their **Downloads** folder. Write commands that
 lead with `cd ~/Downloads` (in the same block, as part of the sequence) rather than leaving the
 path for them to work out.
 
+## The objective, above every instruction
+
+**Know our fans better than any other organisation.** Every change, including one Adam asks for,
+is reviewed against that first: does it teach us something about a fan we could not know before,
+does it make the fan feel the feed listened, does it move them toward identifying themselves or
+toward a ticket? If a request does not, say so in one line and propose the version that does,
+then build what Adam decides. Keep adding to the roadmap whatever would know fans better; never
+let the roadmap be only what was asked.
+
 ## Names and goals that never change
 
 **The stadium is Reliant Stadium.** Never write NRG, NRG Stadium or NRG Park anywhere: code, copy,

@@ -53,7 +53,13 @@ const jsonHeaders = (extra = {}) => ({
 
 const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
+export function createApp({ feedHtml, enterHtml, assets = {}, deps = {} } = {}) {
+  /** A bundled brand asset at /app/assets/<name>: bytes, a type, and a year of cache. */
+  function asset(name) {
+    const a = assets[name];
+    if (!a) return new Response('not found', { status: 404 });
+    return new Response(a.body, { headers: { 'content-type': a.type, 'cache-control': 'public, max-age=31536000, immutable', 'x-content-type-options': 'nosniff' } });
+  }
   const get = deps.fetch || ((...a) => globalThis.fetch(...a));
   const now = deps.now || (() => new Date());
 
@@ -286,13 +292,16 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
     const items = mixFormats(ranked0.items, { every: mixEvery(prefs?.format) });
     const assigned = resolveExperiments(experiments, who);
     const only = url.searchParams.get('collection');
+    // ?formats=video,listen keeps only those card formats: the news page lists its own stories.
+    const fmts = new Set(String(url.searchParams.get('formats') || '').split(',').map((s) => s.trim()).filter((s) => ['video', 'read', 'listen'].includes(s)));
+    const shown = fmts.size ? items.filter((i) => fmts.has(i.format || 'video')) : items;
     const body = JSON.stringify({
       generatedAt: now().toISOString(),
       analytics: { ga4: ga4(env), events: env.SUPABASE_SERVICE_KEY ? '/api/events' : null,
         rank: !ranked ? 'shared' : prefs?.explicit ? 'personal' : profile && (Number(profile.events) || 0) >= MIN_EVENTS ? 'implicit' : 'focused' },
       ...(focused ? { focus: { slug: focused, name: displayName(focused, names) } } : {}),
-      collections: liveCollections(items),
-      clips: only ? items.filter((i) => i.collection === only) : items,
+      collections: liveCollections(shown),
+      clips: only ? shown.filter((i) => i.collection === only) : shown,
       counts,
       prefs: prefs ? publicPrefs({ ...prefs, updated_at: prefRow?.updated_at }) : null,
       // The picker needs an id to save against; with none it is not offered.
@@ -458,6 +467,7 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
       const method = request.method === 'HEAD' ? 'GET' : request.method;
       try {
         if (method === 'GET' && (p === '/' || p === '/feed' || p === '/feed.html')) return page(env);
+        if (method === 'GET' && p.startsWith('/app/assets/')) return asset(p.slice('/app/assets/'.length));
         if (method === 'GET' && p === '/api/feed') return apiFeed(request, env, ctx);
         if (method === 'POST' && p === '/api/events') return apiEvents(request, env, ctx);
         if (method === 'POST' && p === '/api/prefs') return apiPrefs(request, env, ctx);

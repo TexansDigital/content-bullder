@@ -68,6 +68,10 @@ t('it shows the catalogue\'s players, the lanes, watch-or-read', await a.pg.eval
 t('an empty lane is not offered: no community chip until a community card exists', !(await a.pg.locator('.pk .lanes .opt').allTextContents()).includes('Community'));
 t('the two players are named, not slugged', (await a.pg.locator('.pk .players .opt').allTextContents()).sort().join() === 'C J Stroud,Will Anderson Jr');
 t('no "Your feed" chip before anything is saved', (await a.pg.locator('.chip.mine').count()) === 0);
+t('the picker card wears the brand: the flag plate and the stamp, square chrome', await a.pg.evaluate(() => {
+  const s = document.querySelector('.slide[data-id="sys-picker"]'); return /steel-916\.jpg/.test(getComputedStyle(s).backgroundImage) && s.querySelector('.pk .stamp i') !== null
+    && getComputedStyle(s.querySelector('.pk .save')).borderRadius === '0px' && getComputedStyle(s.querySelector('.pk .opt')).borderRadius === '4px';
+}));
 
 // Pick Anderson and the inside lane, save.
 await a.pg.locator('.pk .players .opt', { hasText: 'Will Anderson Jr' }).click();
@@ -229,7 +233,7 @@ async function openWithWeek(pid, w = week) {
   return { pg, ctx, errs, ev };
 }
 const wkp = await openWithWeek(WK);
-t('a fan with a week gets it back as a card at the fifth slot', (await ids(wkp.pg))[4] === 'sys-week' && (await wkp.pg.locator('.slide[data-id="sys-week"] p').first().textContent()) === '14 clips this week: 9 C J Stroud, 3 Will Anderson Jr and 5 TORO skits.');
+t('a fan with a week gets it back as a card at the fifth slot, the total as a stat, the rest as a line', (await ids(wkp.pg))[4] === 'sys-week' && (await wkp.pg.locator('.slide[data-id="sys-week"] .stat').textContent()) === '14' && (await wkp.pg.locator('.slide[data-id="sys-week"] p').first().textContent()) === '9 C J Stroud, 3 Will Anderson Jr and 5 TORO skits.');
 t('and is offered more of what they watched but have not asked for: the lane and the other player, not the one already picked', (await wkp.pg.locator('.slide[data-id="sys-week"] .more .opt').allTextContents()).join('|') === 'More fun & toro|More Will Anderson Jr');
 await wkp.pg.locator('.slide[data-id="sys-week"] .more .opt', { hasText: 'Will Anderson' }).click(); await wkp.pg.waitForTimeout(900);
 const wpost = wkp.ev.find((e) => e.event === '__prefs_post');
@@ -258,6 +262,28 @@ await cp.ctx.close();
 const cn = await open({ pid: `sess_${RUN}_capturenone`, knobs: { picker_position: -1, capture_card: { position: 1, headline: 'Win {{player}} gear', form: 'fan_preference_web' } } });
 t('with no pick the placeholder reads Texans', (await cn.pg.locator('.slide[data-id="sys-enter"] h2').textContent()) === 'Win Texans gear');
 await cn.ctx.close();
+
+/* ---------- a like answers back ---------- */
+const lk = await open({ pid: `sess_${RUN}_likelift` });
+// Fresh fan: Stroud, TORO, picker, Anderson sack, Camp, Anderson mic'd. Scroll to the sack, like it.
+await lk.pg.evaluate((id) => document.querySelector(`.slide[data-id="${id}"]`).scrollIntoView(), items[2].id); await lk.pg.waitForTimeout(700);
+await lk.pg.locator(`.slide[data-id="${items[2].id}"] .like`).click(); await lk.pg.waitForTimeout(400);
+let lo = await ids(lk.pg);
+t('liking an Anderson card moves the other Anderson card up to next, ahead of Camp day', lo.indexOf(items[4].id) === lo.indexOf(items[2].id) + 1 && lo.indexOf(items[3].id) === lo.indexOf(items[4].id) + 1);
+t('the cards already seen did not move', lo.slice(0, 4).join() === [items[0].id, items[1].id, 'sys-picker', items[2].id].join());
+t('the lifted card says why', (await lk.pg.locator(`.slide[data-id="${items[4].id}"] .why`).textContent()) === 'Because you liked Will Anderson Jr');
+t('a toast says so and offers to make it a pick', /Noted\. More Will Anderson Jr, coming up\./.test(await lk.pg.locator('#toast').textContent()) && (await lk.pg.locator('#toast .tact').textContent()) === 'Add to my picks');
+t('the slides are re-indexed in the new order', await lk.pg.evaluate(() => [...document.querySelectorAll('.slide')].every((s, i) => Number(s.dataset.index) === i && s.getAttribute('aria-posinset') === String(i + 1))));
+await lk.pg.locator('#toast .tact').click(); await lk.pg.waitForTimeout(900);
+t('one tap makes the like a pick', (await j(`/api/feed?sid=sess_${RUN}_likelift`)).prefs.players.join() === 'will-anderson-jr');
+await settle(lk.pg);
+t('the lift and the save are reported', lk.ev.some((e) => e.event === 'like_lift' && e.params.pref_player === 'will-anderson-jr' && e.params.lifted_n === 1) && lk.ev.some((e) => e.event === 'prefs_save' && e.params.save_source === 'like'));
+t('no page errors on the like', lk.errs.length === 0);
+await lk.ctx.close();
+const lk2 = await open({ pid: `sess_${RUN}_likenone` });
+await lk2.pg.locator(`.slide[data-id="${items[0].id}"] .like`).click(); await lk2.pg.waitForTimeout(300);
+t('liking a card with no other card about that player changes nothing and says nothing', (await ids(lk2.pg)).join() === [items[0].id, items[1].id, 'sys-picker', items[2].id, items[3].id, items[4].id].join() && await lk2.pg.locator('#toast').isHidden());
+await lk2.ctx.close();
 
 /* ---------- who the capture card is for ---------- */
 const AUD = `sess_${RUN}_audience`;

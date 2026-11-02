@@ -86,7 +86,8 @@ const ctx = { waitUntil: (p) => waits.push(p) };
 const ENV = { SUPABASE_SERVICE_KEY: 'service-secret', POCKET_FEEDS: '' };
 const SITE = { SUPABASE_SERVICE_KEY: 'service-secret', POCKET_FEEDS: 'news,galleries,videos,audio' };
 const ENTER = '<!doctype html><title>{{TITLE}}</title><form name="{{FORM_NAME}}"><input name="elqCampaignId" value="{{CAMPAIGN_ID}}"><input name="pocket_id" value="{{POCKET_ID}}"><input name="utm_content" value="{{UTM_CONTENT}}"><input name="utm_term" value="{{UTM_TERM}}"></form>';
-const app = (deps = {}) => createApp({ feedHtml: '<!doctype html><title>feed</title>', enterHtml: ENTER, deps: { fetch: mock(), cache: null, ...deps } });
+const ASSETS = { 'steel-916.jpg': { body: new Uint8Array([0xff, 0xd8, 0xff]), type: 'image/jpeg' }, 'fonts/HelveticaNeueLTStd-BlkEx.otf': { body: new Uint8Array([0x4f, 0x54, 0x54, 0x4f]), type: 'font/otf' } };
+const app = (deps = {}) => createApp({ feedHtml: '<!doctype html><title>feed</title>', enterHtml: ENTER, assets: ASSETS, deps: { fetch: mock(), cache: null, ...deps } });
 const req = (path, init) => new Request(`https://feed.htow.nz${path}`, init);
 
 // ---- the page ----
@@ -342,6 +343,17 @@ const siteOff = await (await app({ fetch: rankMock() }).fetch(req('/api/feed'), 
 t('POCKET_FEEDS blank turns the source off', siteOff.counts.pocket === 0 && !siteOff.clips.some((c) => c.source === 'pocket'));
 const banSite = await (await app({ fetch: rankMock({ excluded_players: async () => ({ ok: true, status: 200, json: async () => [{ name: 'Nick Caserio' }] }) }) }).fetch(req('/api/feed'), SITE, ctx)).json();
 t('an excluded name on a site card drops the card', !banSite.clips.some((c) => /Caserio/.test(c.headline)) && banSite.counts.pocket < 16);
+
+/* ---------- brand assets and formats ---------- */
+const plateRes = await app().fetch(req('/app/assets/steel-916.jpg'), ENV, ctx);
+t('the steel plate is served from the bundle with a year of cache', plateRes.status === 200 && plateRes.headers.get('content-type') === 'image/jpeg' && /immutable/.test(plateRes.headers.get('cache-control')));
+const fontRes = await app().fetch(req('/app/assets/fonts/HelveticaNeueLTStd-BlkEx.otf'), ENV, ctx);
+t('and so is the display font', fontRes.status === 200 && fontRes.headers.get('content-type') === 'font/otf');
+t('an asset that was not bundled is a 404, not the page', (await app().fetch(req('/app/assets/nope.jpg'), ENV, ctx)).status === 404);
+const onlyVideo = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?formats=video,listen'), SITE, ctx)).json();
+t('?formats= keeps only those card formats: no stories for the news page', onlyVideo.clips.length > 0 && onlyVideo.clips.every((c) => c.format !== 'read') && onlyVideo.clips.some((c) => c.format === 'listen'));
+const badFormats = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?formats=bogus'), SITE, ctx)).json();
+t('an unknown format filter is ignored', badFormats.clips.length === withSite.clips.length);
 
 console.log('PASS ' + ok.length); ok.forEach((x) => console.log('  + ' + x));
 if (bad.length) { console.log('FAIL ' + bad.length); bad.forEach((x) => console.log('  - ' + x)); }

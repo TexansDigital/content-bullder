@@ -53,6 +53,10 @@ const load = (ev) => ev.find((e) => e.event === 'feed_load');
 const r = await open(`layout=rail&placement=roster&pid=sess_${RUN}_railroster`);
 t('the page takes the rail layout', await r.pg.evaluate(() => document.body.classList.contains('rail-mode')));
 let ts = await tiles(r.pg);
+t('the picker tile wears the brand: the flag plate, the stamp with the star, no generated ground', await r.pg.evaluate(() => {
+  const el = document.querySelector('#tiles .tile[data-id="sys-picker"]'); const bg = getComputedStyle(el).backgroundImage;
+  return /steel-916\.jpg/.test(bg) && el.querySelector('.stamp i') !== null && el.querySelector('.gen') === null && /3 taps/i.test(el.querySelector('.stamp').textContent);
+}));
 t('one tile per card, the picker among them, in a row the width of the slot', ts.length === 6 && ts[2] === 'sys-picker' && await r.pg.evaluate(() => {
   const box = document.querySelector('#tiles').getBoundingClientRect(); const first = document.querySelector('#tiles .tile').getBoundingClientRect();
   return box.width > 1000 && first.height > 300 && Math.abs(first.width / first.height - 9 / 16) < 0.02;
@@ -153,6 +157,13 @@ const lu = await open(`collection=nothing-here&pid=sess_${RUN}_unlocked`, { view
 t('an unknown collection key is ignored and the whole feed is served', (await lu.pg.evaluate(() => document.querySelectorAll('.slide').length)) >= 5 && await lu.pg.locator('#bar').isVisible());
 await lu.ctx.close();
 await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: items[3].id, changes: { collection: 'players' } }) });
+
+/* ---------- only some formats ---------- */
+await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: items[1].id, changes: { format: 'read' } }) });
+const fv = await open(`formats=video&pid=sess_${RUN}_formats`, { viewport: { width: 390, height: 780 } });
+t('?formats=video leaves the story out', !(await fv.pg.evaluate(() => [...document.querySelectorAll('.slide')].map((s) => s.dataset.id))).includes(items[1].id) && (await fv.pg.evaluate(() => document.querySelectorAll('.slide').length)) >= 4);
+await fv.ctx.close();
+await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: items[1].id, changes: { format: 'video' } }) });
 
 /* ---------- the phone layout is untouched ---------- */
 const f = await open(`pid=sess_${RUN}_plain`, { viewport: { width: 390, height: 780 } });

@@ -4,6 +4,16 @@ import feedHtml from '../../../app/feed.html';
 // The data-capture form (the club's Eloqua template with the NFL privacy block), served at
 // /enter with the fan's pseudonymous id filled in.
 import enterHtml from '../../../docs/eloqua-enter.html';
+// Brand assets, bundled as bytes (the Data rule in wrangler.toml) and served at /app/assets/*.
+import plate from '../../../app/assets/steel-916.jpg';
+import star from '../../../app/assets/texans-star.png';
+import fontBlack from '../../../app/assets/fonts/HelveticaNeueLTStd-BlkEx.otf';
+import fontMedium from '../../../app/assets/fonts/HelveticaNeueLTStd-MdEx.otf';
 import { createApp } from './app.js';
 
-export default createApp({ feedHtml, enterHtml });
+export default createApp({ feedHtml, enterHtml, assets: {
+  'steel-916.jpg': { body: plate, type: 'image/jpeg' },
+  'texans-star.png': { body: star, type: 'image/png' },
+  'fonts/HelveticaNeueLTStd-BlkEx.otf': { body: fontBlack, type: 'font/otf' },
+  'fonts/HelveticaNeueLTStd-MdEx.otf': { body: fontMedium, type: 'font/otf' },
+} });

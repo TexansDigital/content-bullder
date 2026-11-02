@@ -2,10 +2,18 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Texans Vertical Feed</title>
 <style>
+/* The brand's display face: HelveticaNeueLT Extended, the two cuts the feed uses, served from
+   this origin. Body copy stays on the system Helvetica stack, as the brand does. */
+@font-face{font-family:"HelveticaNeueLT Ex";font-weight:900;font-style:normal;font-display:swap;
+ src:url(/app/assets/fonts/HelveticaNeueLTStd-BlkEx.otf) format("opentype")}
+@font-face{font-family:"HelveticaNeueLT Ex";font-weight:500;font-style:normal;font-display:swap;
+ src:url(/app/assets/fonts/HelveticaNeueLTStd-MdEx.otf) format("opentype")}
 :root{--steel:#021118;--s2:#0a1d27;--s3:#13303d;--red:#eb0028;--red2:#ff123a;--blue:#0080c6;
  --w:#fff;--body:rgba(255,255,255,.84);--mute:rgba(255,255,255,.55);--line:rgba(255,255,255,.16);
  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
- --sans:"Helvetica Neue",Helvetica,Arial,sans-serif;--ease:cubic-bezier(.2,.8,.2,1)}
+ --sans:"Helvetica Neue",Helvetica,Arial,sans-serif;--ease:cubic-bezier(.2,.8,.2,1);
+ --display:"HelveticaNeueLT Ex","Helvetica Neue",Helvetica,Arial,sans-serif;
+ --plate:url(/app/assets/steel-916.jpg)}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--steel);color:var(--w);font:15px/1.5 var(--sans);overflow:hidden}
@@ -16,7 +24,7 @@ body{margin:0;background:var(--steel);color:var(--w);font:15px/1.5 var(--sans);o
  padding-top:calc(12px + env(safe-area-inset-top,0px))}
 .bar::-webkit-scrollbar{display:none}
 .chip{flex:none;background:transparent;border:1px solid var(--line);color:var(--body);
- font:700 11px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;padding:8px 13px;
+ font:900 10px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;padding:9px 12px;
  min-height:40px;cursor:pointer;transition:all .14s var(--ease)}
 .chip:hover{border-color:var(--red);color:var(--w)}
 .chip[aria-pressed="true"]{background:var(--red);border-color:var(--red);color:#fff}
@@ -49,17 +57,17 @@ body{margin:0;background:var(--steel);color:var(--w);font:15px/1.5 var(--sans);o
 .segs i.cur{background:rgba(255,255,255,.3);position:relative;overflow:hidden}
 .segs i.cur .fill{position:absolute;inset:0 auto 0 0;width:0;background:#fff;display:block}
 .top{position:absolute;top:34px;left:11px;right:11px;z-index:3;display:flex;gap:7px;align-items:center}
-.coll{font:900 10px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;background:var(--red);
+.coll{font:900 9px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;background:var(--red);
  padding:4px 7px}
 .coll.sp{background:var(--blue)}
 .dur{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:rgba(255,255,255,.75)}
 .bot{position:absolute;left:11px;right:56px;bottom:calc(13px + env(safe-area-inset-bottom,0px));z-index:3}
-.bot h2{font:900 23px/.92 var(--sans);text-transform:uppercase;letter-spacing:-.01em;margin:0 0 7px;
+.bot h2{font:900 21px/.9 var(--display);text-transform:uppercase;letter-spacing:-.01em;margin:0 0 7px;
  text-wrap:balance}
 .bot p{font-size:12.5px;line-height:1.45;color:var(--body);margin:0 0 10px;
  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cta{display:inline-flex;align-items:center;background:var(--red);color:#fff;border:0;
- font:900 11px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;padding:9px 13px;
+ font:900 10px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;padding:10px 13px;
  cursor:pointer;text-decoration:none;transition:background .14s var(--ease)}
 .cta:hover{background:var(--red2)}
 .cta:focus-visible{outline:2px solid #fff;outline-offset:2px}
@@ -160,7 +168,7 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .slide.yt>.sb,.slide.yt>.bot,.slide.yt>.rail{display:none}
 .slide.yt>.band{position:absolute;left:0;right:0;bottom:0;height:60px;z-index:6;display:flex;align-items:center;
  gap:2px;padding:0 4px 0 12px;background:var(--steel,#021118);border-top:1px solid rgba(255,255,255,.12)}
-.band b{flex:1;min-width:0;font:700 12px/1.2 var(--sans);text-transform:uppercase;letter-spacing:.04em;color:#fff;
+.band b{flex:1;min-width:0;font:900 11px/1.2 var(--display);text-transform:uppercase;letter-spacing:.02em;color:#fff;
  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding-right:6px}
 .band .rb{flex:none;min-width:40px;min-height:44px;padding:4px}
 .band .rb span{display:none}
@@ -181,27 +189,44 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .bot .why{margin-bottom:6px}
 .chip.mine{border-color:#0080C6;color:#fff}
 /* System cards: the picker and data capture. */
-.slide.sys{background:#021018}
+/* System cards sit on the brand's steel flag plate (fabric weave, red speckle, the star), never
+   on a flat field or a decorative gradient. The mono stamp with the boxed Texans star is the
+   brand's technical caption; the 3px red rule is its card accent; chrome is square. */
+.slide.sys{background:#021018 var(--plate) center/cover no-repeat}
+.slide.sys>.st{display:none}
+.stamp{display:flex;align-items:center;gap:8px;font:500 10px/1.5 var(--mono);letter-spacing:.18em;text-transform:uppercase;
+  color:rgba(255,255,255,.7)}
+.stamp i{flex:none;width:18px;height:18px;border:1px solid rgba(255,255,255,.6);display:inline-flex;align-items:center;justify-content:center}
+.stamp i::before{content:"";width:10px;height:10px;background:currentColor;
+  -webkit-mask:url(/app/assets/texans-star.png) center/contain no-repeat;mask:url(/app/assets/texans-star.png) center/contain no-repeat}
 .pk{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;gap:12px;overflow:auto;color:#fff;
   padding:calc(72px + env(safe-area-inset-top,0px)) 16px calc(20px + env(safe-area-inset-bottom,0px))}
-.pk h2{font:800 22px/1.1 var(--sans);text-transform:uppercase;letter-spacing:.02em;margin:0}
-.pk p{margin:0;font-size:13px;line-height:1.4;color:#cfd8de}
-.pk h3{font:700 11px/1.2 var(--sans);text-transform:uppercase;letter-spacing:.08em;color:#9fb4c2;margin:6px 0 0}
+.pk .stamp{border-top:3px solid var(--red);padding-top:10px}
+.pk h2{font:900 24px/.9 var(--display);text-transform:uppercase;letter-spacing:-.01em;margin:0;text-wrap:balance}
+.pk p{margin:0;font-size:13px;line-height:1.45;color:rgba(255,255,255,.82)}
+.pk h3{font:500 10px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.18em;color:rgba(255,255,255,.62);margin:6px 0 0}
+.pk .stat{display:block;font:900 64px/.86 var(--display);letter-spacing:-.02em;color:#ff0000;margin:4px 0 0}
 .pk .opts{display:flex;flex-wrap:wrap;gap:8px}
-.pk .opt{border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:#fff;border-radius:999px;padding:9px 14px;
-  font:600 13px/1 var(--sans);cursor:pointer;min-height:40px}
-.pk .opt[aria-pressed="true"]{background:#ED0028;border-color:#ED0028}
+.pk .opt{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.06);color:#fff;border-radius:4px;padding:10px 13px;
+  font:900 10px/1 var(--display);letter-spacing:.04em;text-transform:uppercase;cursor:pointer;min-height:40px;transition:all .14s var(--ease)}
+.pk .opt:hover{border-color:var(--red)}
+.pk .opt[aria-pressed="true"]{background:var(--red);border-color:var(--red)}
 .pk .acts{margin-top:auto;display:flex;gap:10px;align-items:center;padding-top:8px}
-.pk .save{flex:1;background:#ED0028;color:#fff;border:0;border-radius:6px;padding:14px;font:800 14px/1 var(--sans);
-  text-transform:uppercase;letter-spacing:.06em;cursor:pointer}
-.pk .save:disabled{opacity:.5}
-.pk .skip{background:none;border:0;color:#9fb4c2;font:600 13px/1 var(--sans);padding:12px;cursor:pointer}
-.pk .note{font-size:11px;color:#7f93a0}
-.pk .offer{border:1px solid #0080C6;border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center}
+.pk .save{flex:1;background:var(--red);color:#fff;border:0;border-radius:0;padding:15px 14px;font:900 12px/1 var(--display);
+  text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:background .14s var(--ease)}
+.pk .save:hover{background:var(--red2)}
+.pk .save:active{transform:translateY(1px)}
+.pk .save:disabled{opacity:.4}
+.pk .skip{background:none;border:1px solid var(--line);color:#fff;font:900 10px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;
+  padding:14px 12px;cursor:pointer}
+.pk .note{font:500 9px/1.5 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.pk .offer{border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:0;padding:10px 12px;display:flex;gap:10px;align-items:center}
 .pk .offer b{flex:1;font-size:13px;line-height:1.3}
 .toast{position:fixed;left:16px;right:16px;top:calc(72px + env(safe-area-inset-top,0px));z-index:30;background:#0080C6;color:#fff;
-  padding:12px 14px;border-radius:8px;font:700 13px/1.3 var(--sans);text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+  padding:12px 14px;border-radius:4px;font:700 13px/1.3 var(--sans);text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.4)}
 .toast[hidden]{display:none}
+.toast .tact{display:block;margin:10px auto 0;background:#fff;color:var(--steel);border:0;padding:10px 14px;
+  font:900 10px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;min-height:40px}
 /* ---- the rail layout: a row of tiles the width of the slot, for the roster and player pages.
    A tile opens the feed itself, full-frame, at that card. The feed stays one DOM: the same
    cards, the same observer, the same events; it is only hidden until a tile is tapped. */
@@ -214,18 +239,22 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
   color:#fff;cursor:pointer;overflow:hidden;text-align:left;scroll-snap-align:start;font:inherit}
 .tile>img,.tile>.gen{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .tile>img{z-index:1}
-.tile .tsb{position:absolute;inset:0;background:linear-gradient(0deg,rgba(2,17,24,.96) 8%,rgba(2,17,24,.35) 48%,transparent)}
+.tile .tsb{position:absolute;inset:0;background:linear-gradient(0deg,rgba(2,17,24,.97) 0%,rgba(2,17,24,.78) 26%,rgba(2,17,24,.2) 55%,transparent 75%)}
 .tile .tb{position:absolute;left:10px;right:10px;bottom:10px;z-index:2}
-.tile .tb h3{font:900 14px/.95 var(--sans);text-transform:uppercase;letter-spacing:-.01em;margin:0;text-wrap:balance;
-  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tile .tb h3{font:900 13px/.95 var(--display);text-transform:uppercase;letter-spacing:-.01em;margin:0;text-wrap:balance;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .tile .tb p{margin:4px 0 0;font-size:11px;line-height:1.35;color:var(--body);display:-webkit-box;-webkit-line-clamp:2;
   -webkit-box-orient:vertical;overflow:hidden}
-.tile .tcoll{position:absolute;top:8px;left:8px;z-index:2;font:900 9px/1 var(--sans);letter-spacing:.1em;text-transform:uppercase;
+.tile .tcoll{position:absolute;top:8px;left:8px;z-index:2;font:900 8px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;
   background:var(--red);padding:4px 6px}
+.tile.sys{background:#021018 var(--plate) center/cover no-repeat;border-color:var(--line)}
+.tile.sys .tsb{background:linear-gradient(0deg,rgba(2,17,24,.85) 0%,rgba(2,17,24,.35) 45%,transparent 70%)}
+.tile.sys .tb{border-top:3px solid var(--red);padding-top:10px}
+.tile.sys .stamp{margin-bottom:8px;font-size:9px}
+.tile.sys .stat{display:block;font:900 44px/.86 var(--display);letter-spacing:-.02em;color:#ff0000;margin:0 0 4px}
 .tile .tplay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:44px;height:44px;background:rgba(2,17,24,.72);
   box-shadow:0 0 0 1px rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;z-index:2;pointer-events:none}
 .tile .tplay svg{width:18px;height:18px;margin-left:2px;fill:#fff}
-.tile.sys{background:#021018;border-color:#0080C6}
 .tile:hover{border-color:var(--red)}
 .tile:focus-visible{outline:2px solid var(--red);outline-offset:2px}
 .rail-mode .stage{display:none;position:fixed;inset:0;z-index:35;background:var(--steel);padding:0}
@@ -298,6 +327,8 @@ const PAGE = (() => {
     // One collection only, with the chip bar gone: the /community page shows community
     // cards and nothing else. An unknown key is ignored and the whole feed is served.
     collection: pick(q.get('collection'), /^[a-z][a-z0-9_-]{1,30}$/),
+    // Only these card formats (video, read, listen): the news page lists its own stories.
+    formats: String(q.get('formats') || '').split(',').map((s) => s.trim()).filter((s) => ['video', 'read', 'listen'].includes(s)),
   };
 })();
 if (PAGE.layout === 'rail') document.body.classList.add('rail-mode');
@@ -306,6 +337,7 @@ const feedUrl = (who) => {
   const q = new URLSearchParams();
   if (who) q.set(who.startsWith('sid=') ? 'sid' : 'did', who.slice(4));
   if (PAGE.focus) q.set('focus', PAGE.focus);
+  if (PAGE.formats.length) q.set('formats', PAGE.formats.join(','));
   const qs = q.toString();
   return '/api/feed' + (qs ? `?${qs}` : '');
 };
@@ -924,11 +956,11 @@ function withSystemCards(base) {
   return rows;
 }
 
-/** "14 clips this week: 9 Tank Dell and 5 TORO skits." */
+/** "9 Tank Dell, 3 Will Anderson Jr and 5 TORO skits." The total is the stat beside it. */
 function weekSentence(w) {
   const parts = [...(w.players || []).slice(0, 2).map((p) => `${p.n} ${p.name}`), ...(w.types || []).slice(0, 1).map((t) => `${t.n} ${t.name}`)];
   const list = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0] || '';
-  return `${w.views} clips this week${list ? `: ${list}` : ''}.`;
+  return list ? `${list}.` : '';
 }
 /** What the week suggests asking for next: up to two lanes or a player the fan has not picked. */
 function weekMore(w) {
@@ -951,6 +983,7 @@ function pickerMarkup() {
   const boosted = new Set((pr.boosts || []).map((b) => b.key));
   const opt = (k, label, on, extra = '') => `<button class="opt" type="button" data-k="${esc(k)}" aria-pressed="${on}" ${extra}>${esc(label)}</button>`;
   return `<div class="pk">
+    <div class="stamp"><i></i><span>${DATA.prefs ? 'Your feed // edit' : 'Your feed // 3 taps'}</span></div>
     <h2>${DATA.prefs ? 'Your feed' : 'Make it yours'}</h2>
     <p>${DATA.prefs ? 'Change anything. The feed reorders on the spot.' : 'Three taps. The feed reorders for you on the spot, and tells you why.'}</p>
     <h3>Pick up to ${Number(pk.max_players) || 3} players</h3>
@@ -972,29 +1005,29 @@ function pickerMarkup() {
 
 function systemMarkup(c, i, total) {
   const open = `<article class="slide sys" data-id="${esc(c.id)}" data-hold="6" data-advance="manual" data-index="${i}" data-total="${total}"
-    role="article" aria-posinset="${i + 1}" aria-setsize="${total}" aria-label="${esc(c.headline)}">${generated(c.id)}<div class="st"></div>`;
+    role="article" aria-posinset="${i + 1}" aria-setsize="${total}" aria-label="${esc(c.headline)}">`;
   if (c.system === 'picker') return open + pickerMarkup() + '</article>';
   const x = c.extra || {};
   if (c.system === 'expiry') {
     const picks = (DATA.prefs?.players || []).map((slug) => DATA.picker?.players?.find((p) => p.slug === slug)?.name || slug.replace(/-/g, ' '));
-    return open + `<div class="pk enter"><h2>${esc(c.headline)}</h2><p>Back to your picks${picks.length ? `: ${esc(picks.join(', '))}` : ''}.</p>
+    return open + `<div class="pk enter"><div class="stamp"><i></i><span>Your feed // update</span></div><h2>${esc(c.headline)}</h2><p>Back to your picks${picks.length ? `: ${esc(picks.join(', '))}` : ''}.</p>
       <div class="acts"><button class="save ok" type="button">Got it</button><button class="skip edit" type="button">Edit my feed</button></div></div><p class="flash" hidden></p></article>`;
   }
   if (c.system === 'offer') {
     const until = fmtDay(x.ends_at);
     const count = Number(x.cards) > 0 ? `${x.cards} clip${x.cards === 1 ? '' : 's'} ready and counting. ` : '';
-    return open + `<div class="pk enter"><h2>${esc(c.headline)}</h2><p>${esc(x.blurb ? `${x.blurb} ` : '')}${esc(count)}We'll lift it until ${esc(until)}, then your feed goes back to normal.</p>
+    return open + `<div class="pk enter"><div class="stamp"><i></i><span>Offer // until ${esc(until)}</span></div><h2>${esc(c.headline)}</h2><p>${esc(x.blurb ? `${x.blurb} ` : '')}${esc(count)}We'll lift it until ${esc(until)}, then your feed goes back to normal.</p>
       <div class="acts"><button class="save yes" type="button">Yes, until ${esc(until)}</button><button class="skip no" type="button">No thanks</button></div>
       <p class="note">One tap. Your picks stay as they are.</p></div><p class="flash" hidden></p></article>`;
   }
   if (c.system === 'week') {
     const more = weekMore(x);
-    return open + `<div class="pk enter week"><h2>${esc(c.headline)}</h2><p>${esc(weekSentence(x))}</p>
+    return open + `<div class="pk enter week"><div class="stamp"><i></i><span>Your week // ${esc(fmtDay(new Date().toISOString()))}</span></div><h2>${esc(c.headline)}</h2><b class="stat">${esc(String(x.views))}</b><h3>Clips this week</h3><p>${esc(weekSentence(x))}</p>
       ${more.length ? `<h3>Want more?</h3><div class="opts more">${more.map((m) => `<button class="opt" type="button" data-kind="${esc(m.kind)}" data-k="${esc(m.k)}">${esc(m.label)}</button>`).join('')}</div>` : ''}
       <div class="acts"><button class="skip" type="button">Not now</button></div>
       <p class="note">One tap changes the feed and says why on the cards it moved.</p></div><p class="flash" hidden></p></article>`;
   }
-  return open + `<div class="pk enter"><h2>${esc(c.headline)}</h2><p>${esc(x.blurb || '')}</p>
+  return open + `<div class="pk enter"><div class="stamp"><i></i><span>Enter // Houston Texans</span></div><h2>${esc(c.headline)}</h2><p>${esc(x.blurb || '')}</p>
     <div class="acts"><button class="save go" type="button">${esc(x.cta || 'Enter')}</button></div>
     <p class="note">Opens the entry form. Your details go to the Houston Texans under their privacy policy.</p></div><p class="flash" hidden></p></article>`;
 }
@@ -1005,11 +1038,55 @@ function flashOn(slide, m) {
   el.textContent = m; el.hidden = false;
   clearTimeout(el._t); el._t = setTimeout(() => (el.hidden = true), 2200);
 }
-function toast(m) {
+function toast(m, action = null) {
   const el = $('#toast');
   el.textContent = m; el.hidden = false;
-  clearTimeout(el._t); el._t = setTimeout(() => (el.hidden = true), 3200);
+  if (action) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'tact'; b.textContent = action.label;
+    b.onclick = () => { el.hidden = true; action.onClick(); };
+    el.appendChild(b);
+  }
+  clearTimeout(el._t); el._t = setTimeout(() => (el.hidden = true), action ? 6000 : 3200);
 }
+
+/* ---------- a like answers back ------------------------------------------------
+ * The fastest proof that the feed listens: like a card about a player and the cards about
+ * that player still ahead of you move up, each labelled "Because you liked ...", and a toast
+ * says so and offers to make it a pick. Nothing is saved unless the fan taps that; the lift
+ * lasts the session. Seen cards never move, so the feed never jumps under the thumb.
+ */
+function likeLift(card, at) {
+  const player = (card.entities?.players || [])[0];
+  if (!player) return;
+  const name = DATA.picker?.players?.find((p) => p.slug === player)?.name || (DATA.focus?.slug === player ? DATA.focus.name : null) || displayName(player);
+  const feed = $('#feed');
+  const slides = [...feed.querySelectorAll('.slide')];
+  const cards = slides.map((s) => cardOf(s));
+  const head = slides.slice(0, at + 1), tail = slides.slice(at + 1);
+  const hit = tail.filter((s) => !cardOf(s).system && (cardOf(s).entities?.players || []).includes(player));
+  if (!hit.length) return;
+  const rest = tail.filter((s) => !hit.includes(s));
+  const why = { kind: 'like', key: player, label: `Because you liked ${name}` };
+  for (const s of hit) {
+    const c = cardOf(s);
+    if (!c.why || c.why.kind === 'watch' || c.why.kind === 'affinity') {
+      c.why = why;
+      const host = s.querySelector('.bot') || s.querySelector('.band b');
+      if (host && !host.querySelector('.why')) host.insertAdjacentHTML('afterbegin', `<small class="why">${esc(why.label)}</small>`);
+    }
+  }
+  const order = [...head, ...hit, ...rest];
+  ROWS = order.map((s) => cards[slides.indexOf(s)]);
+  for (const s of [...hit, ...rest]) feed.appendChild(s);
+  order.forEach((s, i) => { s.dataset.index = String(i); s.setAttribute('aria-posinset', String(i + 1)); });
+  if (PAGE.layout === 'rail') renderTiles(ROWS, (k) => (DATA.collections.find((c) => c.key === k) || {}).name || k);
+  track('like_lift', { ...cardParams(card, at), pref_player: player, lifted_n: hit.length });
+  const canPick = whoAmI() && DATA.picker && !(DATA.prefs?.players || []).includes(player) && (DATA.prefs?.players || []).length < (Number(DATA.picker?.max_players) || 3);
+  toast(`Noted. More ${name}, coming up.`, canPick ? { label: 'Add to my picks', onClick: () => savePrefs({ players: [...(DATA.prefs?.players || []), player] }, 'like', card, at, { pref_player: player })
+    .then(() => toast(`${name} is one of your picks now.`)).catch(() => flashOn(slides[at], 'Could not save. Try again.')) } : null);
+}
+/** "c-j-stroud" → "C J Stroud" when the dictionary has no better name. */
+const displayName = (slug) => String(slug || '').split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
 const loadParams = (why) => ({
   feed_cards: ROWS.length, feed_collections: DATA.collections.length, feed_rank: DATA.analytics?.rank || 'shared',
@@ -1218,6 +1295,7 @@ function render() {
       const b = e.currentTarget, on = b.getAttribute('aria-pressed') !== 'true';
       b.setAttribute('aria-pressed', on); liked[id] = on; likes.write(liked);
       track(on ? 'card_like' : 'card_unlike', cardParams(card, at));
+      if (on) likeLift(card, Number(s.dataset.index) || at);
     };
     const snd = s.querySelector('.sound');
     if (snd) snd.onclick = () => {
@@ -1284,13 +1362,24 @@ function tileMarkup(c, i, name) {
   // so the tile walks the list on error rather than showing a broken glyph.
   const posters = c.system ? [] : (c.media?.kind === 'image' ? [c.media.url] : (c.poster || [])).map(safeUrl).filter(Boolean);
   const poster = posters[0] || '';
-  const blurb = c.system === 'picker' ? (DATA.prefs ? 'Change anything. The feed reorders on the spot.' : 'Three taps. Your feed, your reasons.')
-    : c.system === 'enter' ? String(c.extra?.blurb || '') : '';
-  return `<button class="tile${c.system ? ' sys' : ''}" type="button" data-index="${i}" data-id="${esc(c.id)}"
-    aria-label="${esc(c.headline)}">${poster ? `<img src="${esc(poster)}" alt="" loading="lazy" data-fallback="${esc(JSON.stringify(posters.slice(1)))}">` : generated(c.id)}${generated(c.id)}<div class="tsb"></div>
-    ${c.system ? '' : `<span class="tcoll">${esc(c.sponsor ? [c.sponsor.label, c.sponsor.name].filter(Boolean).join(' ') : name(c.collection))}</span>`}
+  if (c.system) return systemTile(c, i);
+  return `<button class="tile" type="button" data-index="${i}" data-id="${esc(c.id)}"
+    aria-label="${esc(c.headline)}">${poster ? `<img src="${esc(poster)}" alt="" loading="lazy" data-fallback="${esc(JSON.stringify(posters.slice(1)))}">` : ''}${generated(c.id)}<div class="tsb"></div>
+    <span class="tcoll">${esc(c.sponsor ? [c.sponsor.label, c.sponsor.name].filter(Boolean).join(' ') : name(c.collection))}</span>
     ${c.media?.kind === 'youtube' || c.media?.kind === 'cloudinary' || c.media?.kind === 'file' ? `<span class="tplay">${IC.play}</span>` : ''}
-    <div class="tb">${whyFor(c)}<h3>${esc(c.headline)}</h3>${blurb ? `<p>${esc(blurb)}</p>` : ''}</div></button>`;
+    <div class="tb">${whyFor(c)}<h3>${esc(c.headline)}</h3></div></button>`;
+}
+
+/** A system card as a tile: the flag plate, the stamp, the headline, one line, and a stat where there is one. */
+function systemTile(c, i) {
+  const x = c.extra || {};
+  const face = c.system === 'picker' ? { stamp: DATA.prefs ? 'Your feed // edit' : 'Your feed // 3 taps', line: DATA.prefs ? 'Change anything. The feed moves on the spot.' : 'Pick players, lanes, how you watch.' }
+    : c.system === 'week' ? { stamp: 'Your week // clips', stat: String(x.views), line: weekSentence(x).replace(/\.$/, '') }
+    : c.system === 'offer' ? { stamp: `Offer // until ${fmtDay(x.ends_at)}`, line: x.blurb || 'One tap. Back to normal after.' }
+    : c.system === 'expiry' ? { stamp: 'Your feed // update', line: 'Back to your picks.' }
+    : { stamp: 'Enter // Houston Texans', line: x.blurb || '' };
+  return `<button class="tile sys" type="button" data-index="${i}" data-id="${esc(c.id)}" aria-label="${esc(c.headline)}"><div class="tsb"></div>
+    <div class="tb"><div class="stamp"><i></i><span>${esc(face.stamp)}</span></div>${face.stat ? `<b class="stat">${esc(face.stat)}</b>` : ''}<h3>${esc(c.headline)}</h3>${face.line ? `<p>${esc(face.line)}</p>` : ''}</div></button>`;
 }
 
 /** The strip shows this many tiles; the feed behind it still holds every card. */
