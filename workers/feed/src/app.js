@@ -22,6 +22,7 @@ import catalogue, { excludedMatchers } from '../../../src/adapters/catalogue.js'
 import { fetchPocket, pocketItems } from '../../../src/adapters/pocket.js';
 import { rankFeed, makePrefs, resolveExperiments, displayName, MAX_PICKS, MIN_EVENTS, TYPE_NAMES, laneOf, offerHit, lanesWithCards, mixFormats, mixEvery, dedupeTitles } from '../../../src/rank.js';
 import { createMedia, applyMedia } from './media.js';
+import { createEloqua } from './eloqua.js';
 
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
 /** A player slug as the dictionary spells it: the page the feed is framed on names one. */
@@ -64,6 +65,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
   const get = deps.fetch || ((...a) => globalThis.fetch(...a));
   const now = deps.now || (() => new Date());
   const media = createMedia({ now });
+  const eloqua = createEloqua({ fetch: get, now: () => now().getTime() });
 
   const supa = (env) => ({
     base: String(env.SUPABASE_URL || 'https://xisvulbabqsyxnlyuwcz.supabase.co').replace(/\/$/, ''),
@@ -500,6 +502,21 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
       { headers: jsonHeaders({ 'cache-control': 'no-store' }) });
   }
 
+  /**
+   * Does a visitor GUID resolve to a contact? For Adam to test with his own GUID before anything
+   * is built on it. Needs the upload key. Answers the contact id and first name, never more.
+   * GET /api/eloqua/lookup?guid=<32 hex>
+   */
+  async function eloquaLookup(request, env) {
+    const denied = media.authorized(request, env); if (denied) return denied;
+    const guid = new URL(request.url).searchParams.get('guid') || '';
+    const login = await eloqua.login(env);
+    if (!login.ok) return new Response(JSON.stringify({ ok: false, configured: login.configured, error: login.error || 'ELOQUA_SITE, ELOQUA_USER and ELOQUA_PASSWORD are not all set' }), { status: 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
+    const v = await eloqua.visitor(env, guid);
+    const c = v.found && v.contactId ? await eloqua.contact(env, v.contactId) : null;
+    return new Response(JSON.stringify({ ok: true, site: login.site || null, visitor: v, contact: c }), { headers: jsonHeaders({ 'cache-control': 'no-store' }) });
+  }
+
   /** The upload page for Adam and Juan. Never framed; the key lives in their browser, not here. */
   function uploadPage(env) {
     if (!uploadHtml) return new Response('not found', { status: 404 });
@@ -526,13 +543,16 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
         if (method === 'POST' && p === '/api/media') return media.upload(request, env);
         if (method === 'GET' && p === '/api/media') return media.list(request, env);
         if (method === 'GET' && p === '/api/media/lookup') return mediaLookup(request, env, ctx);
+        if (method === 'GET' && p === '/api/eloqua/lookup') return eloquaLookup(request, env);
         if (method === 'DELETE' && p === '/api/media') return media.remove(request, env);
         if (method === 'GET' && p === '/studio/upload') return uploadPage(env);
         if (method === 'GET' && p === '/health') {
-          const built = await shared(request, env, ctx);
+          const [built, elq] = await Promise.all([shared(request, env, ctx), eloqua.login(env)]);
           const { counts, warnings, experiments = [], offered = {}, withheld = [], presets = {} } = built;
           return new Response(JSON.stringify({ ok: counts.served > 0, worker: 'txfeed', counts, warnings,
             media: Boolean(env.MEDIA), uploads: Boolean(env.MEDIA) && Boolean(env.MEDIA_UPLOAD_KEY),
+            // Eloqua: not configured, ok (a login worked), or the reason it did not. Never the site or user.
+            eloqua: !elq.configured ? 'not configured' : elq.ok ? 'ok' : (elq.error || 'login failed'),
             events: Boolean(env.SUPABASE_SERVICE_KEY), prefs: Boolean(env.SUPABASE_SERVICE_KEY) && built.prefsReady === true, ga4: Boolean(ga4(env)),
             experiments: experiments.map((x) => x.key), offers: Object.keys(offered), offers_withheld: withheld, presets: Object.keys(presets) }),
             { status: counts.served > 0 ? 200 : 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
