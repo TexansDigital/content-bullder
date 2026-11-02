@@ -18,6 +18,29 @@ rather than a hole in a white page.
 One iframe serves both sizes if the height is set with CSS:
 `height: clamp(420px, 42vw, 600px)`.
 
+## Try it on /news first
+
+A lower-stakes slot to prove the rail on the live site before the roster: the top of the news
+index, full content width, 420px tall so it reads as a strip above the stories rather than a
+takeover. Every event from it says `feed_placement: news`, so the daily review can compare it
+with /feed from day one.
+
+```html
+<iframe src="https://feed.htow.nz/?layout=rail&placement=news" title="Texans clips" width="100%" height="420" style="border:0;display:block;background:#021018" loading="lazy" allow="autoplay; fullscreen; clipboard-write"></iframe>
+```
+
+Add the handshake script from [`txfeed-handshake.html`](txfeed-handshake.html) once on the page
+so fans are recognised there too. What to check once it is placed, in this order:
+
+1. The strip renders the tiles, not a loading message, on desktop and on a phone.
+2. A tile opens the feed full-frame inside the strip and the close button returns.
+3. In the events table, `feed_load` rows carry `feed_placement = news` and, for a signed-in
+   browser, a `sess_` id rather than a `dv-` id (the handshake worked).
+4. The news stories inside the rail are the site's own and open their pages in a new tab.
+
+Taller works too: at 560px the strip shows the same tiles larger. 420px is the recommendation
+for a first test above a list of stories.
+
 ## The roster page
 
 ```html
