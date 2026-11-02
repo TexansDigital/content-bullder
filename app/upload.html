@@ -63,7 +63,7 @@ code{font-family:var(--mono);font-size:11px;color:var(--blue-lt)}
 </style></head><body>
 <header><h1>Feed <i>Masters</i></h1><span class="pill" id="st">key needed</span>
   <div class="sp"><input id="key" type="password" placeholder="upload key" style="width:200px" autocomplete="off"><button class="ghost sm" id="savekey" type="button">Use key</button></div></header>
-<div class="blocking" id="nokey"><b>Upload key</b>Paste the upload key in the box at the top right and press Use key. The list and the uploads need it.</div>
+<div class="blocking" id="nokey"><b>Upload key</b><span id="nokeymsg">Paste the upload key in the box at the top right and press Enter. The list and the uploads need it.</span></div>
 <main>
 <section>
   <h2>Upload</h2>
@@ -110,13 +110,20 @@ let file = null, mode = 'master', picked = null, cards = [], posterBlob = null;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const who = () => { try { return localStorage.getItem('txfeed_media_by') || ''; } catch { return ''; } };
 
-function setStatus(ok, label) { const el = $('#st'); el.textContent = label; el.className = 'pill ' + (ok ? 'ok' : 'bad'); $('#nokey').hidden = ok; }
+function setStatus(ok, label) {
+  const el = $('#st'); el.textContent = label; el.className = 'pill ' + (ok ? 'ok' : 'bad'); $('#nokey').hidden = ok;
+  $('#nokeymsg').textContent = key && !ok ? `The key you entered was refused: ${label}. Paste the one the terminal printed on the line before "Creating the secret for the Worker txfeed".` : 'Paste the upload key in the box at the top right and press Enter. The list and the uploads need it.';
+}
 function say(text, cls = '') { const m = $('#msg'); m.textContent = text; m.className = 'msg ' + cls; }
 
-$('#savekey').onclick = async () => {
+async function useKey() {
   key = $('#key').value.trim(); try { localStorage.setItem(KEY, key); } catch {}
   await refresh();
-};
+}
+$('#savekey').onclick = useKey;
+// Enter in the box saves it, and a pasted 64-character key applies itself without a click.
+$('#key').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); useKey(); } });
+$('#key').addEventListener('input', (e) => { if (/^[0-9a-f]{64}$/i.test(e.target.value.trim()) && e.target.value.trim() !== key) useKey(); });
 if (key) { $('#key').value = key; }
 
 $('#mMaster').onclick = () => setMode('master'); $('#mNew').onclick = () => setMode('new');
