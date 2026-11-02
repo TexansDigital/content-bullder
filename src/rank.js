@@ -140,6 +140,14 @@ export function offerHit(item, offer) {
   return words.some((k) => new RegExp(`(^|[^a-z0-9])${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^a-z0-9])`).test(text));
 }
 
+/** Does this card belong to a lane: by content type, by collection, or by carrying an action link. */
+export const laneHit = (item, lane) => Boolean(lane && ((lane.types || []).includes(item.contentType)
+  || (lane.collections || []).includes(item.collection) || (lane.action && item.action?.url)));
+/** The lanes that have at least one card to move: an empty lane is never offered. */
+export const lanesWithCards = (items) => Object.entries(LANES)
+  .filter(([, l]) => (items || []).some((i) => laneHit(i, l)))
+  .map(([key, l]) => ({ key, name: l.name }));
+
 /** The lane a content type belongs to, for "want more of this?" */
 export const laneOf = (type) => Object.entries(LANES).find(([, l]) => (l.types || []).includes(type))?.[0] || null;
 /** The player whose page the feed is framed on. The page is the intent: it outranks a pick
@@ -193,11 +201,7 @@ export function explain(item, { profile, prefs, presets = {}, offers = {}, names
 
     for (const lane of prefs.wants) {
       const L = LANES[lane];
-      if (!L) continue;
-      const hit = (L.types || []).includes(item.contentType)
-        || (L.collections || []).includes(item.collection)
-        || (L.action && Boolean(item.action?.url));
-      if (hit) add(LANE, 'lane', lane, `More ${L.name.toLowerCase()}, as you asked`);
+      if (L && laneHit(item, L)) add(LANE, 'lane', lane, `More ${L.name.toLowerCase()}, as you asked`);
     }
 
     const preset = prefs.follow ? presets[prefs.follow] : null;

@@ -19,7 +19,7 @@
  */
 import { makeItem, feedSort, liveCollections, STATUS } from '../../../src/content.js';
 import catalogue, { excludedMatchers } from '../../../src/adapters/catalogue.js';
-import { rankFeed, makePrefs, resolveExperiments, displayName, LANES, MAX_PICKS, MIN_EVENTS, TYPE_NAMES, laneOf, offerHit } from '../../../src/rank.js';
+import { rankFeed, makePrefs, resolveExperiments, displayName, MAX_PICKS, MIN_EVENTS, TYPE_NAMES, laneOf, offerHit, lanesWithCards } from '../../../src/rank.js';
 
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
 /** A player slug as the dictionary spells it: the page the feed is framed on names one. */
@@ -158,7 +158,8 @@ export function createApp({ feedHtml, enterHtml, deps = {} } = {}) {
       .map(([slug, cards]) => ({ slug, name: displayName(slug, names), cards }));
     const picker = {
       players: pickerPlayers,
-      lanes: Object.entries(LANES).map(([key, l]) => ({ key, name: l.name })),
+      // Only lanes with cards behind them: an empty lane is a choice that moves nothing.
+      lanes: lanesWithCards(live),
       presets: Object.values(presets).map((p) => ({ slug: p.slug, name: p.name, blurb: p.blurb || '' })),
       offers: Object.values(offered).map((o) => ({ key: o.key, label: o.label, blurb: o.blurb || '', ends_at: o.ends_at, cards: o.cards })),
       max_players: MAX_PICKS,

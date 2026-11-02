@@ -125,6 +125,18 @@ t('a tile with no working poster keeps its ground, not a broken glyph', await fb
 await fb.close();
 await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: items[1].id, changes: { media: { kind: 'image', url: 'https://a.example/2.jpg' }, poster: ['https://a.example/2.jpg'] } }) });
 
+/* ---------- one collection only ---------- */
+await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: items[3].id, changes: { collection: 'community' } }) });
+const lk = await open(`collection=community&placement=community&pid=sess_${RUN}_locked`, { viewport: { width: 390, height: 780 } });
+t('a page can lock the feed to one collection: only those cards, no chip bar', (await lk.pg.evaluate(() => [...document.querySelectorAll('.slide')].map((s) => s.dataset.id))).join() === items[3].id && await lk.pg.locator('#bar').isHidden() && await lk.pg.evaluate(() => document.body.classList.contains('locked')));
+await settle(lk.pg);
+t('and every event says which collection it was', load(lk.ev)?.params.feed_collection === 'community' && load(lk.ev).params.feed_placement === 'community');
+await lk.ctx.close();
+const lu = await open(`collection=nothing-here&pid=sess_${RUN}_unlocked`, { viewport: { width: 390, height: 780 } });
+t('an unknown collection key is ignored and the whole feed is served', (await lu.pg.evaluate(() => document.querySelectorAll('.slide').length)) >= 5 && await lu.pg.locator('#bar').isVisible());
+await lu.ctx.close();
+await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: items[3].id, changes: { collection: 'players' } }) });
+
 /* ---------- the phone layout is untouched ---------- */
 const f = await open(`pid=sess_${RUN}_plain`, { viewport: { width: 390, height: 780 } });
 t('without the parameter the feed is the feed: phone layout, tiles hidden', !(await f.pg.evaluate(() => document.body.classList.contains('rail-mode'))) && await f.pg.locator('#tiles').isHidden() && await f.pg.locator('#feed').isVisible());

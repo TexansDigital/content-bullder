@@ -235,6 +235,9 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .rail-mode .stage .rclose svg{width:20px;height:20px}
 .rail-mode .stage .rclose:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .rclose{display:none}
+.locked .bar{display:none}
+.locked .wrap{grid-template-rows:0 1fr}
+.locked.rail-mode .tiles{padding-top:16px}
 @media(max-width:600px){
   .rail-mode .wrap{grid-template-rows:auto 1fr}
   .rail-mode .bar{position:static;background:none;padding:12px 16px 10px}
@@ -291,6 +294,9 @@ const PAGE = (() => {
     layout: q.get('layout') === 'rail' ? 'rail' : 'feed',
     placement: pick(q.get('placement'), /^[a-z0-9_-]{1,40}$/),
     focus: pick(q.get('focus'), /^[a-z0-9][a-z0-9-]{1,59}$/),
+    // One collection only, with the chip bar gone: the /community page shows community
+    // cards and nothing else. An unknown key is ignored and the whole feed is served.
+    collection: pick(q.get('collection'), /^[a-z][a-z0-9_-]{1,30}$/),
   };
 })();
 if (PAGE.layout === 'rail') document.body.classList.add('rail-mode');
@@ -1440,6 +1446,9 @@ const io = new IntersectionObserver((es) => es.forEach((e) => {
 });
 
 function chips() {
+  if (PAGE.collection && DATA.collections.some((c) => c.key === PAGE.collection)) {
+    active = PAGE.collection; document.body.classList.add('locked'); $('#bar').innerHTML = ''; return;
+  }
   const all = [{ key: 'all', name: 'All' }, ...DATA.collections];
   // A fan who has set their feed gets a way back to it: one chip, always first.
   const mine = DATA.prefs && DATA.picker ? `<button class="chip mine" data-k="__mine" aria-pressed="false">Your feed ✎</button>` : '';

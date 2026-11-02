@@ -18,7 +18,7 @@ import { extname, join, dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listAdapters, pull } from './src/adapters/index.js';
 import { makeItem, validate, feedSort, liveCollections, STATUS, COLLECTIONS } from './src/content.js';
-import { rankFeed, makePrefs, displayName, LANES, MAX_PICKS, KNOB_DEFAULTS } from './src/rank.js';
+import { rankFeed, makePrefs, displayName, MAX_PICKS, KNOB_DEFAULTS, lanesWithCards } from './src/rank.js';
 import { TEMPLATES, templatePatch, templateFromItem } from './src/templates.js';
 import { builder, publicId } from './src/cloudinary.js';
 
@@ -450,7 +450,7 @@ const server = createServer(async (req, res) => {
       const { items: live, ranked, focus: focused } = rankFeed(shared, null, { prefs, names: {}, focus });
       const picker = who ? {
         players: Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([slug, cards]) => ({ slug, name: displayName(slug), cards })),
-        lanes: Object.entries(LANES).map(([key, l]) => ({ key, name: l.name })),
+        lanes: lanesWithCards(shared),
         presets: [], offers: [], max_players: MAX_PICKS,
       } : null;
       let knobs = { ...KNOB_DEFAULTS };

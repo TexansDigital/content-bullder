@@ -64,7 +64,8 @@ const a = await open();
 let order = await ids(a.pg);
 t('the picker is offered as the third card, after two cards have had their say', order[2] === 'sys-picker' && order.length === 6);
 t('it shows the catalogue\'s players, the lanes, watch-or-read', await a.pg.evaluate(() =>
-  document.querySelectorAll('.pk .players .opt').length === 2 && document.querySelectorAll('.pk .lanes .opt').length === 5 && document.querySelectorAll('.pk .format .opt').length === 2));
+  document.querySelectorAll('.pk .players .opt').length === 2 && document.querySelectorAll('.pk .lanes .opt').length === 3 && document.querySelectorAll('.pk .format .opt').length === 2));
+t('an empty lane is not offered: no community chip until a community card exists', !(await a.pg.locator('.pk .lanes .opt').allTextContents()).includes('Community'));
 t('the two players are named, not slugged', (await a.pg.locator('.pk .players .opt').allTextContents()).sort().join() === 'C J Stroud,Will Anderson Jr');
 t('no "Your feed" chip before anything is saved', (await a.pg.locator('.chip.mine').count()) === 0);
 
