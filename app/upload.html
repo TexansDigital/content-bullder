@@ -1,0 +1,252 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Feed Masters</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;700&display=swap">
+<style>
+:root{--steel:#021018;--s2:#0a1d27;--s3:#13303d;--red:#ED0028;--red2:#ff123a;--blue:#0080C6;--blue-lt:#4fb3e3;
+ --w:#fff;--body:rgba(255,255,255,.84);--mute:rgba(255,255,255,.56);--line:rgba(255,255,255,.14);--line2:rgba(255,255,255,.3);
+ --ok:#1fae5a;--warn:#f5a623;--mono:"Azeret Mono",ui-monospace,Menlo,monospace;--sans:"Helvetica Neue",Helvetica,Arial,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--steel);color:var(--w);font:14px/1.5 var(--sans);min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+header{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:15px;font-weight:900;text-transform:uppercase;letter-spacing:.02em;margin:0}
+header h1 i{color:var(--red);font-style:normal}
+header .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+.pill{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line2);padding:4px 8px;color:var(--mute)}
+.pill.ok{border-color:var(--ok);color:var(--ok)}.pill.bad{border-color:var(--red);color:var(--red)}
+main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0;min-height:calc(100vh - 50px)}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+section{padding:18px;border-right:1px solid var(--line)}
+section:last-child{border-right:0}
+h2{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin:0 0 12px;font-weight:500}
+label{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:0 0 4px}
+input,select,textarea{width:100%;background:var(--s2);border:1px solid var(--line);padding:8px 9px;border-radius:0;font-size:13px}
+input:focus,select:focus,textarea:focus{border-color:var(--red);outline:none}
+.field{margin-bottom:12px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{background:var(--red);border:0;padding:10px 16px;cursor:pointer;font-weight:700;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+button:hover{background:var(--red2)}button:disabled{opacity:.4;cursor:default}
+button.ghost{background:transparent;border:1px solid var(--line2)}button.ghost:hover{border-color:var(--red);background:transparent}
+button.sm{padding:5px 9px;font-size:10px}
+.drop{border:1px dashed var(--line2);padding:26px 16px;text-align:center;color:var(--mute);cursor:pointer;margin-bottom:12px;background:var(--s2)}
+.drop.on{border-color:var(--blue-lt);color:var(--w)}
+.drop b{display:block;color:var(--w);font-size:13px;margin-bottom:4px}
+.drop input{display:none}
+.mode{display:flex;gap:0;margin-bottom:14px;border:1px solid var(--line2)}
+.mode button{flex:1;background:transparent;color:var(--mute);border:0;padding:9px}
+.mode button[aria-pressed="true"]{background:var(--s3);color:var(--w)}
+.hits{max-height:260px;overflow:auto;border:1px solid var(--line);background:var(--s2)}
+.hit{display:grid;grid-template-columns:40px 1fr;gap:10px;padding:7px 9px;border-bottom:1px solid var(--line);cursor:pointer;align-items:center}
+.hit:hover{background:rgba(255,255,255,.04)}.hit[aria-selected="true"]{background:rgba(237,0,40,.14);box-shadow:inset 3px 0 0 var(--red)}
+.hit img{width:40px;height:50px;object-fit:cover;background:var(--s3);display:block}
+.hit h3{font-size:12.5px;margin:0;font-weight:600;line-height:1.3}
+.hit .m{font-family:var(--mono);font-size:9px;color:var(--mute);letter-spacing:.08em}
+.hit .m i{color:var(--blue-lt);font-style:normal}
+.prog{height:6px;background:var(--s3);margin:10px 0 6px}
+.prog i{display:block;height:100%;background:var(--blue);width:0;transition:width .15s}
+.msg{font-family:var(--mono);font-size:11px;color:var(--mute);min-height:18px;word-break:break-all}
+.msg.bad{color:var(--red)}.msg.ok{color:var(--ok)}
+.preview{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:start;margin:10px 0 14px}
+.preview .frame{aspect-ratio:9/16;background:var(--s3);overflow:hidden;position:relative}
+.preview video,.preview img,.preview canvas{width:100%;height:100%;object-fit:cover;display:block}
+.list .row{display:grid;grid-template-columns:44px 1fr auto;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);align-items:center}
+.list img{width:44px;height:56px;object-fit:cover;background:var(--s3);display:block}
+.list h3{font-size:12.5px;margin:0 0 2px;font-weight:600}
+.list .m{font-family:var(--mono);font-size:9px;color:var(--mute);letter-spacing:.08em}
+.list .m i{font-style:normal;color:var(--blue-lt)}
+.note{font-size:12px;color:var(--mute);margin:0 0 14px;line-height:1.5}
+.note b{color:var(--w)}
+code{font-family:var(--mono);font-size:11px;color:var(--blue-lt)}
+</style></head><body>
+<header><h1>Feed <i>Masters</i></h1><span class="pill" id="st">key needed</span>
+  <div class="sp"><input id="key" type="password" placeholder="upload key" style="width:200px" autocomplete="off"><button class="ghost sm" id="savekey" type="button">Use key</button></div></header>
+<main>
+<section>
+  <h2>Upload</h2>
+  <p class="note">Drop the <b>same vertical export you post to YouTube</b>. Pick the card it belongs to and the feed plays our file instead of the embed within a minute. No card picked means a <b>new card</b>: a story, a graphic, a community clip.</p>
+  <div class="mode"><button type="button" id="mMaster" aria-pressed="true">Master for a card</button><button type="button" id="mNew" aria-pressed="false">New card</button></div>
+  <div class="drop" id="drop"><b>Drop a file here</b>MP4, WebM or MOV up to 100 MB. JPG, PNG or WebP for a graphic.<input type="file" id="file" accept="video/mp4,video/webm,video/quicktime,image/jpeg,image/png,image/webp"></div>
+  <div class="preview" id="preview" hidden><div class="frame" id="frame"></div><div><div class="msg" id="finfo"></div><label style="margin-top:10px">Poster</label><div class="msg" id="pinfo">A frame is taken from the clip at one second. Replace it by dropping an image after the upload.</div></div></div>
+  <div id="masterBox">
+    <div class="field"><label for="q">Which card</label><input id="q" placeholder="search the live feed by headline or id"></div>
+    <div class="hits" id="hits"></div>
+  </div>
+  <div id="newBox" hidden>
+    <div class="field"><label for="headline">Headline</label><input id="headline" maxlength="120" placeholder="What the fan sees on the card"></div>
+    <div class="two">
+      <div class="field"><label for="collection">Collection</label><select id="collection">
+        <option value="community">Community &amp; Foundation</option><option value="gameday">Gameday</option><option value="players">Players</option><option value="series">Series</option><option value="presser">Pressers</option><option value="flag">Girls Flag &amp; Youth Football</option><option value="radio">Texans Radio</option></select></div>
+      <div class="field"><label for="shelf">Shelf life</label><select id="shelf"><option value="timely">Timely</option><option value="evergreen">Evergreen</option></select></div>
+    </div>
+    <div class="field"><label for="players">Players (slugs, comma separated, optional)</label><input id="players" placeholder="c-j-stroud, tank-dell"></div>
+    <div class="field"><label for="caption">Caption (optional)</label><input id="caption" maxlength="300"></div>
+    <div class="two">
+      <div class="field"><label for="action">Link (houstontexans.com only, optional)</label><input id="action" placeholder="https://www.houstontexans.com/..."></div>
+      <div class="field"><label for="alabel">Link label</label><input id="alabel" maxlength="30" placeholder="Learn more"></div>
+    </div>
+    <div class="field"><label for="tags">Tags (optional, for filtering a page to one tag)</label><input id="tags" placeholder="community-story, toyota"></div>
+  </div>
+  <button id="go" type="button" disabled>Upload</button>
+  <div class="prog"><i id="bar"></i></div>
+  <div class="msg" id="msg"></div>
+</section>
+<section>
+  <h2>Uploaded</h2>
+  <p class="note">Newest first. <b>Remove</b> puts a card back on its embed, or drops a new card from the feed.</p>
+  <div class="list" id="list"><div class="msg">Enter the key to see the list.</div></div>
+</section>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+const KEY = 'txfeed_media_key';
+let key = ''; try { key = localStorage.getItem(KEY) || ''; } catch {}
+let file = null, mode = 'master', picked = null, cards = [], posterBlob = null;
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const who = () => { try { return localStorage.getItem('txfeed_media_by') || ''; } catch { return ''; } };
+
+function setStatus(ok, label) { const el = $('#st'); el.textContent = label; el.className = 'pill ' + (ok ? 'ok' : 'bad'); }
+function say(text, cls = '') { const m = $('#msg'); m.textContent = text; m.className = 'msg ' + cls; }
+
+$('#savekey').onclick = async () => {
+  key = $('#key').value.trim(); try { localStorage.setItem(KEY, key); } catch {}
+  await refresh();
+};
+if (key) { $('#key').value = key; }
+
+$('#mMaster').onclick = () => setMode('master'); $('#mNew').onclick = () => setMode('new');
+function setMode(m) {
+  mode = m; $('#mMaster').setAttribute('aria-pressed', String(m === 'master')); $('#mNew').setAttribute('aria-pressed', String(m === 'new'));
+  $('#masterBox').hidden = m !== 'master'; $('#newBox').hidden = m !== 'new'; ready();
+}
+function ready() {
+  const okMaster = mode === 'master' && picked && file && /^video\//.test(file.type);
+  const okNew = mode === 'new' && file && $('#headline').value.trim();
+  $('#go').disabled = !key || !(okMaster || okNew);
+}
+$('#headline').oninput = ready;
+
+// ---- the file ----
+const drop = $('#drop');
+drop.onclick = () => $('#file').click();
+$('#file').onchange = (e) => take(e.target.files[0]);
+['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('on'); }));
+['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('on'); }));
+drop.addEventListener('drop', (e) => take(e.dataTransfer.files[0]));
+function take(f) {
+  if (!f) return;
+  if (!/^(video\/(mp4|webm|quicktime)|image\/(jpeg|png|webp))$/.test(f.type)) { say('That type is not accepted: ' + (f.type || 'unknown'), 'bad'); return; }
+  if (f.size > 100 * 1048576) { say('Too large: ' + (f.size / 1048576).toFixed(1) + ' MB, the limit is 100 MB', 'bad'); return; }
+  file = f; posterBlob = null;
+  $('#preview').hidden = false;
+  $('#finfo').textContent = f.name + ' · ' + (f.size / 1048576).toFixed(1) + ' MB · ' + f.type;
+  const url = URL.createObjectURL(f);
+  const frame = $('#frame');
+  if (/^video\//.test(f.type)) {
+    frame.innerHTML = '<video muted playsinline preload="auto"></video>';
+    const v = frame.querySelector('video'); v.src = url;
+    v.addEventListener('loadeddata', () => { try { v.currentTime = Math.min(1, (v.duration || 2) / 2); } catch {} }, { once: true });
+    v.addEventListener('seeked', () => grabPoster(v), { once: true });
+    if (mode === 'master' && f.name) guessCard(f.name);
+  } else {
+    frame.innerHTML = '<img alt="">'; frame.querySelector('img').src = url;
+    $('#pinfo').textContent = 'A graphic is its own poster.';
+    if (mode === 'master') { setMode('new'); say('An image becomes a new card; a master for a Short has to be a video.'); }
+  }
+  ready();
+}
+function grabPoster(v) {
+  try {
+    const c = document.createElement('canvas'); c.width = 720; c.height = Math.round(720 * (v.videoHeight / v.videoWidth) || 1280);
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    c.toBlob((b) => { posterBlob = b; $('#pinfo').textContent = b ? 'Poster frame ready (' + Math.round(b.size / 1024) + ' KB), uploaded with the clip.' : 'Could not take a frame; the card keeps its YouTube poster.'; }, 'image/jpeg', 0.86);
+  } catch (e) { $('#pinfo').textContent = 'Could not take a frame; the card keeps its YouTube poster.'; }
+}
+// The export is often named after the Short: try the title words against the live feed.
+function guessCard(name) {
+  const words = name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').replace(/\b(final|v\d+|export|short|shorts|vertical|9x16|1080x1920)\b/gi, ' ').trim();
+  if (words.length > 3) { $('#q').value = words; search(words); }
+}
+
+// ---- the cards ----
+async function loadCards() {
+  if (cards.length) return cards;
+  try {
+    const r = await fetch('/api/feed?qa=1&formats=video', { headers: { accept: 'application/json' } });
+    const d = await r.json();
+    cards = (d.clips || d.items || []).filter((c) => !c.system).map((c) => ({ id: c.id, headline: c.headline, poster: (c.poster || [])[0] || (c.media && c.media.url) || '', kind: c.media && c.media.kind, master: c.flags && c.flags.master }));
+  } catch { cards = []; }
+  return cards;
+}
+$('#q').oninput = (e) => search(e.target.value);
+async function search(q) {
+  await loadCards();
+  const terms = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+  const score = (c) => terms.reduce((n, t) => n + (c.headline.toLowerCase().includes(t) ? 2 : 0) + (c.id.toLowerCase().includes(t) ? 3 : 0), 0);
+  const hits = (terms.length ? cards.map((c) => [score(c), c]).filter(([s]) => s > 0).sort((a, b) => b[0] - a[0]).map(([, c]) => c) : cards).slice(0, 40);
+  $('#hits').innerHTML = hits.map((c) => `<div class="hit" role="option" data-id="${esc(c.id)}" aria-selected="${picked && picked.id === c.id}">
+    ${c.poster ? `<img src="${esc(c.poster)}" alt="" loading="lazy" onerror="this.removeAttribute('src')">` : '<div style="width:40px;height:50px;background:var(--s3)"></div>'}<div><h3>${esc(c.headline)}</h3><div class="m">${esc(c.id)}${c.master ? ' · <i>has a master</i>' : c.kind === 'youtube' ? ' · youtube' : ''}</div></div></div>`).join('') || '<div class="msg" style="padding:9px">No card matches.</div>';
+  $('#hits').querySelectorAll('.hit').forEach((h) => { h.onclick = () => { picked = cards.find((c) => c.id === h.dataset.id) || null; search($('#q').value); ready(); }; });
+}
+
+// ---- the upload ----
+$('#go').onclick = async () => {
+  if (!file) return;
+  const q = new URLSearchParams();
+  if (mode === 'master') q.set('for', picked.id);
+  else {
+    q.set('new', '1'); q.set('headline', $('#headline').value.trim()); q.set('collection', $('#collection').value); q.set('shelf', $('#shelf').value);
+    if ($('#players').value.trim()) q.set('players', $('#players').value.trim().toLowerCase().replace(/\s+/g, ''));
+    if ($('#caption').value.trim()) q.set('caption', $('#caption').value.trim());
+    if ($('#action').value.trim()) { q.set('action', $('#action').value.trim()); if ($('#alabel').value.trim()) q.set('action_label', $('#alabel').value.trim()); }
+    if ($('#tags').value.trim()) q.set('tags', $('#tags').value.trim().toLowerCase().replace(/\s+/g, ''));
+  }
+  $('#go').disabled = true; say('Uploading ' + file.name + '…');
+  try {
+    const res = await send('/api/media?' + q, file, file.type);
+    if (res.posterable !== false && posterBlob && /^video\//.test(file.type)) {
+      say('Clip stored. Sending the poster frame…');
+      await send('/api/media?poster=' + encodeURIComponent(res.id), posterBlob, 'image/jpeg').catch(() => {});
+    }
+    say((mode === 'master' ? 'Master stored for ' + picked.id : 'New card ' + res.id + ' is live') + '. The feed picks it up within a minute: ' + res.url, 'ok');
+    file = null; posterBlob = null; picked = null; cards = []; $('#preview').hidden = true; $('#bar').style.width = '0'; $('#file').value = '';
+    await refresh();
+  } catch (e) { say(e.message || 'Upload failed', 'bad'); }
+  ready();
+};
+function send(url, blob, type) {
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest(); x.open('POST', url);
+    x.setRequestHeader('content-type', type); x.setRequestHeader('x-media-key', key); if (who()) x.setRequestHeader('x-media-by', who());
+    x.upload.onprogress = (e) => { if (e.lengthComputable) $('#bar').style.width = Math.round(100 * e.loaded / e.total) + '%'; };
+    x.onload = () => { let d = {}; try { d = JSON.parse(x.responseText); } catch {} if (x.status >= 200 && x.status < 300) resolve(d); else reject(new Error(d.error || ('HTTP ' + x.status))); };
+    x.onerror = () => reject(new Error('Network error during upload'));
+    x.send(blob);
+  });
+}
+
+// ---- the list ----
+async function refresh() {
+  if (!key) { setStatus(false, 'key needed'); return; }
+  try {
+    const r = await fetch('/api/media', { headers: { 'x-media-key': key } });
+    const d = await r.json();
+    if (!r.ok) { setStatus(false, d.error || ('HTTP ' + r.status)); $('#list').innerHTML = '<div class="msg bad">' + esc(d.error || r.status) + '</div>'; return; }
+    setStatus(true, 'key ok');
+    const items = d.items || [];
+    $('#list').innerHTML = items.length ? items.map((e) => `<div class="row">
+      ${(e.posterUrl || /^image\//.test(e.type)) ? `<img src="${esc(e.posterUrl || e.url)}" alt="" loading="lazy" onerror="this.removeAttribute('src')">` : '<div style="width:44px;height:56px;background:var(--s3)"></div>'}
+      <div><h3>${esc(e.kind === 'master' ? 'Master for ' + e.for : e.headline)}</h3><div class="m">${esc(e.kind)} · ${(e.bytes / 1048576).toFixed(1)} MB · ${esc((e.uploadedAt || '').slice(0, 16).replace('T', ' '))}${e.by ? ' · <i>' + esc(e.by) + '</i>' : ''}${e.kind === 'card' ? ' · ' + esc(e.collection) : ''}</div></div>
+      <button class="ghost sm" type="button" data-rm="${esc(e.id)}">Remove</button></div>`).join('') : '<div class="msg">Nothing uploaded yet.</div>';
+    $('#list').querySelectorAll('[data-rm]').forEach((b) => { b.onclick = async () => {
+      if (!confirm('Remove this upload from the feed?')) return;
+      const r2 = await fetch('/api/media?id=' + encodeURIComponent(b.dataset.rm), { method: 'DELETE', headers: { 'x-media-key': key } });
+      if (r2.ok) { cards = []; await refresh(); } else say('Could not remove', 'bad');
+    }; });
+  } catch (e) { setStatus(false, 'offline'); }
+  ready();
+}
+if (!who()) { const n = prompt('Your first name, so uploads say who made them'); if (n) try { localStorage.setItem('txfeed_media_by', n.trim().slice(0, 40)); } catch {} }
+refresh(); search('');
+</script>
+</body></html>

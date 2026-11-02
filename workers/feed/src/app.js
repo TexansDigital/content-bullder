@@ -21,6 +21,7 @@ import { makeItem, feedSort, liveCollections, STATUS } from '../../../src/conten
 import catalogue, { excludedMatchers } from '../../../src/adapters/catalogue.js';
 import { fetchPocket, pocketItems } from '../../../src/adapters/pocket.js';
 import { rankFeed, makePrefs, resolveExperiments, displayName, MAX_PICKS, MIN_EVENTS, TYPE_NAMES, laneOf, offerHit, lanesWithCards, mixFormats, mixEvery, dedupeTitles } from '../../../src/rank.js';
+import { createMedia, applyMedia } from './media.js';
 
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
 /** A player slug as the dictionary spells it: the page the feed is framed on names one. */
@@ -53,7 +54,7 @@ const jsonHeaders = (extra = {}) => ({
 
 const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export function createApp({ feedHtml, enterHtml, assets = {}, deps = {} } = {}) {
+export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps = {} } = {}) {
   /** A bundled brand asset at /app/assets/<name>: bytes, a type, and a year of cache. */
   function asset(name) {
     const a = assets[name];
@@ -62,6 +63,7 @@ export function createApp({ feedHtml, enterHtml, assets = {}, deps = {} } = {}) 
   }
   const get = deps.fetch || ((...a) => globalThis.fetch(...a));
   const now = deps.now || (() => new Date());
+  const media = createMedia({ now });
 
   const supa = (env) => ({
     base: String(env.SUPABASE_URL || 'https://xisvulbabqsyxnlyuwcz.supabase.co').replace(/\/$/, ''),
@@ -109,7 +111,9 @@ export function createApp({ feedHtml, enterHtml, assets = {}, deps = {} } = {}) 
     const { base, key: anon } = supa(env);
     const probe = get(`${base}/rest/v1/feed_preferences?select=session_id&limit=1`, { headers: { apikey: anon, authorization: `Bearer ${anon}`, accept: 'application/json' } })
       .then((r) => r.status !== 404).catch(() => false);
-    const [cur, cat, aliases, presetRows, offerRows, expRows, ready, pocketRaw, bannedRes] = await Promise.allSettled([
+    // Masters and studio cards from R2. No binding, or a failed read, means the embeds serve as before.
+    const mediaP = env.MEDIA ? media.readIndex(env) : Promise.resolve({ items: [] });
+    const [cur, cat, aliases, presetRows, offerRows, expRows, ready, pocketRaw, bannedRes, mediaIdx] = await Promise.allSettled([
       curP, catalogue.fetch({ months, max }, { fetch: get, env }),
       side('feed_entity_aliases?select=entity_slug,alias&entity_type=eq.player&tier=eq.1&limit=1000', 'aliases'),
       side('feed_presets?select=slug,name,blurb,entity_weights,content_type_weights&active=is.true&limit=50', 'presets'),
@@ -118,6 +122,7 @@ export function createApp({ feedHtml, enterHtml, assets = {}, deps = {} } = {}) 
       probe,
       pocketP,
       banP,
+      mediaP,
     ]);
     const prefsReady = ready.status === 'fulfilled' && ready.value === true;
     if (!prefsReady) warnings.push('feed_preferences: table not found; the picker is withheld');
@@ -157,7 +162,13 @@ export function createApp({ feedHtml, enterHtml, assets = {}, deps = {} } = {}) 
     const shorts = shortsAll
       .filter((i) => !taken.has(i.id))
       .map((i) => ({ ...i, status: STATUS.PUBLISHED, sortIndex: 1_000_000 }));
-    const all = [...editorial, ...shorts, ...pocket.filter((i) => !taken.has(i.id))];
+    let all = [...editorial, ...shorts, ...pocket.filter((i) => !taken.has(i.id))];
+    // Our own masters replace the embed on the cards they were uploaded for; new studio cards join.
+    let masters = { replaced: 0, added: 0 };
+    if (mediaIdx.status === 'fulfilled' && (mediaIdx.value.items || []).length) {
+      const merged = applyMedia(all, mediaIdx.value, { base: media.base(env), banned: bannedRes.status === 'fulfilled' ? bannedRes.value : [] });
+      all = merged.items; masters = { replaced: merged.replaced, added: merged.added };
+    } else if (mediaIdx.status === 'rejected') warnings.push(`media: ${mediaIdx.reason?.message}`);
     const unservable = all.filter((i) => !servable(i)).length;
     if (unservable) warnings.push(`${unservable} card(s) skipped: media is not an absolute URL`);
     const live = all.filter(servable).sort(feedSort);
@@ -186,7 +197,7 @@ export function createApp({ feedHtml, enterHtml, assets = {}, deps = {} } = {}) 
       offers: Object.values(offered).map((o) => ({ key: o.key, label: o.label, blurb: o.blurb || '', ends_at: o.ends_at, cards: o.cards, preview: o.preview })),
       max_players: MAX_PICKS,
     };
-    return { live, counts: { curated: editorial.length, catalogue: shorts.length, pocket: pocket.length, served: live.length }, warnings,
+    return { live, counts: { curated: editorial.length, catalogue: shorts.length, pocket: pocket.length, masters: masters.replaced, studio: masters.added, served: live.length }, warnings,
       names, presets, offers, offered, withheld, experiments, picker, prefsReady };
   }
 
@@ -461,6 +472,15 @@ export function createApp({ feedHtml, enterHtml, assets = {}, deps = {} } = {}) 
     });
   }
 
+  /** The upload page for Adam and Juan. Never framed; the key lives in their browser, not here. */
+  function uploadPage(env) {
+    if (!uploadHtml) return new Response('not found', { status: 404 });
+    return new Response(uploadHtml, {
+      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff',
+        'referrer-policy': 'no-referrer', 'content-security-policy': "frame-ancestors 'none'" },
+    });
+  }
+
   return {
     async fetch(request, env = {}, ctx) {
       const url = new URL(request.url);
@@ -474,10 +494,16 @@ export function createApp({ feedHtml, enterHtml, assets = {}, deps = {} } = {}) 
         if (method === 'POST' && p === '/api/events') return apiEvents(request, env, ctx);
         if (method === 'POST' && p === '/api/prefs') return apiPrefs(request, env, ctx);
         if (method === 'GET' && p === '/enter') return enter(request, env);
+        if (method === 'GET' && p.startsWith('/media/')) return media.serve(request, env, p.slice('/media/'.length));
+        if (method === 'POST' && p === '/api/media') return media.upload(request, env);
+        if (method === 'GET' && p === '/api/media') return media.list(request, env);
+        if (method === 'DELETE' && p === '/api/media') return media.remove(request, env);
+        if (method === 'GET' && p === '/studio/upload') return uploadPage(env);
         if (method === 'GET' && p === '/health') {
           const built = await shared(request, env, ctx);
           const { counts, warnings, experiments = [], offered = {}, withheld = [], presets = {} } = built;
           return new Response(JSON.stringify({ ok: counts.served > 0, worker: 'txfeed', counts, warnings,
+            media: Boolean(env.MEDIA), uploads: Boolean(env.MEDIA) && Boolean(env.MEDIA_UPLOAD_KEY),
             events: Boolean(env.SUPABASE_SERVICE_KEY), prefs: Boolean(env.SUPABASE_SERVICE_KEY) && built.prefsReady === true, ga4: Boolean(ga4(env)),
             experiments: experiments.map((x) => x.key), offers: Object.keys(offered), offers_withheld: withheld, presets: Object.keys(presets) }),
             { status: counts.served > 0 ? 200 : 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });

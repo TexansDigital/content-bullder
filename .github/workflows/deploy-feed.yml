@@ -43,6 +43,7 @@ jobs:
       - run: node test/verify-worker.mjs
       - run: node test/verify-rank.mjs
       - run: node test/verify-pocket.mjs
+      - run: node test/verify-media.mjs
       - run: node --check workers/feed/src/app.js
       - name: Bundle without deploying
         working-directory: workers/feed
