@@ -189,6 +189,17 @@ t('a private window still renders the feed',
 t('and still reports, just without an id',
   (await evsOf(s2)).some((e) => e.event === 'feed_load'));
 
+/* ---------- verification traffic is marked ---------- */
+{
+  const ctx = await b.newContext({ viewport: { width: 390, height: 780 } });
+  const pg = await ctx.newPage(); const ev = [];
+  pg.on('request', (r) => { if (r.method() === 'POST' && r.url().endsWith('/api/events')) { try { ev.push(...(JSON.parse(r.postData() || '{}').events || [])); } catch {} } });
+  await pg.addInitScript(() => { navigator.sendBeacon = () => false; });
+  await pg.goto(`${B}/feed?qa=1&pid=sess_${Date.now()}_qamark`, { waitUntil: 'networkidle' }); await pg.waitForTimeout(2600);
+  t('a load with ?qa=1 marks every event it sends, so reviews can leave it out', ev.length > 0 && ev.every((e) => e.params.qa === true));
+  await ctx.close();
+}
+
 console.log('PASS ' + ok.length); ok.forEach((x) => console.log('  + ' + x));
 if (bad.length) { console.log('FAIL ' + bad.length); bad.forEach((x) => console.log('  - ' + x)); }
 if (errs.length) console.log('page errors:\n' + errs.join('\n'));

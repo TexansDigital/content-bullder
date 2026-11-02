@@ -337,6 +337,8 @@ const PAGE = (() => {
     collection: pick(q.get('collection'), /^[a-z][a-z0-9_-]{1,30}$/),
     // Only these card formats (video, read, listen): the news page lists its own stories.
     formats: String(q.get('formats') || '').split(',').map((s) => s.trim()).filter((s) => ['video', 'read', 'listen'].includes(s)),
+    // Verification traffic: every event from this load says so, and the reviews leave it out.
+    qa: q.get('qa') === '1',
   };
 })();
 if (PAGE.layout === 'rail') document.body.classList.add('rail-mode');
@@ -505,6 +507,7 @@ function setPocketId(value, how) {
 /** Built at send time, never at queue time — see the note in track(). */
 const payloadFor = (params) => ({
   feed_collection: active,
+  ...(PAGE.qa ? { qa: true } : {}),
   ...(pocketId ? { pocket_id: pocketId } : {}),
   ...(mintDevice() ? { device_id: deviceId } : {}),
   ...params,

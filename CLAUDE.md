@@ -55,3 +55,18 @@ data shows the NFL privacy block from the approved Eloqua form, and the pitch is
 and a feed that follows them, never about a newsletter.
 
 **The brand palette:** #021018 (base dark), #ED0028 (red), #0080C6 (blue), #FFFFFF (white).
+
+## How we ship, learned 2 Nov 2026
+
+- **Smallest version first.** One idea, its smallest form, measured for a day, then widened. Never a
+  batch of approved ideas as one feature. The ask ladder in docs/ask-ladder.md is the model.
+- **Look, don't only assert.** Before a deploy that changes what a fan sees, run the first-fan
+  walkthrough: the first seven cards on a phone viewport as a new fan and as a returning fan, as
+  screenshots, and read them. Tests prove intent; screenshots show experience.
+- **Mark your own traffic.** Every verification load of the live feed carries `?qa=1`. Events from it
+  say `qa: true`, and the reviews exclude them. Never count a session you made yourself.
+- **A new signal has fired once in production** before anyone reports on it. Instrumentation is
+  checked on day one, not assumed.
+- **Check a primitive with data before building on it.** Is the id persistent, is the title unique,
+  is there content behind the promise. Each was assumed once and each was wrong somewhere.
+- **Fixes ship any time. New asks wait a day** so the last one can be watched.
