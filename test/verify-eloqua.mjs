@@ -35,7 +35,7 @@ clock += 11 * 60 * 1000; await e.login(ENV);
 t('after ten minutes it logs in again', calls.length === n + 1);
 
 let v = await e.visitor(ENV, 'abcdef0123456789abcdef0123456789');
-t('a visitor is found by GUID, searched upper-case, and carries its contact id', v.found && v.contactId === '4242' && /externalId%3D'ABCDEF0123456789ABCDEF0123456789'/.test(calls.at(-1).url));
+t('a visitor is found by GUID on REST 2.0, searched upper-case, and carries its contact id', v.found && v.contactId === '4242' && /\/api\/REST\/2\.0\/data\/visitors\?/.test(calls.at(-1).url) && /externalId%3D'ABCDEF0123456789ABCDEF0123456789'/.test(calls.at(-1).url));
 v = await e.visitor(ENV, '00000000000000000000000000000000');
 t('an unknown GUID is simply not found', v.found === false && !v.error);
 v = await e.visitor(ENV, 'nope');

@@ -45,7 +45,8 @@ export function createEloqua({ fetch: get = (...a) => globalThis.fetch(...a), no
     const l = await login(env);
     if (!l.ok) return { found: false, error: l.error || 'not configured' };
     const q = encodeURIComponent(`externalId='${guid.toUpperCase()}'`);
-    const r = await get(`${l.base}/api/REST/1.0/data/visitors?search=${q}&depth=complete&count=1`, { headers: headers(env) });
+    // Visitors are a REST 2.0 resource on this pod (probed 2 Nov 2026: 1.0 answers 404, 2.0 answers).
+    const r = await get(`${l.base}/api/REST/2.0/data/visitors?search=${q}&depth=complete&count=1`, { headers: headers(env) });
     if (!r.ok) return { found: false, error: `visitors answered ${r.status}` };
     const d = await r.json();
     const v = (d?.elements || [])[0];
