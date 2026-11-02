@@ -22,6 +22,12 @@ type = "Data"
 globs = ["**/*.jpg", "**/*.otf", "**/*.png"]
 fallthrough = true
 
+# Masters: Shorts and composed cards the club holds itself, uploaded from the studio by Adam and
+# Juan, served by our own player. The bucket was created 1 Nov 2026 in the dashboard.
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "texans-feed-media"
+
 [vars]
 SUPABASE_URL = "https://xisvulbabqsyxnlyuwcz.supabase.co"
 # Publishable key: built to ship in client code, limited by RLS to the catalogue tables.
