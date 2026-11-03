@@ -56,3 +56,4 @@ values ('picker_pos', 'Offering the picker on card 1 raises saves without hurtin
 ```
 
 Every `feed_load` event carries `exp_<key>: <arm>` so results can be sliced by arm.
+| 090-feed-tagger-reach.sql | Applied 3 Nov 2026 | The tagger reaches every clip the feed serves (not only typed Shorts), aliases ending in a dot match, and a two-hourly pass covers the last week so new Shorts are tagged within two hours of ingest instead of a day. |
