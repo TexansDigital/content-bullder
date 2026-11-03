@@ -376,6 +376,10 @@ export const KNOB_DEFAULTS = {
   /** A fan the handshake recognised (Eloqua visitor GUID) opens on a "Welcome!" card carrying the
    *  picks they saved in any earlier session, or the player they watch most. 0 off, 1 on. */
   welcome_card: 0,
+  /** How the first pick is asked for: 'card' (the picker card at picker_position) or 'chip' (one
+   *  tap on the card after a completed clip: "More Tank Dell"; the picker card then only appears
+   *  when the fan opens it from the Your feed chip). */
+  pick_prompt: 'card',
 };
 
 export function fnv1a(str) {

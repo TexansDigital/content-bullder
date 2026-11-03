@@ -187,6 +187,13 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 /* Reason pills: why this card is here, in the fan's words. */
 .why{display:block;font:600 10px/1.2 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:#4fb3ff;margin-bottom:3px}
 .bot .why{margin-bottom:6px}
+/* The pick chip: one tap on the card after a completed clip. Sits above the band, never over a control. */
+.pickchip{position:absolute;left:50%;bottom:calc(124px + env(safe-area-inset-bottom,0px));transform:translate(-50%,10px);z-index:6;
+  background:var(--red);color:#fff;border:0;padding:12px 18px;font:900 13px/1 var(--display);text-transform:uppercase;letter-spacing:.02em;
+  cursor:pointer;opacity:0;transition:opacity .25s,transform .25s;box-shadow:0 6px 18px rgba(0,0,0,.45);white-space:nowrap;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis}
+.pickchip.in{opacity:1;transform:translate(-50%,0)}
+.pickchip.done{background:#fff;color:#021018}
+.pickchip:disabled{cursor:default}
 .chip.mine{border-color:#0080C6;color:#fff}
 /* System cards: the picker and data capture. */
 /* System cards sit on the brand's steel flag plate (fabric weave, red speckle, the star), never
@@ -405,6 +412,10 @@ let forcePicker = false;
 /** What the Worker knows about a recognised fan, once asked; null until then or when nothing is known. */
 let welcomeInfo = null;
 let welcomeAsked = false;
+/** The pick to offer on the next card, earned by a completed clip; null when nothing is owed. */
+let pendingChip = null;
+const CHIP_MS = 7000;
+const swipedKey = 'txfeed.prefs.swiped';
 let soundHinted = false;
 const skipKey = 'txfeed.prefs.skip';
 /** Things the fan has already seen or declined: "boost:draft-week", "week:2970", "offer:giants-week". */
@@ -414,8 +425,13 @@ const seen = (kind, key, withinMs = Infinity) => { const t = Number(seenAll()[`$
 const markSeen = (kind, key) => { try { const all = seenAll(); all[`${kind}:${key}`] = Date.now(); localStorage.setItem(seenKey, JSON.stringify(all)); } catch {} };
 const weekStamp = () => Math.floor(Date.now() / (7 * 86400e3));
 const skippedRecently = () => {
-  try { const t = Number(localStorage.getItem(skipKey) || 0); return t > 0 && (Date.now() - t) < (Number(knobs.picker_reoffer_days) || 7) * 86400e3; }
-  catch { return false; }
+  try {
+    const t = Number(localStorage.getItem(skipKey) || 0);
+    if (t > 0 && (Date.now() - t) < (Number(knobs.picker_reoffer_days) || 7) * 86400e3) return true;
+    // A fan who looked at the picker and swiped past said no without saying it: not again today.
+    const sw = Number(localStorage.getItem(swipedKey) || 0);
+    return sw > 0 && (Date.now() - sw) < 86400e3;
+  } catch { return false; }
 };
 
 /* ---------- analytics ----------------------------------------------------------
@@ -706,15 +722,73 @@ function cardOpened(slide, c, i) {
   slide._seenAt = Date.now();
   clearTimeout(slide._seenTimer);
   slide._seenTimer = setTimeout(() => track('card_view', cardParams(c, i)), VIEW_AFTER_MS);
+  if (pendingChip && !c.system) { const chip = pendingChip; pendingChip = null; showChip(slide, c, i, chip); }
 }
 function cardClosed(slide, c, i, complete) {
   clearTimeout(slide._seenTimer);
   if (!slide._seenAt) return;
   const dwell = Date.now() - slide._seenAt;
   slide._seenAt = 0;
+  slide.querySelector('.pickchip')?.remove();
   if (dwell < VIEW_AFTER_MS) return;
   track(complete ? 'card_complete' : 'card_exit',
     { ...cardParams(c, i), card_dwell_ms: dwell });
+  // Looked at the picker and swiped past: that is a no, and it is not asked again today.
+  if (c.id === 'sys-picker' && !DATA.prefs) {
+    try { localStorage.setItem(swipedKey, String(Date.now())); } catch {}
+    track('prefs_swipe', { ...cardParams(c, i), card_dwell_ms: dwell });
+  }
+  // A completed clip about a player earns one tap on the next card: "More Tank Dell".
+  if (complete && knobs.pick_prompt === 'chip' && !c.system) {
+    const player = (c.entities?.players || [])[0];
+    const have = DATA.prefs?.players || [];
+    const room = have.length < (Number(DATA.picker?.max_players) || 3);
+    if (player && whoAmI() && DATA.picker && !have.includes(player) && room && !seen('chip', player, 86400e3)) {
+      pendingChip = { player, name: playerName(player), from: c.id };
+    }
+  }
+}
+
+const playerName = (player) => DATA.picker?.players?.find((p) => p.slug === player)?.name || (DATA.focus?.slug === player ? DATA.focus.name : null) || displayName(player);
+
+/** One tap, on the card, after the clip that earned it. Fades on its own; a swipe removes it. */
+function showChip(slide, c, i, chip) {
+  if (slide.querySelector('.pickchip')) return;
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'pickchip';
+  btn.innerHTML = `More <b>${esc(chip.name)}</b>`;
+  btn.setAttribute('aria-label', `More ${chip.name}: make this a pick`);
+  btn.onclick = () => pickFromChip(slide, c, i, chip);
+  slide.appendChild(btn);
+  requestAnimationFrame(() => btn.classList.add('in'));
+  markSeen('chip', chip.player);
+  track('pick_chip_shown', { ...cardParams(c, i), pref_player: chip.player, chip_from: chip.from });
+  setTimeout(() => { if (!btn.classList.contains('done') && !btn.disabled) { btn.classList.remove('in'); setTimeout(() => btn.remove(), 300); } }, CHIP_MS);
+}
+
+/** The tap: save the pick without leaving the card, lift that player's clips to come next, and say so on the chip. */
+async function pickFromChip(slide, c, i, chip) {
+  const btn = slide.querySelector('.pickchip');
+  if (btn) btn.disabled = true;
+  const base = DATA.prefs || {};
+  const players = [...(base.players || []), chip.player];
+  const body = { players, wants: base.wants || [], format: base.format || null, follow: base.follow || null,
+    boosts: (base.boosts || []).map((b) => ({ key: b.key, until: b.until, label: b.label })), going: base.going || null, watch: base.watch || null,
+    source: 'chip', ...(pocketId ? { pocket_id: pocketId } : {}), ...(mintDevice() ? { device_id: deviceId } : {}) };
+  try {
+    const r = await fetch('/api/prefs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(String(r.status));
+    const res = await r.json();
+    DATA.prefs = res.prefs || { ...base, players };
+    track('prefs_save', { ...cardParams(c, i), players_n: players.length, wants_n: body.wants.length, pref_format: body.format || '', pref_follow: body.follow || '',
+      boosts_n: body.boosts.length, pref_going: body.going || '', pref_watch: body.watch || '', save_source: 'chip', pref_player: chip.player, chip_from: chip.from });
+    const lifted = liftPlayer(chip.player, chip.name, i, { kind: 'pick', key: chip.player, label: `Because you picked ${chip.name}` });
+    if (btn) { btn.classList.add('done'); btn.innerHTML = `${esc(chip.name.split(' ').pop())} first${lifted ? '' : ', when there is more'}`; setTimeout(() => btn.remove(), 2400); }
+    chips();
+  } catch {
+    if (btn) { btn.disabled = false; }
+    flashOn(slide, 'Could not save. Try again.');
+  }
 }
 // Autoplay requires muted, so the feed starts silent — but a presser clip is carried by
 // what is said, and without a control nothing suggests there is audio at all.
@@ -1000,7 +1074,7 @@ function withSystemCards(base) {
   if (!rows.length || active !== 'all') return rows;
   const pos = (n, len) => Math.max(0, Math.min(Number.isFinite(Number(n)) ? Number(n) : len, len));
   // Nothing to pick means nothing to offer: a feed with no tagged players gets no picker.
-  const offer = DATA.picker?.players?.length && whoAmI() && (forcePicker || (!DATA.prefs && !skippedRecently() && Number(knobs.picker_position) >= 0));
+  const offer = DATA.picker?.players?.length && whoAmI() && (forcePicker || (knobs.pick_prompt !== 'chip' && !DATA.prefs && !skippedRecently() && Number(knobs.picker_position) >= 0));
   if (offer) rows.splice(forcePicker ? 0 : pos(knobs.picker_position, rows.length), 0, systemCard('sys-picker', DATA.prefs ? 'Your feed' : 'Make it yours', 'picker'));
   // A recognised fan's welcome sits at card 2: the first clip plays, then the club says what it knows.
   if (welcomeInfo && !forcePicker) rows.splice(pos(1, rows.length), 0, systemCard('sys-welcome', 'Welcome!', 'welcome', welcomeInfo));
@@ -1179,17 +1253,19 @@ function toast(m, action = null) {
  * says so and offers to make it a pick. Nothing is saved unless the fan taps that; the lift
  * lasts the session. Seen cards never move, so the feed never jumps under the thumb.
  */
-function likeLift(card, at) {
-  const player = (card.entities?.players || [])[0];
-  if (!player) return;
-  const name = DATA.picker?.players?.find((p) => p.slug === player)?.name || (DATA.focus?.slug === player ? DATA.focus.name : null) || displayName(player);
+/**
+ * Move a player's unseen cards to come next, in place, with a reason on each. Shared by a like
+ * and a chip pick. Returns how many moved; a title that reads as a repeat of the current card or
+ * of another lifted card never moves.
+ */
+function liftPlayer(player, name, at, why) {
   const feed = $('#feed');
   const slides = [...feed.querySelectorAll('.slide')];
   const cards = slides.map((s) => cardOf(s));
+  const current = cards[at];
   const head = slides.slice(0, at + 1), tail = slides.slice(at + 1);
-  // Never lift a card that reads as a repeat: same title as the liked card or as another lifted card.
   const titleKey = (t) => String(t || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  const seenTitles = new Set([titleKey(card.headline)]);
+  const seenTitles = new Set([titleKey(current?.headline)]);
   const hit = tail.filter((s) => {
     const c = cardOf(s);
     if (c.system || !(c.entities?.players || []).includes(player)) return false;
@@ -1197,9 +1273,8 @@ function likeLift(card, at) {
     if (seenTitles.has(k)) return false;
     seenTitles.add(k); return true;
   });
-  if (!hit.length) return;
+  if (!hit.length) return 0;
   const rest = tail.filter((s) => !hit.includes(s));
-  const why = { kind: 'like', key: player, label: `Because you liked ${name}` };
   for (const s of hit) {
     const c = cardOf(s);
     if (!c.why || c.why.kind === 'watch' || c.why.kind === 'affinity') {
@@ -1213,10 +1288,20 @@ function likeLift(card, at) {
   for (const s of [...hit, ...rest]) feed.appendChild(s);
   order.forEach((s, i) => { s.dataset.index = String(i); s.setAttribute('aria-posinset', String(i + 1)); });
   if (PAGE.layout === 'rail') renderTiles(ROWS, (k) => (DATA.collections.find((c) => c.key === k) || {}).name || k);
-  track('like_lift', { ...cardParams(card, at), pref_player: player, lifted_n: hit.length });
+  return hit.length;
+}
+
+function likeLift(card, at) {
+  const player = (card.entities?.players || [])[0];
+  if (!player) return;
+  const name = playerName(player);
+  const lifted = liftPlayer(player, name, at, { kind: 'like', key: player, label: `Because you liked ${name}` });
+  if (!lifted) return;
+  track('like_lift', { ...cardParams(card, at), pref_player: player, lifted_n: lifted });
   const canPick = whoAmI() && DATA.picker && !(DATA.prefs?.players || []).includes(player) && (DATA.prefs?.players || []).length < (Number(DATA.picker?.max_players) || 3);
+  const slide = $('#feed').querySelector(`.slide[data-index="${at}"]`);
   toast(`Noted. More ${name}, coming up.`, canPick ? { label: 'Add to my picks', onClick: () => savePrefs({ players: [...(DATA.prefs?.players || []), player] }, 'like', card, at, { pref_player: player })
-    .then(() => toast(`${name} is one of your picks now.`)).catch(() => flashOn(slides[at], 'Could not save. Try again.')) } : null);
+    .then(() => toast(`${name} is one of your picks now.`)).catch(() => flashOn(slide, 'Could not save. Try again.')) } : null);
 }
 /** "c-j-stroud" → "C J Stroud" when the dictionary has no better name. */
 const displayName = (slug) => String(slug || '').split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');

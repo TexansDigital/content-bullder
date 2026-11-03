@@ -424,7 +424,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
         : { key: b.key, until: b.until, label: b.label })),
       going: p.going,
       watch: p.watch,
-      source: ['edit', 'offer', 'week', 'welcome'].includes(body?.source) ? body.source : 'picker',
+      source: ['edit', 'offer', 'week', 'welcome', 'chip', 'like'].includes(body?.source) ? body.source : 'picker',
       updated_at: now().toISOString(),
     };
     const { base } = supa(env);

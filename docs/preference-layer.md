@@ -84,3 +84,17 @@ Shown once a day. Events: `welcome_shown` (welcome_source picks|watch, welcome_c
 `welcome_action` (keep|edit|more|skip), `welcome_skipped` (recognised but nothing to show).
 Experiment `welcome`: control 0 against welcome 1. Metric: completion and return rate for
 recognised sessions against shared.
+
+## Knob added 3 Nov 2026: `pick_prompt`
+
+`card` (default): the picker card at `picker_position`. `chip`: no picker card on its own; after a
+fan completes a clip about a player, the next card carries one chip, "More Tank Dell". One tap
+saves the pick (source `chip`) without leaving the card, lifts that player's unseen clips to come
+next with "Because you picked" on each, and the chip reads "Dell first" for two seconds. Left
+alone it fades after seven seconds; the same player is not offered again that day; a system card
+never carries one. The picker card stays reachable from the Your feed chip. Events:
+`pick_chip_shown` (pref_player, chip_from), `prefs_save` with save_source `chip`.
+
+Also 3 Nov, both arms: a fan who looks at the picker card for a second and swipes past it has
+said no; `prefs_swipe` is recorded and the card is not offered again for a day (`txfeed.prefs.swiped`).
+Experiment `pick_prompt`: control card vs chip. Metric: saves per fan who completed a player clip.
