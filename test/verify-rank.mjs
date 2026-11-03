@@ -2,7 +2,7 @@
  * Affinity ranking, pure. What a Stroud fan sees first, what an editor's order survives,
  * and when a thin profile is rightly ignored.
  */
-import { rankFeed, affinity, freshness, RANKABLE_FROM, makePrefs, explain, displayName, assignArm, resolveExperiments, KNOB_DEFAULTS, LANES, offerHit } from '../src/rank.js';
+import { rankFeed, affinity, freshness, RANKABLE_FROM, makePrefs, explain, displayName, assignArm, resolveExperiments, KNOB_DEFAULTS, LANES, offerHit, laneFor, lanesWithCards } from '../src/rank.js';
 
 const ok = [], bad = [];
 const t = (n, c) => (c ? ok : bad).push(n);
@@ -141,7 +141,10 @@ const res = resolveExperiments([exp, { key: 'bad key!', arms: { a: 1 } }, null],
 const arm = res.experiments.picker_pos;
 t('resolution reports the arm and applies only known knobs', arm && (arm === 'early' ? res.knobs.picker_position === 0 : res.knobs.picker_position === KNOB_DEFAULTS.picker_position) && !('not_a_knob' in res.knobs) && !('bad key!' in res.experiments));
 t('with nothing running the knobs are the defaults', JSON.stringify(resolveExperiments([], 'sess_x').knobs) === JSON.stringify(KNOB_DEFAULTS));
-t('every lane has a name and at least one matcher', Object.values(LANES).every((l) => l.name && ((l.types || []).length || (l.collections || []).length || l.action)));
+t('every lane has a name and at least one matcher', Object.values(LANES).every((l) => l.name && ((l.types || []).length || (l.themes || []).length || (l.collections || []).length || l.action)));
+t('a content type belongs to one lane at most', (() => { const seen = new Set(); return Object.values(LANES).every((l) => (l.types || []).every((t) => !seen.has(t) && seen.add(t))); })());
+t('a music clip is in the music lane by its theme, and lanesWithCards carries types and themes', laneFor({ contentType: 'fun_trends', entities: { themes: ['music'] } }) === 'music' && laneFor({ contentType: 'fun_trends', entities: { themes: [] } }) === 'fun' && laneFor({ contentType: 'hype_brand' }) === 'hype' && laneFor({ contentType: 'coaches' }) === 'coaches' && laneFor({ collection: 'gameday' }) === null
+  && lanesWithCards([{ contentType: 'x', entities: { themes: ['music'] } }]).some((l) => l.key === 'music' && l.themes.includes('music') && Array.isArray(l.types)));
 
 console.log('PASS ' + ok.length); ok.forEach((x) => console.log('  + ' + x));
 if (bad.length) { console.log('FAIL ' + bad.length); bad.forEach((x) => console.log('  - ' + x)); }

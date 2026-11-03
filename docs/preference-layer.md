@@ -98,3 +98,14 @@ never carries one. The picker card stays reachable from the Your feed chip. Even
 Also 3 Nov, both arms: a fan who looks at the picker card for a second and swipes past it has
 said no; `prefs_swipe` is recorded and the card is not offered again for a day (`txfeed.prefs.swiped`).
 Experiment `pick_prompt`: control card vs chip. Metric: saves per fan who completed a player clip.
+
+## Lanes, 3 Nov 2026
+
+Eight lanes, each a name and the content types, themes or collections that put a card in it:
+Game action, Gameday hype, Mic'd up & inside, DeMeco & the coaches, Music & 713, Fun & TORO,
+Community, Gameday & tickets. Themes are tagged like players, by alias (`feed_entity_aliases`
+entity_type `theme`): music (That Mexican OT, 713 Sessions, Johnny Dang, halftime show, ...),
+toro, london. The chip offers a lane when the completed clip has no player: "More Gameday hype",
+one tap, saved as a want (source `chip`, `pref_lane`), and that lane's unseen cards come next.
+An empty lane is never offered. Asked by data: of the 300 Shorts served on 3 Nov, 101 name a
+player, 282 carry a content type, 11 are music and 8 are TORO.

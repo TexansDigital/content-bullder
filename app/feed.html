@@ -739,15 +739,23 @@ function cardClosed(slide, c, i, complete) {
     track('prefs_swipe', { ...cardParams(c, i), card_dwell_ms: dwell });
   }
   // A completed clip about a player earns one tap on the next card: "More Tank Dell".
-  if (complete && knobs.pick_prompt === 'chip' && !c.system) {
+  if (complete && knobs.pick_prompt === 'chip' && !c.system && whoAmI() && DATA.picker) {
     const player = (c.entities?.players || [])[0];
     const have = DATA.prefs?.players || [];
     const room = have.length < (Number(DATA.picker?.max_players) || 3);
-    if (player && whoAmI() && DATA.picker && !have.includes(player) && room && !seen('chip', player, 86400e3)) {
+    if (player && !have.includes(player) && room && !seen('chip', player, 86400e3)) {
       pendingChip = { player, name: playerName(player), from: c.id };
+    } else if (!player) {
+      // No player is the point of this clip: offer the lane it is in ("More Gameday hype").
+      const lane = laneForCard(c);
+      const wants = DATA.prefs?.wants || [];
+      if (lane && !wants.includes(lane.key) && !seen('chip', `lane:${lane.key}`, 86400e3)) pendingChip = { lane: lane.key, name: lane.name, from: c.id };
     }
   }
 }
+
+/** The lane a card is in, by what it is about, from the lane table the server sent with the picker. */
+const laneForCard = (c) => (DATA.picker?.lanes || []).find((l) => (l.types || []).includes(c?.contentType) || (l.themes || []).some((t) => (c?.entities?.themes || []).includes(t))) || null;
 
 const playerName = (player) => DATA.picker?.players?.find((p) => p.slug === player)?.name || (DATA.focus?.slug === player ? DATA.focus.name : null) || displayName(player);
 
@@ -761,8 +769,8 @@ function showChip(slide, c, i, chip) {
   btn.onclick = () => pickFromChip(slide, c, i, chip);
   slide.appendChild(btn);
   requestAnimationFrame(() => btn.classList.add('in'));
-  markSeen('chip', chip.player);
-  track('pick_chip_shown', { ...cardParams(c, i), pref_player: chip.player, chip_from: chip.from });
+  markSeen('chip', chip.lane ? `lane:${chip.lane}` : chip.player);
+  track('pick_chip_shown', { ...cardParams(c, i), ...(chip.lane ? { pref_lane: chip.lane } : { pref_player: chip.player }), chip_from: chip.from });
   setTimeout(() => { if (!btn.classList.contains('done') && !btn.disabled) { btn.classList.remove('in'); setTimeout(() => btn.remove(), 300); } }, CHIP_MS);
 }
 
@@ -771,19 +779,23 @@ async function pickFromChip(slide, c, i, chip) {
   const btn = slide.querySelector('.pickchip');
   if (btn) btn.disabled = true;
   const base = DATA.prefs || {};
-  const players = [...(base.players || []), chip.player];
-  const body = { players, wants: base.wants || [], format: base.format || null, follow: base.follow || null,
+  const players = chip.lane ? (base.players || []) : [...(base.players || []), chip.player];
+  const wants = chip.lane ? [...(base.wants || []), chip.lane] : (base.wants || []);
+  const body = { players, wants, format: base.format || null, follow: base.follow || null,
     boosts: (base.boosts || []).map((b) => ({ key: b.key, until: b.until, label: b.label })), going: base.going || null, watch: base.watch || null,
     source: 'chip', ...(pocketId ? { pocket_id: pocketId } : {}), ...(mintDevice() ? { device_id: deviceId } : {}) };
   try {
     const r = await fetch('/api/prefs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     if (!r.ok) throw new Error(String(r.status));
     const res = await r.json();
-    DATA.prefs = res.prefs || { ...base, players };
-    track('prefs_save', { ...cardParams(c, i), players_n: players.length, wants_n: body.wants.length, pref_format: body.format || '', pref_follow: body.follow || '',
-      boosts_n: body.boosts.length, pref_going: body.going || '', pref_watch: body.watch || '', save_source: 'chip', pref_player: chip.player, chip_from: chip.from });
-    const lifted = liftPlayer(chip.player, chip.name, i, { kind: 'pick', key: chip.player, label: `Because you picked ${chip.name}` });
-    if (btn) { btn.classList.add('done'); btn.innerHTML = `${esc(chip.name.split(' ').pop())} first${lifted ? '' : ', when there is more'}`; setTimeout(() => btn.remove(), 2400); }
+    DATA.prefs = res.prefs || { ...base, players, wants };
+    track('prefs_save', { ...cardParams(c, i), players_n: players.length, wants_n: wants.length, pref_format: body.format || '', pref_follow: body.follow || '',
+      boosts_n: body.boosts.length, pref_going: body.going || '', pref_watch: body.watch || '', save_source: 'chip', ...(chip.lane ? { pref_lane: chip.lane } : { pref_player: chip.player }), chip_from: chip.from });
+    const lifted = chip.lane
+      ? liftWhere((card) => (laneForCard(card) || {}).key === chip.lane, i, { kind: 'lane', key: chip.lane, label: `Because you want ${chip.name}` })
+      : liftPlayer(chip.player, chip.name, i, { kind: 'pick', key: chip.player, label: `Because you picked ${chip.name}` });
+    const said = chip.lane ? `${chip.name} first` : `${chip.name.split(' ').pop()} first`;
+    if (btn) { btn.classList.add('done'); btn.innerHTML = `${esc(said)}${lifted ? '' : ', when there is more'}`; setTimeout(() => btn.remove(), 2400); }
     chips();
   } catch {
     if (btn) { btn.disabled = false; }
@@ -1259,6 +1271,9 @@ function toast(m, action = null) {
  * of another lifted card never moves.
  */
 function liftPlayer(player, name, at, why) {
+  return liftWhere((c) => (c.entities?.players || []).includes(player), at, why);
+}
+function liftWhere(matches, at, why) {
   const feed = $('#feed');
   const slides = [...feed.querySelectorAll('.slide')];
   const cards = slides.map((s) => cardOf(s));
@@ -1268,7 +1283,7 @@ function liftPlayer(player, name, at, why) {
   const seenTitles = new Set([titleKey(current?.headline)]);
   const hit = tail.filter((s) => {
     const c = cardOf(s);
-    if (c.system || !(c.entities?.players || []).includes(player)) return false;
+    if (c.system || !matches(c)) return false;
     const k = titleKey(c.headline);
     if (seenTitles.has(k)) return false;
     seenTitles.add(k); return true;

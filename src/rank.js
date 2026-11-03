@@ -38,10 +38,21 @@ export const FORMATS = ['video', 'read', 'both'];
  * for the two the catalogue does not type, a collection or the presence of a ticket action).
  * Named in the fan's words, not the taxonomy's.
  */
+/**
+ * Lanes: what a fan can ask for more of when no player is the point. Each is a name and the
+ * content types, themes or collections that put a card in it. Split 3 Nov 2026 so a chip can
+ * name what the fan just watched: game action is not the same ask as pre-game hype, a presser
+ * is not the same as a mic'd-up, and the music clips (713 Sessions, That Mexican OT) had no
+ * lane at all. A card is in the first lane whose types or themes match it; an empty lane is
+ * never offered (lanesWithCards).
+ */
 export const LANES = {
-  game_action: { name: 'Game action', types: ['game_action', 'opponent_week', 'hype_brand'] },
-  inside: { name: "Mic'd up & inside", types: ['player_stories', 'coaches', 'front_office', 'workout_camp', 'offseason_camp', 'draft_roster'] },
-  fun: { name: 'Fun & TORO', types: ['fun_trends', 'pranks', 'player_pranks', 'mascot_skits', 'mascot', 'trends', 'challenges'] },
+  game_action: { name: 'Game action', types: ['game_action', 'opponent_week'] },
+  hype: { name: 'Gameday hype', types: ['hype_brand'] },
+  inside: { name: "Mic'd up & inside", types: ['player_stories', 'workout_camp', 'offseason_camp', 'draft_roster'] },
+  coaches: { name: 'DeMeco & the coaches', types: ['coaches', 'front_office'] },
+  music: { name: 'Music & 713', themes: ['music'] },
+  fun: { name: 'Fun & TORO', types: ['fun_trends', 'pranks', 'player_pranks', 'mascot_skits', 'mascot', 'trends', 'challenges'], themes: ['toro'] },
   community: { name: 'Community', types: ['community', 'calendar'], collections: ['community', 'flag'] },
   gameday: { name: 'Gameday & tickets', collections: ['gameday'], action: true },
 };
@@ -147,14 +158,19 @@ export function offerHit(item, offer) {
 
 /** Does this card belong to a lane: by content type, by collection, or by carrying an action link. */
 export const laneHit = (item, lane) => Boolean(lane && ((lane.types || []).includes(item.contentType)
+  || (lane.themes || []).some((t) => (item.entities?.themes || []).includes(t))
   || (lane.collections || []).includes(item.collection) || (lane.action && item.action?.url)));
-/** The lanes that have at least one card to move: an empty lane is never offered. */
+/** The lanes that have at least one card to move: an empty lane is never offered. The types and
+ *  themes ride along so the page can name the lane a card is in without a second copy of this table. */
 export const lanesWithCards = (items) => Object.entries(LANES)
   .filter(([, l]) => (items || []).some((i) => laneHit(i, l)))
-  .map(([key, l]) => ({ key, name: l.name }));
+  .map(([key, l]) => ({ key, name: l.name, types: l.types || [], themes: l.themes || [] }));
 
 /** The lane a content type belongs to, for "want more of this?" */
 export const laneOf = (type) => Object.entries(LANES).find(([, l]) => (l.types || []).includes(type))?.[0] || null;
+/** The lane a card is in by what it is about (type or theme), never by where it sits or what it links to. */
+export const laneFor = (item) => Object.entries(LANES).find(([, l]) => (l.types || []).includes(item?.contentType)
+  || (l.themes || []).some((t) => (item?.entities?.themes || []).includes(t)))?.[0] || null;
 /** The player whose page the feed is framed on. The page is the intent: it outranks a pick
  *  plus the strongest history (2.0 + 2.1 + 0.35), so their cards lead on their own page. */
 export const FOCUS = 5.0;

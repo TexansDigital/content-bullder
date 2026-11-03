@@ -99,6 +99,32 @@ const flush = (pg) => pg.waitForTimeout(2600);
   await r.ctx.close();
 }
 
+/* ---------- chip arm: a clip with no player offers its lane instead ---------- */
+{
+  // Re-seed with a camp clip first: no player, content type offseason_camp, which is the "Mic'd up & inside" lane.
+  const j = async (p, o) => (await fetch(CHIP + p, { headers: { 'content-type': 'application/json' }, ...o })).json();
+  const items = (await j('/api/items')).items;
+  const camp = items.find((i) => i.headline === 'Camp day'), dime = items.find((i) => i.headline === 'Stroud dime');
+  await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: camp.id, changes: { sortIndex: -1, advance: { mode: 'auto', seconds: 2 } } }) });
+  await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: dime.id, changes: { sortIndex: 1, advance: { mode: 'manual', seconds: 6 } } }) });
+  const r = await open(CHIP, `pid=sess_${RUN}_lane1`);
+  const o = await order(r.pg);
+  t(`the camp clip leads (${o.slice(0, 3).join(' ')})`, o[0] === camp.id);
+  await r.pg.waitForTimeout(3400);
+  const c = await chip(r.pg);
+  t(`after a clip with no player, the chip names the lane: More Mic'd up & inside (${c && c.text})`, c && /Mic.d up & inside/.test(c.text) && /^More/.test(c.text));
+  await flush(r.pg);
+  t('pick_chip_shown carries the lane, not a player', r.ev.some((e) => e.event === 'pick_chip_shown' && e.params.pref_lane === 'inside' && !e.params.pref_player));
+  await r.pg.tap('.pickchip');
+  await flush(r.pg);
+  t('a tap saves the lane as a want from the chip', r.ev.some((e) => e.event === 'prefs_save' && e.params.save_source === 'chip' && e.params.pref_lane === 'inside' && e.params.wants_n === 1 && e.params.players_n === 0));
+  const c2 = await chip(r.pg);
+  t('the chip says the lane took', c2 === null || (c2.done && /Mic.d up & inside first/.test(c2.text)));
+  await r.ctx.close();
+  await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: camp.id, changes: { sortIndex: 1, advance: { mode: 'manual', seconds: 6 } } }) });
+  await j('/api/items', { method: 'PATCH', body: JSON.stringify({ id: dime.id, changes: { sortIndex: 0, advance: { mode: 'auto', seconds: 2 } } }) });
+}
+
 /* ---------- control arm: the picker card, and a swipe past it counts as no for a day ---------- */
 {
   const r = await open(CONTROL, `pid=sess_${RUN}_ctl1`);
