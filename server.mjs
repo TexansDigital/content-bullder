@@ -295,6 +295,16 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true, prefs: all[who] });
     }
 
+    if (p === '/api/who' && req.method === 'POST') {
+      // Local twin of the Worker's recognition answer, for the browser suites: one fixture GUID
+      // is a fan who saved picks before, one is a fan we only watched, the rest are unknown.
+      const body = await readBody(req);
+      const guid = String(body?.guid || '').toLowerCase();
+      if (guid === '0123456789abcdef0123456789abcdef') return json(res, 200, { known: true, picks: ['c-j-stroud', 'tank-dell'], picks_named: ['C.J. Stroud', 'Tank Dell'], player: null, player_name: null, source: 'picks', copied: true });
+      if (guid === 'abcdef0123456789abcdef0123456789') return json(res, 200, { known: true, picks: null, player: 'tank-dell', player_name: 'Tank Dell', source: 'watch', copied: false });
+      return json(res, 200, { known: false, picks: null, player: null, player_name: null, source: null, copied: false });
+    }
+
     if (req.method !== 'GET' && req.method !== 'HEAD' && !mutationAllowed(req))
       return json(res, 403, { error: 'cross-origin or unauthenticated write refused' });
 

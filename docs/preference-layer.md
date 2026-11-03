@@ -69,3 +69,18 @@ is our own file when a master exists, else the Short's embed muted with no contr
 invisible until frames move, takes no taps, pauses while the stage is open, and is skipped for
 fans with save-data or reduced motion on. Event: `tile_preview` (card, position, preview_kind),
 once per previewing tile. Metric: rail_open per rail feed_load.
+
+## Knob added 3 Nov 2026: `welcome_card`
+
+A fan the handshake recognised (an Eloqua visitor GUID, passed only with Targeting consent) is
+asked about once per load through `POST /api/who { guid, sid }`. The Worker answers with what the
+feed can act on and nothing else: the picks that fan saved in any earlier session (copied onto
+this session, so the ranking is already theirs), or the player they watch most across those
+sessions, and whether Eloqua knows the visitor. Never a name, never an email. With something to
+say, card 2 is "Welcome!" (never "welcome back", Adam 3 Nov): "Your picks are saved: C.J. Stroud,
+Tank Dell. They lead this feed on this device too." with Keep going and Edit picks, or "You have
+been watching Tank Dell. Want Dell first?" with one tap that saves the pick (source `welcome`).
+Shown once a day. Events: `welcome_shown` (welcome_source picks|watch, welcome_copied),
+`welcome_action` (keep|edit|more|skip), `welcome_skipped` (recognised but nothing to show).
+Experiment `welcome`: control 0 against welcome 1. Metric: completion and return rate for
+recognised sessions against shared.

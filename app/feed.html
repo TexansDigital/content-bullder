@@ -402,6 +402,9 @@ let askedThisLoad = false;
 const WEEK_MIN = 5;
 let knobs = { ...KNOB_DEFAULTS };
 let forcePicker = false;
+/** What the Worker knows about a recognised fan, once asked; null until then or when nothing is known. */
+let welcomeInfo = null;
+let welcomeAsked = false;
 let soundHinted = false;
 const skipKey = 'txfeed.prefs.skip';
 /** Things the fan has already seen or declined: "boost:draft-week", "week:2970", "offer:giants-week". */
@@ -644,12 +647,39 @@ addEventListener('message', (e) => {
   if (identified && guid && !eloquaGuid && measuring) {
     eloquaGuid = guid;
     emit('identity', payloadFor({ identity_source: 'host-message', eloqua_guid: guid }));
+    welcome();
     return;
   }
   if (guid) eloquaGuid = guid;
   if (d.pocketId == null) { flush('device'); return; }
   setPocketId(d.pocketId, 'host-message');
+  welcome();
 });
+
+/**
+ * A recognised fan is welcomed with what the club already knows: the picks they saved in an
+ * earlier session, now applied here too, or the player they watch most. Asked once per load,
+ * only with the knob on, only when measuring, and shown once a day. Nothing known, nothing shown.
+ */
+async function welcome() {
+  if (welcomeAsked || !eloquaGuid || !measuring || !DATA || !Number(knobs.welcome_card)) return;
+  if (seen('welcome', 'shown', 86400e3)) return;
+  const sid = whoAmI();
+  if (!sid) return;
+  welcomeAsked = true;
+  try {
+    const r = await fetch('/api/who', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ guid: eloquaGuid, sid }) });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d?.known || (!(d.picks || []).length && !d.player)) { track('welcome_skipped', { welcome_known: Boolean(d?.known) }); return; }
+    welcomeInfo = d;
+    markSeen('welcome', 'shown');
+    // Picks copied onto this session: the feed is re-asked as them, so the order and the
+    // reasons are already theirs when the card says so. Otherwise just redraw with the card.
+    if (d.copied) await reload(null, 'welcome'); else { render(); }
+    track('welcome_shown', { welcome_source: d.source, welcome_copied: Boolean(d.copied), card_id: 'sys-welcome' });
+  } catch { /* a slow lookup is not a dark feed */ }
+}
 // The /enter page (same origin, in the modal) says when its form was submitted.
 addEventListener('message', (e) => {
   if (e.data?.source === 'txfeed-enter' && e.data.event === 'submit') track('capture_submit', { card_id: 'sys-enter' });
@@ -972,6 +1002,8 @@ function withSystemCards(base) {
   // Nothing to pick means nothing to offer: a feed with no tagged players gets no picker.
   const offer = DATA.picker?.players?.length && whoAmI() && (forcePicker || (!DATA.prefs && !skippedRecently() && Number(knobs.picker_position) >= 0));
   if (offer) rows.splice(forcePicker ? 0 : pos(knobs.picker_position, rows.length), 0, systemCard('sys-picker', DATA.prefs ? 'Your feed' : 'Make it yours', 'picker'));
+  // A recognised fan's welcome sits at card 2: the first clip plays, then the club says what it knows.
+  if (welcomeInfo && !forcePicker) rows.splice(pos(1, rows.length), 0, systemCard('sys-welcome', 'Welcome!', 'welcome', welcomeInfo));
   const cap = knobs.capture_card;
   // audience: 'all' (default), 'prefs' (only fans who have set their feed: the email ask comes
   // after the web payoff, never instead of it), 'new' (only fans who have not).
@@ -1075,6 +1107,20 @@ function systemMarkup(c, i, total) {
     role="article" aria-posinset="${i + 1}" aria-setsize="${total}" aria-label="${esc(c.headline)}">`;
   if (c.system === 'picker') return open + pickerMarkup() + '</article>';
   const x = c.extra || {};
+  if (c.system === 'welcome') {
+    const nameOf = (slug, i) => (x.picks_named || [])[i] || DATA.picker?.players?.find((p) => p.slug === slug)?.name || slug.replace(/-/g, ' ');
+    const picks = (x.picks || []).map(nameOf);
+    const first = (x.player_name || '').split(' ').pop();
+    return open + (x.source === 'picks'
+      ? `<div class="pk enter welcome"><div class="stamp"><i></i><span>Welcome // picks saved</span></div><h2>Welcome!</h2>
+      <p>Your picks are saved: ${esc(picks.join(', '))}. They lead this feed on this device too.</p>
+      <div class="acts"><button class="save ok" type="button">Keep going</button><button class="skip edit" type="button">Edit picks</button></div>
+      <p class="note">Saved to your Texans session. Nothing personal is stored here.</p></div>`
+      : `<div class="pk enter welcome"><div class="stamp"><i></i><span>Welcome // we noticed</span></div><h2>Welcome!</h2>
+      <p>You have been watching ${esc(x.player_name || '')}. Want ${esc(first)} first?</p>
+      <div class="acts"><button class="save yes" type="button">Yes, ${esc(first)} first</button><button class="skip" type="button">Not now</button></div>
+      <p class="note">One tap. The feed moves and says why.</p></div>`) + `<p class="flash" hidden></p></article>`;
+  }
   if (c.system === 'expiry') {
     const picks = (DATA.prefs?.players || []).map((slug) => DATA.picker?.players?.find((p) => p.slug === slug)?.name || slug.replace(/-/g, ' '));
     return open + `<div class="pk enter"><div class="stamp"><i></i><span>Your feed // update</span></div><h2>${esc(c.headline)}</h2><p>Back to your picks${picks.length ? `: ${esc(picks.join(', '))}` : ''}.</p>
@@ -1223,6 +1269,19 @@ function wireSystem(s, card, at) {
       openFrame(`/enter?${q}`, card.headline);
       track('capture_open', { ...cardParams(card, at), ...(mine ? { pref_player: mine.slug } : {}) });
     };
+    return;
+  }
+  if (card.system === 'welcome') {
+    const done = (action) => { track('welcome_action', { ...cardParams(card, at), welcome_action: action, welcome_source: x.source }); welcomeInfo = null; };
+    const ok = s.querySelector('.ok'), edit = s.querySelector('.edit'), yes = s.querySelector('.yes'), skip = s.querySelector('.skip:not(.edit)');
+    if (ok) ok.onclick = () => { done('keep'); render(); $('#feed').scrollTop = Math.min(at, ROWS.length - 1) * $('#feed').clientHeight; };
+    if (edit) edit.onclick = () => { done('edit'); forcePicker = true; render(); $('#feed').scrollTop = 0; };
+    if (yes) yes.onclick = async () => {
+      yes.disabled = true;
+      try { await savePrefs({ players: [x.player] }, 'welcome', card, at, { welcome_action: 'more' }); welcomeInfo = null; }
+      catch { yes.disabled = false; flashOn(s, 'Could not save. Try again.'); }
+    };
+    if (skip) skip.onclick = () => { done('skip'); render(); $('#feed').scrollTop = Math.min(at, ROWS.length - 1) * $('#feed').clientHeight; };
     return;
   }
   if (card.system === 'expiry') {
@@ -1745,6 +1804,7 @@ try {
   knobs = { ...KNOB_DEFAULTS, ...(DATA.knobs || {}) };
   chips(); render(); applySound();
   track('feed_load', loadParams());
+  welcome();
   // A tab switch or a close ends the session without the observer ever firing again.
   addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'hidden') return;

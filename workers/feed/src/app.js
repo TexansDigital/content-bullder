@@ -25,6 +25,7 @@ import { createMedia, applyMedia } from './media.js';
 import { createEloqua } from './eloqua.js';
 
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
+const ELQ_GUID = /^[0-9a-f]{32}$/i;
 /** A player slug as the dictionary spells it: the page the feed is framed on names one. */
 const SLUG = /^[a-z0-9][a-z0-9-]{1,59}$/;
 const FORM_NAME = /^[A-Za-z0-9_.-]{3,120}$/;
@@ -423,7 +424,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
         : { key: b.key, until: b.until, label: b.label })),
       going: p.going,
       watch: p.watch,
-      source: ['edit', 'offer', 'week'].includes(body?.source) ? body.source : 'picker',
+      source: ['edit', 'offer', 'week', 'welcome'].includes(body?.source) ? body.source : 'picker',
       updated_at: now().toISOString(),
     };
     const { base } = supa(env);
@@ -512,6 +513,59 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
   }
 
   /**
+   * Who is this fan, by the Eloqua visitor GUID the handshake passed? Read only, and only what the
+   * feed can act on: the picks they saved in any earlier session (copied to this session, so the
+   * feed is theirs on this device too), else the player they watch most across those sessions,
+   * else nothing. "Known" also when Eloqua recognises the visitor. Never a name, never an email.
+   *
+   *   POST /api/who { guid, sid }  ->  { known, picks, player, player_name, source, copied }
+   */
+  async function apiWho(request, env, ctx) {
+    const reply = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: jsonHeaders({ 'cache-control': 'private, no-store', 'access-control-allow-origin': '*' }) });
+    if (!env.SUPABASE_SERVICE_KEY) return reply({ known: false, reason: 'not enabled' }, 503);
+    let body;
+    try { body = JSON.parse((await request.text()) || '{}'); } catch { return reply({ error: 'bad json' }, 400); }
+    const guid = String(body?.guid || '').toLowerCase();
+    const sid = String(body?.sid || '');
+    if (!ELQ_GUID.test(guid) || !ID_SHAPE.test(sid)) return reply({ error: 'guid and sid required' }, 400);
+    const key = env.SUPABASE_SERVICE_KEY;
+    const built = await shared(request, env, ctx);
+    const names = built.names || {};
+    // Every earlier session this GUID was seen on, newest first; never the session asking.
+    const idRows = await rest(env, `feed_events?select=session_id&event=eq.identity&params->>eloqua_guid=eq.${encodeURIComponent(guid)}&order=at.desc&limit=100`, key).catch(() => []);
+    const sessions = [...new Set(idRows.map((r) => r?.session_id).filter((x) => x && x !== sid && ID_SHAPE.test(x)))].slice(0, 25);
+    let picks = null, player = null, source = null, copied = false;
+    if (sessions.length) {
+      const inList = sessions.map(encodeURIComponent).join(',');
+      const prefRows = await rest(env, `feed_preferences?select=session_id,players,wants,format,follow,boosts,going,watch&session_id=in.(${inList})&order=updated_at.desc&limit=5`, key).catch(() => []);
+      const pr = prefRows.find((r) => Array.isArray(r?.players) && r.players.some((x) => names[x]));
+      if (pr) {
+        picks = pr.players.filter((x) => names[x]).slice(0, MAX_PICKS);
+        source = 'picks';
+        // The feed ranks by session id. Copy the saved picks onto this session, once, so the
+        // next /api/feed answer is already theirs; a session that has its own picks keeps them.
+        const mine = await prefsFor(env, sid);
+        if (!mine) {
+          const { base } = supa(env);
+          const row = { session_id: sid, players: picks, wants: pr.wants || [], format: pr.format || null, follow: pr.follow || null, boosts: pr.boosts || [], going: pr.going || null, watch: pr.watch || null, source: 'welcome', updated_at: now().toISOString() };
+          const w = await get(`${base}/rest/v1/feed_preferences?on_conflict=session_id`, { method: 'POST',
+            headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json', prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(row) }).catch(() => null);
+          copied = Boolean(w && w.ok);
+        }
+      } else {
+        const profs = await rest(env, `feed_profiles?select=entity_weights&session_id=in.(${inList})&limit=25`, key).catch(() => []);
+        const tally = {};
+        for (const pf of profs) for (const [k, v] of Object.entries(pf?.entity_weights || {})) if (k.startsWith('player:')) tally[k.slice(7)] = (tally[k.slice(7)] || 0) + Number(v || 0);
+        const top = Object.entries(tally).filter(([slug, w]) => names[slug] && w > 0).sort((a, b) => b[1] - a[1])[0];
+        if (top) { player = top[0]; source = 'watch'; }
+      }
+    }
+    let known = sessions.length > 0;
+    if (!known && eloqua.configured(env)) { const v = await eloqua.visitor(env, guid).catch(() => ({ found: false })); known = Boolean(v.found); }
+    return reply({ known, picks, picks_named: picks ? picks.map((x) => displayName(x, names)) : null, player, player_name: player ? displayName(player, names) : null, source, copied });
+  }
+
+  /**
    * Does a visitor GUID resolve to a contact? For Adam to test with his own GUID before anything
    * is built on it. Needs the upload key. Answers the contact id and first name, never more.
    * GET /api/eloqua/lookup?guid=<32 hex>
@@ -547,6 +601,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
         if (method === 'GET' && p === '/api/feed') return apiFeed(request, env, ctx);
         if (method === 'POST' && p === '/api/events') return apiEvents(request, env, ctx);
         if (method === 'POST' && p === '/api/prefs') return apiPrefs(request, env, ctx);
+        if (method === 'POST' && p === '/api/who') return apiWho(request, env, ctx);
         if (method === 'GET' && p === '/enter') return enter(request, env);
         if (method === 'GET' && p.startsWith('/media/')) return media.serve(request, env, p.slice('/media/'.length));
         if (method === 'POST' && p === '/api/media') return media.upload(request, env);

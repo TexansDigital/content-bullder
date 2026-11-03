@@ -373,6 +373,9 @@ export const KNOB_DEFAULTS = {
   /** Rail layout only: how many lead tiles play a muted preview instead of a still (0 to 3). The
    *  strip is seen and scrolled past; a moving first tile is the invitation to tap. 0 is off. */
   rail_preview: 0,
+  /** A fan the handshake recognised (Eloqua visitor GUID) opens on a "Welcome!" card carrying the
+   *  picks they saved in any earlier session, or the player they watch most. 0 off, 1 on. */
+  welcome_card: 0,
 };
 
 export function fnv1a(str) {
