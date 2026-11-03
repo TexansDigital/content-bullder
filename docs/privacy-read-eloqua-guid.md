@@ -1,7 +1,7 @@
 # Privacy read: recognising a fan from the Eloqua visitor id
 
-For whoever signs off privacy for the club. Written 2 Nov 2026 so the question is specific. One
-page, one decision.
+Written 2 Nov 2026 so the question was specific. All three decisions on this page are now made
+(coverage 3 Nov, consent category and retention 2 Nov); it stays as the record of why.
 
 ## What the feed does
 
@@ -46,8 +46,9 @@ you with offers and content that we think may be of interest to you".
 
 ## The decisions we need
 
-1. **Coverage.** Does the use above fit under those clauses as written, with no change to the
-   notice? Our reading is yes: first-party id, first-party personalisation, already disclosed.
+1. **Coverage.** Answered by Adam Cann, 3 Nov 2026: yes. The Eloqua pixels on houstontexans.com
+   are already approved for this purpose, so recognising a visitor from the id those pixels set
+   and personalising content on it is within the approved use. No change to the notice.
 2. **Consent category.** Answered 2 Nov: the `ELOQUA` cookie is a Targeting cookie in the
    club's OneTrust instance, so the id is gated on C0004 as above. Worth a look from the same
    seat: the site's session-attribution script records the same id under Performance only.
