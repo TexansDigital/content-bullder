@@ -355,6 +355,22 @@ t('?formats= keeps only those card formats: no stories for the news page', onlyV
 const badFormats = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?formats=bogus'), SITE, ctx)).json();
 t('an unknown format filter is ignored', badFormats.clips.length === withSite.clips.length);
 
+// ---- automated bursts are marked, like qa traffic ----
+{
+  const posted = [];
+  const a = createApp({ feedHtml: 'x', deps: { fetch: async (url, opts = {}) => { if (/feed_events/.test(url) && opts.method === 'POST') { posted.push(...JSON.parse(opts.body)); return { ok: true, status: 201 }; } return mock()(url, opts); }, cache: null } });
+  const t0 = Date.parse('2026-11-03T03:00:00.000Z');
+  const burst = Array.from({ length: 12 }, (_, i) => ({ event: 'rail_open', params: { card_id: `yt-card${i}`, card_position: i + 1, pocket_id: 'sess_1792089626000_bursty' }, at: new Date(t0 + i * 20).toISOString() }));
+  await a.fetch(req('/api/events', { method: 'POST', body: JSON.stringify({ events: [{ event: 'feed_load', params: { pocket_id: 'sess_1792089626000_bursty' }, at: new Date(t0).toISOString() }, ...burst] }) }), ENV, ctx);
+  await Promise.all(waits.splice(0));
+  t('twelve rail tiles opened inside a second mark the whole batch automated', posted.length === 13 && posted.every((r) => r.params.automated === true));
+  posted.length = 0;
+  const slow = Array.from({ length: 12 }, (_, i) => ({ event: 'rail_open', params: { card_id: `yt-card${i}`, card_position: i + 1, pocket_id: 'sess_1792089626000_human' }, at: new Date(t0 + i * 4000).toISOString() }));
+  await a.fetch(req('/api/events', { method: 'POST', body: JSON.stringify({ events: slow }) }), ENV, ctx);
+  await Promise.all(waits.splice(0));
+  t('twelve tiles opened over a minute are a person and are not marked', posted.length === 12 && posted.every((r) => !('automated' in r.params)));
+}
+
 console.log('PASS ' + ok.length); ok.forEach((x) => console.log('  + ' + x));
 if (bad.length) { console.log('FAIL ' + bad.length); bad.forEach((x) => console.log('  - ' + x)); }
 process.exit(bad.length ? 1 : 0);
