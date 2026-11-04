@@ -125,3 +125,19 @@ twice. The pass stops for the day at `MODEL_TAG_DAILY_USD` (1 dollar; the first 
 0.15 cents a clip, 40 clips for 6 cents, so about 650 clips a day) and asks `MODEL_TAG_PER_RUN` (40) per run. By hand, with the upload
 key: `GET /api/tag/model?limit=5` is a dry run, `POST /api/tag/model` runs it. `/health` reports
 `model_tags`. The review reads `select * from feed_model_tag_report()`.
+
+## Knobs added 4 Nov 2026: `lead_tagged`, `chip_hold`
+
+The 4 Nov review found 82% of card views on cards 1 to 3, the lead card naming no player, and
+0 taps on 50 chips. Two knobs, each behind its own experiment:
+
+- `lead_tagged` (0 | 1): the first player-tagged clip among the opening eight moves to card 1,
+  so the first completed clip can earn a player chip ("More Tank Dell") instead of a lane.
+  Experiment `lead_tagged`, control vs lead, since 4 Nov 12:16 UTC.
+- `chip_hold` (0 | 1): the chip stays on its card until the fan swipes instead of fading after
+  seven seconds. Experiment `chip_hold`, control vs hold, since 4 Nov 14:05 UTC; only sessions
+  in the chip arm of `pick_prompt` see a chip. Both verified live in a session assigned to the
+  lead, chip and hold arms.
+
+`welcome` and `capture_pitch` are paused as drafts until twenty fans have saved picks; neither
+could show a card while nobody had.
