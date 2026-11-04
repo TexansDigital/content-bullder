@@ -1,0 +1,33 @@
+# fan-record: the nightly load behind the fan record (workstream 1, docs/fan-record.md).
+#
+# At 08:45 UTC, between the feed's event prune (08:40) and the fan_records rollup (08:50), it
+#   1. reads the GUIDs and pocket ids already in fan_records from Supabase,
+#   2. reads their ticket clicks and attributed purchases from D1 ht-attribution,
+#   3. writes one row per key into fan_ticket_signals,
+#   4. asks Eloqua (read only) whether up to ELOQUA_PER_RUN GUIDs it has not asked before are
+#      contacts, and writes the contact id, nothing else, into fan_eloqua_contacts.
+# It serves no page. GET /health says whether it is configured; GET /run?dry=1 with the
+# RUN_KEY secret reports what a run would write without writing it.
+name = "fan-record"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "ATTRIBUTION"
+database_name = "ht-attribution"
+database_id = "99dd013c-9777-4927-a094-4db98c8b5d25"
+
+[triggers]
+crons = ["45 8 * * *"]
+
+[vars]
+SUPABASE_URL = "https://xisvulbabqsyxnlyuwcz.supabase.co"
+ELOQUA_PER_RUN = "50"
+
+# Secrets (set once from this directory with `npx wrangler secret put <NAME>`, never commit):
+#   SUPABASE_SERVICE_KEY   service_role key: the fan_* tables are service-role only.
+#   RUN_KEY                any long random string; guards GET /run.
+#   ELOQUA_SITE, ELOQUA_USER, ELOQUA_PASSWORD
+#                          the same read-only API user as txfeed. Without them step 4 is skipped
+#                          and eloqua_known stays null ("not asked").
