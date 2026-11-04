@@ -4,3 +4,5 @@ node_modules
 content/events.ndjson
 workers/feed/.wrangler/
 workers/feed/dist/
+workers/eloqua-sync/.wrangler/
+workers/eloqua-sync/dist/

@@ -1,0 +1,32 @@
+# txfeed-eloqua-sync: the feed's picks onto the Eloqua contact. Workstream 2, docs/workstreams.md.
+#
+# Read only until Adam names the fields and says go: WRITE_ENABLED is "0" and ELOQUA_FIELD_MAP is
+# empty, so the cron and GET /dry-run only plan and log (status 'dry' in feed_eloqua_writes).
+# Its own Worker so a change here can never change what a fan sees in the feed.
+name = "txfeed-eloqua-sync"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+# Nightly at 09:05 UTC, after the feed's profile rollup (08:25) and prune (08:40).
+[triggers]
+crons = ["5 9 * * *"]
+
+[vars]
+SUPABASE_URL = "https://xisvulbabqsyxnlyuwcz.supabase.co"
+# "0": plan and log only. "1": write the mapped fields. Flipped only after Adam says go.
+WRITE_ENABLED = "0"
+# Which feed signal goes to which Eloqua contact field, as JSON. Empty until Adam names them.
+# Keys: favorite_player, players, lanes, format, going, watch, last_feed_visit. Values: the
+# field's internalName (C_...) or its numeric id. Example once named:
+#   {"favorite_player": "C_Feed_Favorite_Player1"}
+ELOQUA_FIELD_MAP = "{}"
+# How far back a recognised session counts and how many contacts one run touches at most.
+LOOKBACK_DAYS = "90"
+RUN_MAX = "200"
+
+# Secrets (set once with `npx wrangler secret put <NAME>` from this directory, never commit):
+#   SUPABASE_SERVICE_KEY   reads feed_eloqua_candidates() and writes feed_eloqua_writes.
+#   ELOQUA_SITE, ELOQUA_USER, ELOQUA_PASSWORD   the same three the feed Worker holds; a Worker
+#                          cannot read another Worker's secrets, so they are set again here.
+#   SYNC_KEY               the key GET /dry-run, GET /fields and POST /run ask for (x-sync-key).
