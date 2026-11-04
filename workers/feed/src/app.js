@@ -38,6 +38,10 @@ const EVENT_NAME = /^[a-z][a-z0-9_]{0,39}$/;
 const MAX_EVENTS = 50;
 /** This many rail tiles opened inside one second is not a person. */
 const AUTOMATED_OPENS = 10;
+// A person taps one thing at a time. Ten of the same tap inside three seconds is a script
+// (4 Nov 2026: one session sent 106 shares and 18 likes in half a minute).
+const AUTOMATED_TAPS = new Set(['rail_open', 'card_like', 'card_share', 'card_play', 'card_action']);
+const AUTOMATED_WINDOW_MS = 3000;
 const MAX_EVENT_BODY = 64 * 1024;
 const MAX_PARAMS_JSON = 4096;
 /** How long an /api/feed answer may be reused before Supabase is asked again. */
@@ -379,9 +383,13 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
     // A person opens one tile at a time. A batch that opens ten or more rail tiles inside one
     // second is a crawler or an accessibility checker clicking every button; its events are kept
     // for debugging but say so, and the reviews leave them out like qa traffic.
-    const opens = rows.filter((r) => r.event === 'rail_open').map((r) => Date.parse(r.at)).sort((a, b) => a - b);
     let burst = false;
-    for (let i = 0; i + AUTOMATED_OPENS - 1 < opens.length; i++) if (opens[i + AUTOMATED_OPENS - 1] - opens[i] <= 1000) { burst = true; break; }
+    for (const type of AUTOMATED_TAPS) {
+      const taps = rows.filter((r) => r.event === type).map((r) => Date.parse(r.at)).sort((a, b) => a - b);
+      const win = type === 'rail_open' ? 1000 : AUTOMATED_WINDOW_MS;
+      for (let i = 0; i + AUTOMATED_OPENS - 1 < taps.length; i++) if (taps[i + AUTOMATED_OPENS - 1] - taps[i] <= win) { burst = true; break; }
+      if (burst) break;
+    }
     if (burst) for (const r of rows) r.params = { ...r.params, automated: true };
     const { base } = supa(env);
     const write = get(`${base}/rest/v1/feed_events`, {

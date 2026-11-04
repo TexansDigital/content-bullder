@@ -396,6 +396,9 @@ export const KNOB_DEFAULTS = {
    *  tap on the card after a completed clip: "More Tank Dell"; the picker card then only appears
    *  when the fan opens it from the Your feed chip). */
   pick_prompt: 'card',
+  /** 1 moves the first player-tagged clip among the opening cards to card 1, so the first
+   *  completed clip can earn a player chip ("More Tank Dell") rather than a lane. 0 off. */
+  lead_tagged: 0,
 };
 
 export function fnv1a(str) {

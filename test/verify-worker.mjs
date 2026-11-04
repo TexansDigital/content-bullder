@@ -369,6 +369,16 @@ t('an unknown format filter is ignored', badFormats.clips.length === withSite.cl
   await a.fetch(req('/api/events', { method: 'POST', body: JSON.stringify({ events: slow }) }), ENV, ctx);
   await Promise.all(waits.splice(0));
   t('twelve tiles opened over a minute are a person and are not marked', posted.length === 12 && posted.every((r) => !('automated' in r.params)));
+  posted.length = 0;
+  const shares = Array.from({ length: 12 }, (_, i) => ({ event: 'card_share', params: { card_id: `yt-card${i}`, pocket_id: 'sess_1792089626000_sharer' }, at: new Date(t0 + i * 200).toISOString() }));
+  await a.fetch(req('/api/events', { method: 'POST', body: JSON.stringify({ events: shares }) }), ENV, ctx);
+  await Promise.all(waits.splice(0));
+  t('twelve shares inside three seconds are a script and are marked', posted.length === 12 && posted.every((r) => r.params.automated === true));
+  posted.length = 0;
+  const likes = Array.from({ length: 12 }, (_, i) => ({ event: 'card_like', params: { card_id: `yt-card${i}`, pocket_id: 'sess_1792089626000_liker' }, at: new Date(t0 + i * 2500).toISOString() }));
+  await a.fetch(req('/api/events', { method: 'POST', body: JSON.stringify({ events: likes }) }), ENV, ctx);
+  await Promise.all(waits.splice(0));
+  t('twelve likes over half a minute are a person', posted.length === 12 && posted.every((r) => !('automated' in r.params)));
 }
 
 console.log('PASS ' + ok.length); ok.forEach((x) => console.log('  + ' + x));

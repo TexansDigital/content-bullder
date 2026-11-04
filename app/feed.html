@@ -402,7 +402,7 @@ function visitParams() {
  * The dials an experiment may turn, with their defaults. /api/feed hands back the values for
  * this visitor's arms; anything it names that is not here is ignored. */
 const KNOB_DEFAULTS = { picker_position: 2, picker_reoffer_days: 7, reason_pills: 'explicit', sound_hint: false, capture_card: null,
-  offer_position: 2, expiry_position: 1, week_position: 4, ask_position: 7 };
+  offer_position: 2, expiry_position: 1, week_position: 4, ask_position: 7, lead_tagged: 0 };
 /** One follow-up question per load, so a fan is never asked twice in one sitting. */
 let askedThisLoad = false;
 /** Fewer views than this in a week and there is no "your week" to show. Mirrors WEEK_MIN_VIEWS in src/rank.js. */
@@ -1081,8 +1081,16 @@ const systemCard = (id, headline, system, extra = {}) => ({ id, source: 'system'
   clip: null, entities: { players: [], opponent: null, themes: [] }, overlays: [], chrome: 'off', advance: { mode: 'manual', seconds: 6 },
   links: {}, flags: {}, sortIndex: 0, system, extra });
 
+/** lead_tagged: the first player-tagged clip among the opening eight leads, so the first completed clip can earn a player chip. */
+function leadTagged(rows) {
+  if (!Number(knobs.lead_tagged)) return rows;
+  const i = rows.findIndex((r, n) => n < 8 && r.source !== 'system' && (r.format || 'video') === 'video' && (r.entities?.players || []).length);
+  if (i <= 0) return rows;
+  const out = [...rows]; out.unshift(...out.splice(i, 1)); return out;
+}
+
 function withSystemCards(base) {
-  const rows = [...base];
+  const rows = leadTagged([...base]);
   if (!rows.length || active !== 'all') return rows;
   const pos = (n, len) => Math.max(0, Math.min(Number.isFinite(Number(n)) ? Number(n) : len, len));
   // Nothing to pick means nothing to offer: a feed with no tagged players gets no picker.
