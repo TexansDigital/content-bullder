@@ -1,0 +1,154 @@
+diff --git a/app/feed.html b/app/feed.html
+index 18c37d9..068a2b3 100644
+--- a/app/feed.html
++++ b/app/feed.html
+@@ -493,6 +493,32 @@ let pocketId = null;
+ let eloquaGuid = null;
+ const ELQ_GUID = /^[0-9A-Fa-f]{32}$/;
+ 
++/**
++ * The club email this fan arrived from (handshake v5), or this page's own URL when an email
++ * links straight to /feed. Campaign attribution only: the email's id and name from utm_content,
++ * Eloqua's campaign and asset ids, and, under Targeting consent only, a flag that Eloqua's own
++ * link parameters were present. Shape-checked, carried on the identity event and who_result.
++ */
++let emailEntry = null;
++const EMAIL_ID = /^em[0-9a-z]{6}$/, EMAIL_NAME = /^[a-z0-9-]{1,60}$/, ELQ_NUM = /^\d{1,12}$/;
++function emailFrom(e) {
++  if (!e || typeof e !== 'object') return null;
++  const pick = (v, re) => (re.test(String(v ?? '')) ? String(v) : null);
++  const out = { email_id: pick(e.id, EMAIL_ID), email_name: pick(e.name, EMAIL_NAME), email_campaign: pick(e.campaign, ELQ_NUM), email_asset: pick(e.asset, ELQ_NUM) };
++  if (typeof e.elq === 'boolean') out.email_elq = e.elq;
++  if (!out.email_id && !out.email_campaign && !out.email_elq) return null;
++  return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== null));
++}
++function emailFromOwnUrl() {
++  const q = new URLSearchParams(location.search);
++  const medium = String(q.get('utm_medium') || '').toLowerCase();
++  if (medium !== 'em' && medium !== 'email') return null;
++  const c = String(q.get('utm_content') || '');
++  // Unframed there is no host to say whether Targeting is on, so the elq flag is never set here.
++  return emailFrom({ id: (c.match(/^(em[0-9a-z]{6})_/i) || [])[1]?.toLowerCase(), name: (c.match(/_em-\d{2}_([a-z0-9-]{1,60})$/i) || [])[1]?.toLowerCase(), campaign: q.get('elqCampaignId'), asset: q.get('elqaid') });
++}
++if (window.parent === window) emailEntry = emailFromOwnUrl();
++
+ /**
+  * Minting our own id is the same act the host site gates behind OneTrust performance
+  * consent (C0002) — a different origin does not make it a different act. So it is lazy, and
+@@ -562,7 +588,7 @@ function flush(how) {
+   pending = [];
+   // Identity first, so a consumer knows who the events that follow belong to. It goes
+   // through payloadFor like everything else; emitted raw, it carried no ids at all.
+-  if (how) emit('identity', payloadFor({ identity_source: how, ...(eloquaGuid ? { eloqua_guid: eloquaGuid } : {}) }));
++  if (how) emit('identity', payloadFor({ identity_source: how, ...(eloquaGuid ? { eloqua_guid: eloquaGuid } : {}), ...(emailEntry || {}) }));
+   for (const [event, params] of queued) emit(event, payloadFor(params));
+ }
+ 
+@@ -657,12 +683,13 @@ addEventListener('message', (e) => {
+     return;
+   }
+   const guid = typeof d.eloquaGuid === 'string' && ELQ_GUID.test(d.eloquaGuid) ? d.eloquaGuid.toLowerCase() : null;
++  if (!emailEntry) emailEntry = emailFrom(d.email);
+   // A page can carry two handshake copies for a while (an older one in a shared module, a newer
+   // one in the page). The older answers first, without the GUID. When a later answer brings it,
+   // record it on a second identity event rather than lose it.
+   if (identified && guid && !eloquaGuid && measuring) {
+     eloquaGuid = guid;
+-    emit('identity', payloadFor({ identity_source: 'host-message', eloqua_guid: guid }));
++    emit('identity', payloadFor({ identity_source: 'host-message', eloqua_guid: guid, ...(emailEntry || {}) }));
+     welcome();
+     return;
+   }
+@@ -677,16 +704,39 @@ addEventListener('message', (e) => {
+  * earlier session, now applied here too, or the player they watch most. Asked once per load,
+  * only with the knob on, only when measuring, and shown once a day. Nothing known, nothing shown.
+  */
++/**
++ * Who is this GUID? Asked once per load for every session with one, card or no card, and the
++ * answer recorded as who_result, so recognition is measured in every arm of the welcome
++ * experiment. The answer is kept for the card, which still waits on its knob. Without the card
++ * the Worker is told not to copy saved picks onto this session (copy: false), so the control arm
++ * is recognised and counted but its feed is not changed.
++ */
++let whoAnswer = null;
++function askWho(sid, copy) {
++  whoAnswer ??= (async () => {
++    try {
++      const r = await fetch('/api/who', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ guid: eloquaGuid, sid, copy }) });
++      if (!r.ok) { track('who_result', { who_known: false, who_status: r.status, ...(emailEntry || {}) }); return null; }
++      const d = await r.json();
++      track('who_result', { who_known: Boolean(d?.known), who_via: d?.known_via || 'none', who_contact: d?.contact === true, ...(emailEntry || {}) });
++      return d;
++    } catch { return null; }   /* a slow lookup is not a dark feed */
++  })();
++  return whoAnswer;
++}
++
+ async function welcome() {
+-  if (welcomeAsked || !eloquaGuid || !measuring || !DATA || !Number(knobs.welcome_card)) return;
+-  if (seen('welcome', 'shown', 86400e3)) return;
++  // The knobs arrive with /api/feed; until then the arm is unknown and nothing is asked.
++  if (!eloquaGuid || !measuring || !DATA?.generatedAt) return;
+   const sid = whoAmI();
+   if (!sid) return;
++  const showCard = !welcomeAsked && Boolean(Number(knobs.welcome_card)) && !seen('welcome', 'shown', 86400e3);
++  askWho(sid, showCard);
++  if (!showCard) return;
+   welcomeAsked = true;
+   try {
+-    const r = await fetch('/api/who', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ guid: eloquaGuid, sid }) });
+-    if (!r.ok) return;
+-    const d = await r.json();
++    const d = await askWho(sid, true);
++    if (!d) return;
+     if (!d?.known || (!(d.picks || []).length && !d.player)) { track('welcome_skipped', { welcome_known: Boolean(d?.known) }); return; }
+     welcomeInfo = d;
+     markSeen('welcome', 'shown');
+diff --git a/server.mjs b/server.mjs
+index 4481021..0043694 100644
+--- a/server.mjs
++++ b/server.mjs
+@@ -300,7 +300,8 @@ const server = createServer(async (req, res) => {
+       // is a fan who saved picks before, one is a fan we only watched, the rest are unknown.
+       const body = await readBody(req);
+       const guid = String(body?.guid || '').toLowerCase();
+-      if (guid === '0123456789abcdef0123456789abcdef') return json(res, 200, { known: true, picks: ['c-j-stroud', 'tank-dell'], picks_named: ['C.J. Stroud', 'Tank Dell'], player: null, player_name: null, source: 'picks', copied: true });
++      if (guid === 'feedfacefeedfacefeedfacefeedface') return json(res, 200, { known: true, known_via: 'eloqua', contact: true, picks: null, player: null, player_name: null, source: null, copied: false });
++      if (guid === '0123456789abcdef0123456789abcdef') return json(res, 200, { known: true, known_via: 'history', contact: false, picks: ['c-j-stroud', 'tank-dell'], picks_named: ['C.J. Stroud', 'Tank Dell'], player: null, player_name: null, source: 'picks', copied: true });
+       if (guid === 'abcdef0123456789abcdef0123456789') return json(res, 200, { known: true, picks: null, player: 'tank-dell', player_name: 'Tank Dell', source: 'watch', copied: false });
+       return json(res, 200, { known: false, picks: null, player: null, player_name: null, source: null, copied: false });
+     }
+diff --git a/workers/feed/src/app.js b/workers/feed/src/app.js
+index 4ddd01d..aa0eba5 100644
+--- a/workers/feed/src/app.js
++++ b/workers/feed/src/app.js
+@@ -546,7 +546,8 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
+         source = 'picks';
+         // The feed ranks by session id. Copy the saved picks onto this session, once, so the
+         // next /api/feed answer is already theirs; a session that has its own picks keeps them.
+-        const mine = await prefsFor(env, sid);
++        // copy: false is the feed's control arm (no welcome card): counted, not changed.
++        const mine = body?.copy === false ? true : await prefsFor(env, sid);
+         if (!mine) {
+           const { base } = supa(env);
+           const row = { session_id: sid, players: picks, wants: pr.wants || [], format: pr.format || null, follow: pr.follow || null, boosts: pr.boosts || [], going: pr.going || null, watch: pr.watch || null, source: 'welcome', updated_at: now().toISOString() };
+@@ -562,9 +563,16 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
+         if (top) { player = top[0]; source = 'watch'; }
+       }
+     }
+-    let known = sessions.length > 0;
+-    if (!known && eloqua.configured(env)) { const v = await eloqua.visitor(env, guid).catch(() => ({ found: false })); known = Boolean(v.found); }
+-    return reply({ known, picks, picks_named: picks ? picks.map((x) => displayName(x, names)) : null, player, player_name: player ? displayName(player, names) : null, source, copied });
++    // known_via says how: an earlier feed session carried this GUID (history), or Eloqua knows the
++    // visitor (eloqua). contact: Eloqua has tied the visitor to a contact, which is what a click in
++    // a club email does. A boolean only; the contact id never leaves the Worker.
++    let known = sessions.length > 0, knownVia = known ? 'history' : null, contact = false;
++    if (!known && eloqua.configured(env)) {
++      const v = await eloqua.visitor(env, guid).catch(() => ({ found: false }));
++      known = Boolean(v.found); contact = Boolean(v.found && v.contactId);
++      if (known) knownVia = 'eloqua';
++    }
++    return reply({ known, known_via: knownVia, contact, picks, picks_named: picks ? picks.map((x) => displayName(x, names)) : null, player, player_name: player ? displayName(player, names) : null, source, copied });
+   }
+ 
+   /**

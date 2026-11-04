@@ -1,0 +1,119 @@
+<script data-hou-module="txfeed-handshake" data-hou-v="5" data-hou-owner="DSaC" data-hou-expires="evergreen">
+(function () {
+  'use strict';
+
+  // Answers the preference feed's "hello" with the visitor's pocketID, and with whether
+  // performance consent (C0002) is on. Reads one localStorage key and one cookie, sends only
+  // to FEED_ORIGIN, only to the frame that asked. Does nothing on pages without the embed.
+  //
+  // The consent flag matters: without it the feed cannot tell "declined measurement" from
+  // "no pocketID yet", and would mint its own identifier for someone who said no.
+
+  // Run once per version. An older copy elsewhere on the page (a shared module) may already
+  // have answered; this one answers too, with the GUID, and the feed keeps the richer answer.
+  var prev = window.houModules && window.houModules['txfeed-handshake'];
+  if (prev && prev.v >= 5) return;
+  window._houTxfeedHandshake = true;
+
+  var FEED_ORIGIN = 'https://feed.htow.nz';
+  var POCKET_KEY  = 'pocket_session_id';
+  var ID_PATTERN  = /^[A-Za-z0-9._:-]{6,128}$/;
+  var CONSENT_GROUP = 'C0002';   // pocket id: Performance
+  var GUID_GROUP    = 'C0004';   // Eloqua GUID: the ELOQUA cookie is classified Targeting in OneTrust
+
+  // v5: the club email a fan arrived from. Club emails land with utm_medium=em and a
+  // utm_content of the form em0000e7_261102_..._em-01_howtowatchchargers (5,144 site sessions
+  // in the 14 days to 4 Nov 2026). The fan rarely lands on the feed itself, so the arrival is
+  // kept for the rest of the tab's visit and handed to the feed whenever it asks.
+  // The email's id and name are campaign attribution, kept under Performance (C0002) like the
+  // pocket id and the site's own utm record. Whether Eloqua's own link parameters were present
+  // is a flag only, sent only under Targeting (C0004) like the GUID. No raw elq value leaves the page.
+  var EMAIL_KEY     = 'txfeed.email';
+  var EMAIL_TTL_MS  = 30 * 60 * 1000;
+
+  window.houModules = window.houModules || {};
+  var state = window.houModules['txfeed-handshake'] = {
+    v: 5, owner: 'DSaC', block: 'js', expires: 'evergreen',
+    hellos: 0, answered: 0, declined: 0
+  };
+
+  function hasGroup(group) {
+    var g = window.OnetrustActiveGroups || window.OptanonActiveGroups;
+    if (typeof g !== 'string' || !g) return null;
+    return g.indexOf(group) !== -1;
+  }
+  function hasConsent() { return hasGroup(CONSENT_GROUP); }
+
+  function digits(v) { return /^\d{1,12}$/.test(v || '') ? v : null; }
+  function emailFromUrl() {
+    var q;
+    try { q = new URLSearchParams(window.location.search); } catch (err) { return null; }
+    var medium = String(q.get('utm_medium') || '').toLowerCase();
+    var elq = Boolean(q.get('elqTrackId') || q.get('elq') || q.get('elqaid'));
+    if (medium !== 'em' && medium !== 'email' && !elq) return null;
+    var content = String(q.get('utm_content') || '');
+    var id = content.match(/^(em[0-9a-z]{6})_/i);
+    var name = content.match(/_em-\d{2}_([a-z0-9-]{1,60})$/i);
+    return {
+      id: id ? id[1].toLowerCase() : null,
+      name: name ? name[1].toLowerCase() : null,
+      campaign: digits(q.get('elqCampaignId')),
+      asset: digits(q.get('elqaid')),
+      elq: elq,
+      at: Date.now()
+    };
+  }
+  var landed = emailFromUrl();
+  function keepEmail() {
+    if (!landed || hasConsent() !== true) return false;
+    try { window.sessionStorage.setItem(EMAIL_KEY, JSON.stringify(landed)); } catch (err) { /* blocked storage */ }
+    return true;
+  }
+  // OneTrust often loads after the header scripts; keep the arrival once Performance is known to be on.
+  if (landed && !keepEmail()) window.addEventListener('OneTrustGroupsUpdated', keepEmail);
+  function emailForFeed() {
+    var e = landed;
+    if (!e) try { e = JSON.parse(window.sessionStorage.getItem(EMAIL_KEY) || 'null'); } catch (err) { e = null; }
+    if (!e || typeof e.at !== 'number' || Date.now() - e.at > EMAIL_TTL_MS) return null;
+    if (!e.id && !e.campaign && !e.elq) return null;
+    var out = { id: e.id || null, name: e.name || null, campaign: e.campaign || null, asset: e.asset || null };
+    if (hasGroup(GUID_GROUP) === true) out.elq = Boolean(e.elq);
+    return out;
+  }
+
+  window.addEventListener('message', function (e) {
+    if (e.origin !== FEED_ORIGIN) return;
+    if (!e.data || e.data.source !== 'txfeed' || e.data.event !== 'hello') return;
+    if (!e.source || typeof e.source.postMessage !== 'function') return;
+    state.hellos++;
+
+    var consent = hasConsent();
+    if (consent === false) {
+      try { window.sessionStorage.removeItem(EMAIL_KEY); } catch (err) { /* nothing kept */ }
+      e.source.postMessage({ source: 'txfeed-host', pocketId: null, consent: false }, FEED_ORIGIN);
+      state.declined++;
+      return;
+    }
+
+    var id = null;
+    try { id = window.localStorage.getItem(POCKET_KEY); } catch (err) { id = null; }
+    if (id && !ID_PATTERN.test(id)) id = null;
+
+    // v3: the Eloqua visitor GUID (the GUID= part of the ELOQUA cookie). For a fan who has ever
+    // clicked a club email it resolves to a contact in Eloqua, so the feed's session can be
+    // recognised with no ask at all. 32 hex characters or nothing, only to the feed.
+    // v4: sent only when the Targeting group is on, because that is the category OneTrust
+    // classifies the ELOQUA cookie under (confirmed in the club's instance, 2 Nov 2026).
+    var guid = null;
+    if (hasGroup(GUID_GROUP) === true) try {
+      var m = (document.cookie || '').match(/(?:^|;\s*)ELOQUA=([^;]*)/);
+      var g = m ? decodeURIComponent(m[1]).match(/GUID=([0-9A-Fa-f]{32})/) : null;
+      guid = g ? g[1] : null;
+    } catch (err) { guid = null; }
+
+    var email = consent === true ? emailForFeed() : null;
+    e.source.postMessage({ source: 'txfeed-host', pocketId: id, consent: true, eloquaGuid: guid, email: email }, FEED_ORIGIN);
+    state.answered++;
+  });
+}());
+</script>
