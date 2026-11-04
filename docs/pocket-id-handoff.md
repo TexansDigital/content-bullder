@@ -20,6 +20,12 @@ There are two ways to do it. **Either one is enough; you do not need both.**
 
 ---
 
+## v5, 4 Nov 2026: one page_view per content page
+
+v4 unchanged, plus one `page_view` to the feed's events route on article, gallery, video and
+podcast pages, carrying the page's JSON-LD keywords and section, only with C0002 and a pocket
+id. See [site-signals.md](site-signals.md). Tests: `test/verify-site-signals.mjs`.
+
 ## v4, 2 Nov 2026: the GUID waits for Targeting consent
 
 The club's OneTrust instance classifies the `ELOQUA` cookie as a Targeting cookie (C0004), not

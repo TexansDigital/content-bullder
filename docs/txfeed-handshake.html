@@ -1,4 +1,4 @@
-<script data-hou-module="txfeed-handshake" data-hou-v="4" data-hou-owner="DSaC" data-hou-expires="evergreen">
+<script data-hou-module="txfeed-handshake" data-hou-v="5" data-hou-owner="DSaC" data-hou-expires="evergreen">
 (function () {
   'use strict';
 
@@ -8,23 +8,30 @@
   //
   // The consent flag matters: without it the feed cannot tell "declined measurement" from
   // "no pocketID yet", and would mint its own identifier for someone who said no.
+  //
+  // v5 (4 Nov 2026): on an article, gallery or video page, one page_view event to the feed's
+  // events route, carrying the page's own tags and section from its JSON-LD, so the whole site
+  // teaches the feed what this fan reads. Same gate as the pocket id: Performance (C0002)
+  // must be positively on, and a pocket id must exist. No GUID, no cookie, no query string.
 
   // Run once per version. An older copy elsewhere on the page (a shared module) may already
   // have answered; this one answers too, with the GUID, and the feed keeps the richer answer.
   var prev = window.houModules && window.houModules['txfeed-handshake'];
-  if (prev && prev.v >= 4) return;
+  if (prev && prev.v >= 5) return;
   window._houTxfeedHandshake = true;
 
   var FEED_ORIGIN = 'https://feed.htow.nz';
+  var EVENTS_URL  = FEED_ORIGIN + '/api/events';
   var POCKET_KEY  = 'pocket_session_id';
   var ID_PATTERN  = /^[A-Za-z0-9._:-]{6,128}$/;
-  var CONSENT_GROUP = 'C0002';   // pocket id: Performance
+  var CONSENT_GROUP = 'C0002';   // pocket id and page_view: Performance
   var GUID_GROUP    = 'C0004';   // Eloqua GUID: the ELOQUA cookie is classified Targeting in OneTrust
+  var CONTENT_PATH  = /^\/(news|photos|video|podcasts)\/[^\/?#]+\/?$/;
 
   window.houModules = window.houModules || {};
   var state = window.houModules['txfeed-handshake'] = {
-    v: 4, owner: 'DSaC', block: 'js', expires: 'evergreen',
-    hellos: 0, answered: 0, declined: 0
+    v: 5, owner: 'DSaC', block: 'js', expires: 'evergreen',
+    hellos: 0, answered: 0, declined: 0, pageView: 'pending'
   };
 
   function hasGroup(group) {
@@ -33,6 +40,11 @@
     return g.indexOf(group) !== -1;
   }
   function hasConsent() { return hasGroup(CONSENT_GROUP); }
+  function pocketId() {
+    var id = null;
+    try { id = window.localStorage.getItem(POCKET_KEY); } catch (err) { id = null; }
+    return id && ID_PATTERN.test(id) ? id : null;
+  }
 
   window.addEventListener('message', function (e) {
     if (e.origin !== FEED_ORIGIN) return;
@@ -47,9 +59,7 @@
       return;
     }
 
-    var id = null;
-    try { id = window.localStorage.getItem(POCKET_KEY); } catch (err) { id = null; }
-    if (id && !ID_PATTERN.test(id)) id = null;
+    var id = pocketId();
 
     // v3: the Eloqua visitor GUID (the GUID= part of the ELOQUA cookie). For a fan who has ever
     // clicked a club email it resolves to a contact in Eloqua, so the feed's session can be
@@ -66,5 +76,87 @@
     e.source.postMessage({ source: 'txfeed-host', pocketId: id, consent: true, eloquaGuid: guid }, FEED_ORIGIN);
     state.answered++;
   });
+
+  // ---- v5: page_view ----
+
+  function clip(s, n) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n); }
+
+  // The page's own metadata: the first JSON-LD block that carries keywords or a section.
+  // Articles and galleries list players by full name in keywords; video pages carry only a
+  // section, so the title rides along and the nightly rollup matches full names in it.
+  function pageMeta() {
+    var tags = [], section = '';
+    var blocks = document.querySelectorAll('script[type="application/ld+json"]');
+    for (var i = 0; i < blocks.length && !tags.length && !section; i++) {
+      var d = null;
+      try { d = JSON.parse(blocks[i].textContent || ''); } catch (err) { d = null; }
+      if (!d || typeof d !== 'object') continue;
+      if (Array.isArray(d.keywords)) {
+        for (var k = 0; k < d.keywords.length && tags.length < 12; k++) {
+          var t = clip(d.keywords[k], 80);
+          if (t && tags.indexOf(t) === -1) tags.push(t);
+        }
+      }
+      section = clip(d.articleSection, 60);
+    }
+    var h1 = document.querySelector('h1');
+    var og = document.querySelector('meta[property="og:title"]');
+    var title = clip((h1 && h1.textContent) || (og && og.getAttribute('content')) || document.title, 160);
+    return { tags: tags, section: section, title: title };
+  }
+
+  function send(payload) {
+    var body = JSON.stringify(payload);
+    // text/plain keeps it a simple request: no preflight, nothing to read back.
+    try {
+      if (navigator.sendBeacon && navigator.sendBeacon(EVENTS_URL, new Blob([body], { type: 'text/plain;charset=UTF-8' }))) return true;
+    } catch (err) { /* fall through */ }
+    try {
+      fetch(EVENTS_URL, { method: 'POST', mode: 'no-cors', keepalive: true, credentials: 'omit',
+        headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: body });
+      return true;
+    } catch (err) { return false; }
+  }
+
+  function pageView() {
+    if (state.pageView !== 'pending') return true;
+    var path = location.pathname;
+    var m = path.match(CONTENT_PATH);
+    if (!m) { state.pageView = 'not-content'; return true; }
+    var consent = hasConsent();
+    if (consent === null) return false;                       // OneTrust not ready yet: wait
+    if (consent === false) { state.pageView = 'no-consent'; return true; }
+    var id = pocketId();
+    if (!id) return false;                                    // session-attribution may not have run yet
+    var meta = pageMeta();
+    var params = {
+      pocket_id: id,
+      page_type: m[1],
+      page_path: clip(path, 200),
+      page_section: meta.section,
+      page_tags: meta.tags,
+      page_title: meta.title,
+      hv: 5
+    };
+    if (/(?:^|[?&])qa=1(?:&|$)/.test(location.search)) params.qa = true;
+    state.pageView = send({ event: 'page_view', at: new Date().toISOString(), params: params }) ? 'sent' : 'failed';
+    return true;
+  }
+
+  // Consent and the pocket id can both arrive after this header script: try at DOM ready,
+  // again when OneTrust says consent changed, and every half second for ten seconds.
+  var tries = 0;
+  function attempt() {
+    if (pageView()) return;
+    if (++tries < 20) setTimeout(attempt, 500);
+    else if (state.pageView === 'pending') state.pageView = 'gave-up';
+  }
+  // A fan who accepts in the banner after landing counts from that moment.
+  window.addEventListener('consent.onetrust', function () {
+    if (state.pageView === 'gave-up' || state.pageView === 'no-consent') state.pageView = 'pending';
+    pageView();
+  });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attempt);
+  else attempt();
 }());
 </script>
