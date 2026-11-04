@@ -1,0 +1,151 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tag Review</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;700&display=swap">
+<style>
+:root{--steel:#021018;--s2:#0a1d27;--s3:#13303d;--red:#ED0028;--red2:#ff123a;--blue:#0080C6;--blue2:#1a93d6;--blue-lt:#4fb3e3;
+ --w:#FFFFFF;--body:rgba(255,255,255,.84);--mute:rgba(255,255,255,.56);--line:rgba(255,255,255,.14);--line2:rgba(255,255,255,.3);
+ --mono:"Azeret Mono",ui-monospace,Menlo,monospace;--sans:"Helvetica Neue",Helvetica,Arial,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--steel);color:var(--w);font:14px/1.5 var(--sans);min-height:100vh}
+button,input{font:inherit;color:inherit}
+header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:15px;font-weight:900;text-transform:uppercase;letter-spacing:.02em;margin:0}
+header h1 i{color:var(--red);font-style:normal}
+header .sp{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pill{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line2);padding:4px 8px;color:var(--mute)}
+.pill.ok{cursor:pointer;border-color:var(--blue-lt);color:var(--blue-lt)}.pill.bad{border-color:var(--red);color:var(--red)}
+input{background:var(--s2);border:1px solid var(--line);padding:8px 9px;border-radius:0;font-size:13px;width:180px}
+input:focus{border-color:var(--red);outline:none}
+button{border:0;padding:10px 16px;cursor:pointer;font-weight:700;font-size:11px;letter-spacing:.07em;text-transform:uppercase;border-radius:0}
+button:disabled{opacity:.4;cursor:default}
+button.ghost{background:transparent;border:1px solid var(--line2)}button.ghost:hover{border-color:var(--red)}
+button.sm{padding:6px 10px;font-size:10px}
+.blocking{margin:14px 16px 0;border-left:3px solid var(--red);background:rgba(237,0,40,.1);padding:8px 11px;font-size:12px}
+.blocking b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--red);margin-bottom:4px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line)}
+.stats div{padding:12px 16px;border-right:1px solid var(--line)}.stats div:last-child{border-right:0}
+.stats b{display:block;font-size:22px;font-weight:900;line-height:1.1}
+.stats span{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+@media (max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stats div:nth-child(2){border-right:0}.stats div:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+.note{font-size:12px;color:var(--mute);margin:14px 16px;line-height:1.5;max-width:760px}
+.note b{color:var(--w)}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:0;border-top:1px solid var(--line)}
+@media (max-width:400px){.list{grid-template-columns:1fr}}
+.row{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px;padding:14px 16px;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+.row .poster{display:block;width:96px;aspect-ratio:9/16;background:var(--s3);overflow:hidden}
+.row .poster img{width:100%;height:100%;object-fit:cover;display:block}
+.row h3{font-size:13.5px;margin:0 0 4px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+.row p{font-size:11.5px;color:var(--mute);margin:0 0 8px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.label{display:inline-flex;gap:6px;align-items:baseline;background:var(--s3);border-left:3px solid var(--blue);padding:5px 8px;margin-bottom:6px}
+.label b{font-size:14px;font-weight:900}
+.label span{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.m{font-family:var(--mono);font-size:9px;color:var(--mute);letter-spacing:.08em;margin-bottom:10px}
+.m a{color:var(--blue-lt)}
+.acts{display:flex;gap:8px}
+.acts button{flex:1;min-height:44px}
+.yes{background:var(--blue)}.yes:hover{background:var(--blue2)}
+.no{background:transparent;border:1px solid var(--red);color:var(--w)}.no:hover{background:rgba(237,0,40,.18)}
+.row.done{opacity:.55}.row.done .acts{display:none}
+.verdict{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+.verdict.accept{color:var(--blue-lt)}.verdict.reject{color:var(--red)}.verdict.err{color:var(--red);text-transform:none;letter-spacing:0}
+.msg{font-family:var(--mono);font-size:11px;color:var(--mute);padding:14px 16px}
+code{font-family:var(--mono);font-size:11px;color:var(--blue-lt)}
+</style></head><body>
+<header><h1>Tag <i>Review</i></h1><span class="pill" id="st">key needed</span>
+  <div class="sp"><span class="pill" id="me"></span><input id="key" type="password" placeholder="upload key" autocomplete="off"><button class="ghost sm" id="savekey" type="button">Use key</button></div></header>
+<div class="blocking" id="nokey"><b>Upload key</b><span id="nokeymsg">Paste the upload key, the same one as for masters, and press Enter.</span></div>
+<div class="stats" id="stats" hidden>
+  <div><b id="sPending">–</b><span>waiting</span></div>
+  <div><b id="sToday">–</b><span>reviewed today</span></div>
+  <div><b id="sRate">–</b><span>accepted today</span></div>
+  <div><b id="sAll">–</b><span>accepted, all time</span></div>
+</div>
+<p class="note">The model reads each clip's title and description and names who it is about. Every pick chip a fan sees rests on one of these. <b>Accept</b> if the clip is about that person: the tag becomes certain and leads the card. <b>Reject</b> if not: the tag is removed and kept as an example of what the model gets wrong. Tap the poster to watch.</p>
+<div class="list" id="list"><div class="msg">Enter the key to see the tags.</div></div>
+<script>
+const $ = (s) => document.querySelector(s);
+const KEY = 'txfeed_media_key', BY = 'txfeed_media_by';
+let key = ''; try { key = localStorage.getItem(KEY) || ''; } catch {}
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const who = () => { try { return localStorage.getItem(BY) || ''; } catch { return ''; } };
+const pct = (x) => (x === null || x === undefined || x === '' ? '–' : Math.round(Number(x) * 100) + '%');
+const TYPE = { player: 'Player', coach: 'Coach', staff: 'Staff', theme: 'Theme' };
+let items = [], last = { pending: 0, report: {} };
+
+function setStatus(ok, label) {
+  const el = $('#st'); el.textContent = label; el.className = 'pill ' + (ok ? 'ok' : 'bad'); $('#nokey').hidden = ok; $('#stats').hidden = !ok;
+  $('#key').hidden = ok; $('#savekey').hidden = ok;
+  $('#nokeymsg').textContent = key && !ok ? `The key was refused: ${label}. It is the same upload key as for masters.` : 'Paste the upload key, the same one as for masters, and press Enter.';
+}
+function showMe() { $('#me').textContent = who() ? 'reviewing as ' + who() : 'no name'; }
+function askName() {
+  if (who()) return true;
+  const n = prompt('Your first name, so each verdict says who made it');
+  if (n && n.trim()) { try { localStorage.setItem(BY, n.trim().slice(0, 40)); } catch {} }
+  showMe(); return Boolean(who());
+}
+async function useKey() { key = $('#key').value.trim(); try { localStorage.setItem(KEY, key); } catch {} await refresh(); }
+$('#savekey').onclick = useKey;
+$('#st').onclick = () => { $('#key').hidden = false; $('#savekey').hidden = false; $('#key').focus(); };
+$('#me').onclick = () => { try { localStorage.removeItem(BY); } catch {} askName(); };
+$('#key').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); useKey(); } });
+$('#key').addEventListener('input', (e) => { if (/^[0-9a-f]{64}$/i.test(e.target.value.trim()) && e.target.value.trim() !== key) useKey(); });
+if (key) $('#key').value = key;
+
+function stats(d) {
+  last = d; const r = d.report || {};
+  $('#sPending').textContent = d.pending ?? '–';
+  $('#sToday').textContent = r.reviewed_24h ?? 0;
+  $('#sRate').textContent = pct(r.accept_rate_24h);
+  $('#sAll').textContent = r.reviewed ? `${pct(r.accept_rate)} of ${r.reviewed}` : '–';
+}
+function row(i, n) {
+  return `<div class="row" data-n="${n}">
+    <a class="poster" href="${esc(i.watch)}" target="_blank" rel="noopener noreferrer"><img src="${esc(i.poster)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()"></a>
+    <div>
+      <h3>${esc(i.title)}</h3>
+      ${i.description ? `<p>${esc(i.description)}</p>` : ''}
+      <div class="label"><span>${esc(TYPE[i.type] || i.type)}</span><b>${esc(i.name)}</b></div>
+      <div class="m">model ${esc(Number(i.confidence).toFixed(1))} · <a href="${esc(i.watch)}" target="_blank" rel="noopener noreferrer">watch</a></div>
+      <div class="acts"><button class="yes" type="button" data-v="accept">Accept</button><button class="no" type="button" data-v="reject">Reject</button></div>
+      <div class="verdict" hidden></div>
+    </div></div>`;
+}
+async function refresh() {
+  if (!key) { setStatus(false, 'key needed'); return; }
+  $('#list').innerHTML = '<div class="msg">Loading…</div>';
+  let r; try { r = await fetch('/api/tags', { headers: { 'x-media-key': key } }); } catch { setStatus(false, 'offline'); return; }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { setStatus(false, r.status === 401 ? 'wrong key' : (d.error || 'error ' + r.status)); $('#list').innerHTML = `<div class="msg">${esc(d.error || 'Could not load the tags.')}</div>`; return; }
+  setStatus(true, 'key ok'); stats(d);
+  items = d.items || [];
+  $('#list').innerHTML = items.length ? items.map(row).join('') : '<div class="msg">Nothing waiting. Every model tag has a verdict.</div>';
+}
+$('#list').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-v]'); if (!b) return;
+  if (!askName()) return;
+  const el = b.closest('.row'), i = items[Number(el.dataset.n)], v = b.dataset.v;
+  el.querySelectorAll('button').forEach((x) => { x.disabled = true; });
+  const out = el.querySelector('.verdict');
+  try {
+    const r = await fetch('/api/tags', { method: 'POST', headers: { 'x-media-key': key, 'x-media-by': who(), 'content-type': 'application/json' },
+      body: JSON.stringify({ video_id: i.video_id, type: i.type, slug: i.slug, verdict: v }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.error || 'error ' + r.status);
+    el.classList.add('done'); out.hidden = false; out.className = 'verdict ' + v;
+    out.textContent = v === 'accept' ? `Accepted by ${who()}` : `Rejected by ${who()}`;
+    const r0 = last.report || {}, a = v === 'accept' ? 1 : 0;
+    const rep = { ...r0, reviewed_24h: (Number(r0.reviewed_24h) || 0) + 1, accepted_24h: (Number(r0.accepted_24h) || 0) + a, reviewed: (Number(r0.reviewed) || 0) + 1, accepted: (Number(r0.accepted) || 0) + a };
+    rep.accept_rate_24h = rep.accepted_24h / rep.reviewed_24h; rep.accept_rate = rep.accepted / rep.reviewed;
+    stats({ ...last, pending: Math.max(0, (Number(last.pending) || 0) - 1), report: rep });
+  } catch (err) {
+    out.hidden = false; out.className = 'verdict err'; out.textContent = err.message;
+    el.querySelectorAll('button').forEach((x) => { x.disabled = false; });
+  }
+});
+showMe();
+refresh();
+</script>
+</body></html>

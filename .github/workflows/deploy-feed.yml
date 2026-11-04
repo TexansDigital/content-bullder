@@ -19,6 +19,7 @@ on:
       - "workers/feed/**"
       - "app/feed.html"
       - "app/upload.html"
+      - "app/tags.html"
       - "docs/eloqua-enter.html"
       - "src/**"
       - ".github/workflows/deploy-feed.yml"
@@ -27,6 +28,7 @@ on:
       - "workers/feed/**"
       - "app/feed.html"
       - "app/upload.html"
+      - "app/tags.html"
       - "docs/eloqua-enter.html"
       - "src/**"
   workflow_dispatch:
@@ -51,9 +53,11 @@ jobs:
       - run: node test/verify-eloqua.mjs
       - run: node test/verify-welcome.mjs
       - run: node test/verify-tagger.mjs
+      - run: node test/verify-tag-review.mjs
       - run: node --check src/rank.js
       - run: node --check workers/feed/src/app.js
       - run: node --check workers/feed/src/tagger.js
+      - run: node --check workers/feed/src/tags.js
       - name: Bundle without deploying
         working-directory: workers/feed
         run: npx --yes wrangler@4 deploy --dry-run --outdir dist

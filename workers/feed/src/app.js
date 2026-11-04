@@ -24,6 +24,7 @@ import { rankFeed, makePrefs, resolveExperiments, displayName, MAX_PICKS, MIN_EV
 import { createMedia, applyMedia } from './media.js';
 import { createEloqua } from './eloqua.js';
 import { createTagger } from './tagger.js';
+import { createTags } from './tags.js';
 
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
 const ELQ_GUID = /^[0-9a-f]{32}$/i;
@@ -59,7 +60,7 @@ const jsonHeaders = (extra = {}) => ({
 
 const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps = {} } = {}) {
+export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = {}, deps = {} } = {}) {
   /** A bundled brand asset at /app/assets/<name>: bytes, a type, and a year of cache. */
   function asset(name) {
     const a = assets[name];
@@ -71,6 +72,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
   const media = createMedia({ now });
   const eloqua = createEloqua({ fetch: get, now: () => now().getTime() });
   const tagger = createTagger({ fetch: get, now });
+  const tags = createTags({ fetch: get, authorized: media.authorized, html: tagsHtml });
 
   const supa = (env) => ({
     base: String(env.SUPABASE_URL || 'https://xisvulbabqsyxnlyuwcz.supabase.co').replace(/\/$/, ''),
@@ -624,6 +626,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
           return new Response(JSON.stringify(out), { status: out.configured ? 200 : 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
         }
         if (method === 'GET' && p === '/studio/upload') return uploadPage(env);
+        if (p === '/studio/tags' || p === '/api/tags') { const r = await tags.handle(request, env, method, p); if (r) return r; }
         if (method === 'GET' && p === '/health') {
           const [built, elq] = await Promise.all([shared(request, env, ctx), eloqua.login(env)]);
           const { counts, warnings, experiments = [], offered = {}, withheld = [], presets = {} } = built;
