@@ -109,3 +109,19 @@ toro, london. The chip offers a lane when the completed clip has no player: "Mor
 one tap, saved as a want (source `chip`, `pref_lane`), and that lane's unseen cards come next.
 An empty lane is never offered. Asked by data: of the 300 Shorts served on 3 Nov, 101 name a
 player, 282 carry a content type, 11 are music and 8 are TORO.
+
+## Model tags, 4 Nov 2026
+
+Approved by Adam ("do the small spend"). Two thirds of the served Shorts say "QB1 👆", "Imi is
+going to hold it down" or carry the player only as "Tank" in the description, so the alias tagger
+sees no player, no chip asks the fan about them, and nothing is learned. The Worker's cron
+(`workers/feed/src/tagger.js`, every two hours at :45, after the alias pass at :25) sends the
+untagged clips ten at a time to Claude Opus 5.5 at low effort with the alias dictionary in a
+cached system block, and writes back only slugs the dictionary knows (so an excluded name can
+never come back) as `matched_on = 'model'`, confidence capped at 0.7 so an alias title match
+(1.0 / 0.8) always outranks it and nothing existing is overwritten. Every clip asked gets a row in
+`feed_model_tag_runs`, found or not, with its share of the tokens and cost; a clip is never asked
+twice. The pass stops for the day at `MODEL_TAG_DAILY_USD` (1 dollar; at Opus 5.5 rates with the
+dictionary cached that is about a tenth of a cent a clip, so about a thousand clips a day) and asks `MODEL_TAG_PER_RUN` (40) per run. By hand, with the upload
+key: `GET /api/tag/model?limit=5` is a dry run, `POST /api/tag/model` runs it. `/health` reports
+`model_tags`. The review reads `select * from feed_model_tag_report()`.

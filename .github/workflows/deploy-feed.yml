@@ -50,8 +50,10 @@ jobs:
       - run: node test/verify-media.mjs
       - run: node test/verify-eloqua.mjs
       - run: node test/verify-welcome.mjs
+      - run: node test/verify-tagger.mjs
       - run: node --check src/rank.js
       - run: node --check workers/feed/src/app.js
+      - run: node --check workers/feed/src/tagger.js
       - name: Bundle without deploying
         working-directory: workers/feed
         run: npx --yes wrangler@4 deploy --dry-run --outdir dist

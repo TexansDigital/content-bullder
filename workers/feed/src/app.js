@@ -23,6 +23,7 @@ import { fetchPocket, pocketItems } from '../../../src/adapters/pocket.js';
 import { rankFeed, makePrefs, resolveExperiments, displayName, MAX_PICKS, MIN_EVENTS, TYPE_NAMES, laneOf, offerHit, lanesWithCards, mixFormats, mixEvery, dedupeTitles } from '../../../src/rank.js';
 import { createMedia, applyMedia } from './media.js';
 import { createEloqua } from './eloqua.js';
+import { createTagger } from './tagger.js';
 
 const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
 const ELQ_GUID = /^[0-9a-f]{32}$/i;
@@ -69,6 +70,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
   const now = deps.now || (() => new Date());
   const media = createMedia({ now });
   const eloqua = createEloqua({ fetch: get, now: () => now().getTime() });
+  const tagger = createTagger({ fetch: get, now });
 
   const supa = (env) => ({
     base: String(env.SUPABASE_URL || 'https://xisvulbabqsyxnlyuwcz.supabase.co').replace(/\/$/, ''),
@@ -614,6 +616,13 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
           return new Response(JSON.stringify(out), { status: out.ok ? 200 : 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
         }
         if (method === 'DELETE' && p === '/api/media') return media.remove(request, env);
+        // The model tagging pass by hand, with the upload key: POST runs it, GET is a dry run.
+        if ((method === 'POST' || method === 'GET') && p === '/api/tag/model') {
+          const denied = media.authorized(request, env); if (denied) return denied;
+          const limit = Number(new URL(request.url).searchParams.get('limit')) || undefined;
+          const out = await tagger.run(env, { limit, dry: method === 'GET' });
+          return new Response(JSON.stringify(out), { status: out.configured ? 200 : 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
+        }
         if (method === 'GET' && p === '/studio/upload') return uploadPage(env);
         if (method === 'GET' && p === '/health') {
           const [built, elq] = await Promise.all([shared(request, env, ctx), eloqua.login(env)]);
@@ -623,6 +632,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
             // Eloqua: not configured, ok (a login worked), or the reason it did not. Never the site or user.
             eloqua: !elq.configured ? 'not configured' : elq.ok ? 'ok' : (elq.error || 'login failed'),
             events: Boolean(env.SUPABASE_SERVICE_KEY), prefs: Boolean(env.SUPABASE_SERVICE_KEY) && built.prefsReady === true, ga4: Boolean(ga4(env)),
+            model_tags: tagger.configured(env),
             experiments: experiments.map((x) => x.key), offers: Object.keys(offered), offers_withheld: withheld, presets: Object.keys(presets) }),
             { status: counts.served > 0 ? 200 : 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
         }
@@ -631,6 +641,12 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, assets = {}, deps =
         console.error('txfeed', e?.message);
         return new Response(JSON.stringify({ error: 'feed unavailable' }), { status: 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
       }
+    },
+    /** The cron ([triggers] in wrangler.toml): the model tagging pass, every two hours after the alias pass. */
+    async scheduled(event, env = {}, ctx) {
+      const job = tagger.run(env).then((out) => console.log('txfeed tagger', JSON.stringify({ asked: out.asked, found: out.found, labels: out.labels, cost_usd: out.cost_usd, stopped: out.stopped, errors: out.errors })))
+        .catch((e) => console.error('txfeed tagger', e?.message));
+      if (ctx?.waitUntil) ctx.waitUntil(job); else await job;
     },
   };
 }

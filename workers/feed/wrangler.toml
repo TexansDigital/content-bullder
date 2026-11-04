@@ -28,6 +28,11 @@ fallthrough = true
 binding = "MEDIA"
 bucket_name = "texans-feed-media"
 
+# The model tagging pass (workers/feed/src/tagger.js): every two hours at :45, twenty minutes
+# after the alias tagger in pg_cron (:25), over the served Shorts that still name no player.
+[triggers]
+crons = ["45 */2 * * *"]
+
 [vars]
 SUPABASE_URL = "https://xisvulbabqsyxnlyuwcz.supabase.co"
 # Publishable key: built to ship in client code, limited by RLS to the catalogue tables.
@@ -45,7 +50,12 @@ CATALOGUE_MAX = "300"
 # The site's RSS feeds served as cards (news, galleries, videos, audio); blank turns them off.
 POCKET_FEEDS = "news,galleries,videos,audio"
 POCKET_MAX = "40"
+# The model tagging pass stops for the day at this spend and asks this many clips per run.
+MODEL_TAG_DAILY_USD = "1"
+MODEL_TAG_PER_RUN = "40"
 
 # Secrets (set once with `npx wrangler secret put <NAME>` from this directory, never commit):
 #   SUPABASE_SERVICE_KEY   service_role key; the only credential that can write feed_events.
 #                          Without it the Worker still serves the feed and quietly drops events.
+#   ANTHROPIC_API_KEY      the model tagging pass. Without it the cron and /api/tag/model do nothing
+#                          and /health says model_tags: false.
