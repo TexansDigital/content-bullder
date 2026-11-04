@@ -1,0 +1,20 @@
+# ticket-join: joins D1 ht-attribution purchases to the ticket click before them, nightly, and
+# publishes one row per joined purchase into Supabase fan_purchases (sql/500).
+# Not deployed yet: Adam sees the join rate first (docs/ticket-join.md).
+name = "ticket-join"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ht-attribution"
+database_id = "99dd013c-9777-4927-a094-4db98c8b5d25"
+
+# 08:35 UTC, after the purchase pixel's overnight rows and before the review.
+[triggers]
+crons = ["35 8 * * *"]
+
+[vars]
+SUPABASE_URL = "https://xisvulbabqsyxnlyuwcz.supabase.co"
+LOOKBACK_DAYS = "3"
