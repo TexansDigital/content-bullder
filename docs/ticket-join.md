@@ -12,7 +12,7 @@ id (since 31 Oct).
 
 | Window | Purchases | Joined to a click | With a GUID | With a pocket session |
 |---|---|---|---|---|
-| 18 Oct – 3 Nov (GUID era) | 1,858 | 246 (13.2%) | 226 (12.2%) | 13 |
+| 18 Oct – 3 Nov (GUID era) | 1,858 | 246 (13.2%) | 226 (12.2%) | 11 |
 | 31 Oct – 3 Nov (session era) | 128 | 12 (9.4%) | 12 | 11 |
 
 The 226 GUID purchases belong to 156 distinct fans. 136 of 224 joined within an hour of the
