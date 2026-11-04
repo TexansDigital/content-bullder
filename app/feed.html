@@ -402,7 +402,7 @@ function visitParams() {
  * The dials an experiment may turn, with their defaults. /api/feed hands back the values for
  * this visitor's arms; anything it names that is not here is ignored. */
 const KNOB_DEFAULTS = { picker_position: 2, picker_reoffer_days: 7, reason_pills: 'explicit', sound_hint: false, capture_card: null,
-  offer_position: 2, expiry_position: 1, week_position: 4, ask_position: 7, lead_tagged: 0 };
+  offer_position: 2, expiry_position: 1, week_position: 4, ask_position: 7, lead_tagged: 0, chip_hold: 0 };
 /** One follow-up question per load, so a fan is never asked twice in one sitting. */
 let askedThisLoad = false;
 /** Fewer views than this in a week and there is no "your week" to show. Mirrors WEEK_MIN_VIEWS in src/rank.js. */
@@ -771,7 +771,8 @@ function showChip(slide, c, i, chip) {
   requestAnimationFrame(() => btn.classList.add('in'));
   markSeen('chip', chip.lane ? `lane:${chip.lane}` : chip.player);
   track('pick_chip_shown', { ...cardParams(c, i), ...(chip.lane ? { pref_lane: chip.lane } : { pref_player: chip.player }), chip_from: chip.from });
-  setTimeout(() => { if (!btn.classList.contains('done') && !btn.disabled) { btn.classList.remove('in'); setTimeout(() => btn.remove(), 300); } }, CHIP_MS);
+  // chip_hold: the chip stays until the fan swipes; otherwise it fades after CHIP_MS.
+  if (!Number(knobs.chip_hold)) setTimeout(() => { if (!btn.classList.contains('done') && !btn.disabled) { btn.classList.remove('in'); setTimeout(() => btn.remove(), 300); } }, CHIP_MS);
 }
 
 /** The tap: save the pick without leaving the card, lift that player's clips to come next, and say so on the chip. */

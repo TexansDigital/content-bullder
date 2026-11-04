@@ -399,6 +399,9 @@ export const KNOB_DEFAULTS = {
   /** 1 moves the first player-tagged clip among the opening cards to card 1, so the first
    *  completed clip can earn a player chip ("More Tank Dell") rather than a lane. 0 off. */
   lead_tagged: 0,
+  /** 1 keeps the pick chip on its card until the fan swipes instead of fading it after seven
+   *  seconds. 0 off. */
+  chip_hold: 0,
 };
 
 export function fnv1a(str) {
