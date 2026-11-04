@@ -121,7 +121,7 @@ cached system block, and writes back only slugs the dictionary knows (so an excl
 never come back) as `matched_on = 'model'`, confidence capped at 0.7 so an alias title match
 (1.0 / 0.8) always outranks it and nothing existing is overwritten. Every clip asked gets a row in
 `feed_model_tag_runs`, found or not, with its share of the tokens and cost; a clip is never asked
-twice. The pass stops for the day at `MODEL_TAG_DAILY_USD` (1 dollar; at Opus 5.5 rates with the
-dictionary cached that is about a tenth of a cent a clip, so about a thousand clips a day) and asks `MODEL_TAG_PER_RUN` (40) per run. By hand, with the upload
+twice. The pass stops for the day at `MODEL_TAG_DAILY_USD` (1 dollar; the first run on 4 Nov cost
+0.15 cents a clip, 40 clips for 6 cents, so about 650 clips a day) and asks `MODEL_TAG_PER_RUN` (40) per run. By hand, with the upload
 key: `GET /api/tag/model?limit=5` is a dry run, `POST /api/tag/model` runs it. `/health` reports
 `model_tags`. The review reads `select * from feed_model_tag_report()`.
