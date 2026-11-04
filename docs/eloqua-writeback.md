@@ -1,8 +1,10 @@
 # Eloqua writeback: the feed's picks onto the contact
 
 Workstream 2 in [workstreams.md](workstreams.md). Branch `claude/eloqua-writeback`, migrations
-`sql/300` onward, Worker `workers/eloqua-sync`. Written 4 Nov 2026. Read only until Adam names
-the fields and says go.
+`sql/300` onward, Worker `workers/eloqua-sync`. Written 4 Nov 2026.
+
+**Decided by Adam, 4 Nov 2026:** the picks land in an Eloqua custom data object (CDO), not on
+contact fields. Adam creates the CDO. Daily is fine. Go.
 
 ## Why
 
@@ -36,47 +38,55 @@ Also seen: no GUID has yet returned on a second session, so the recognised fan's
 never had the chance to follow them. The writeback is what makes the picks follow them into
 email before they return to the site.
 
-## What would be written
+## The CDO Adam creates
 
-One row per contact field, the newest preference row across all of a fan's sessions, from
-`feed_eloqua_candidates()`:
+Name it **Feed Preferences**. The Worker finds it, and each field, by name, so no id is typed by hand.
 
-| Signal | Value, as the fan would recognise it | Example |
-|---|---|---|
-| `favorite_player` | The first pick, display-cased | `C.J. Stroud` |
-| `players` | All picks, newest row, bar-separated | `C.J. Stroud \| Tank Dell` |
-| `lanes` | The lanes they asked for, named as on the card | `Fun & TORO \| Gameday & tickets` |
-| `format` | `video` or `read` or `both` | `video` |
-| `going` | "Going to a game this season?" | `yes`, `maybe`, `no` |
-| `watch` | "How do you watch?" | `stadium`, `home`, `go` |
-| `last_feed_visit` | The date of the last feed load on a recognised session | `2026-11-03` |
+| Field | Type | Needed | What goes in it |
+|---|---|---|---|
+| Contact ID | Text | yes | The Eloqua contact id. Set it as the unique code field and map the CDO to contacts on it |
+| Favorite Player | Text | yes, live now | The fan's first pick, display-cased: `C.J. Stroud` |
+| Updated At | Date | optional | When the feed last wrote the record |
+| Players | Text | later | All picks: `C.J. Stroud \| Tank Dell` |
+| Lanes | Text | later | The lanes they asked for: `Fun & TORO \| Gameday & tickets` |
+| Going | Text | later | "Going to a game this season?" `yes`, `maybe`, `no` |
+| Watch | Text | later | "How do you watch?" `stadium`, `home`, `go` |
+| Format | Text | later | `video`, `read`, `both` |
+| Last Feed Visit | Text | later | The date of the last feed load: `2026-11-03` |
 
-Smallest version first: `favorite_player` alone, nightly, then widen once Adam has seen the
-first writes land in Eloqua. The others are planned and logged as `dry` from day one so the
-widening is a one-line map change.
+Smallest version first: Favorite Player alone (`ELOQUA_CDO_SIGNALS` in `wrangler.toml`). The
+later signals are planned and logged as `dry` every night, so widening is one line once Adam has
+seen the first records land.
 
-Picks on `excluded_players` are dropped before they reach the plan, the same rule the feed
-applies everywhere. Boosts whose date has passed are not carried.
+Why a CDO serves the objective better than contact fields: the feed's knowledge sits in its own
+record joined to the contact, so it can grow (lanes, going, watch, later a watched player and
+ticket intent) without touching the contact schema. One record per contact means two devices,
+two GUIDs, one fan: the newest picks win and the older GUID is logged as merged.
+
+Picks on `excluded_players` are dropped before they reach the plan. Boosts whose date has
+passed are not carried.
 
 ## How it runs
 
 `workers/eloqua-sync`, its own Worker and its own Action, so a change here can never change what a
-fan sees. Nightly at 09:05 UTC, after the feed's rollup and prune. The pass:
+fan sees. Daily at 09:05 UTC, after the feed's rollup and prune. The pass:
 
 1. `feed_eloqua_candidates()` in Supabase (service key only).
-2. The GUID resolves to a visitor on REST 2.0, the visitor to a contact on REST 1.0, through the
-   feed's own `workers/feed/src/eloqua.js`, unchanged.
-3. Each signal becomes one planned write: field, value, and the contact's current value.
-4. Every planned row is logged to `feed_eloqua_writes` as `dry`. With `WRITE_ENABLED=1` and the
-   field in `ELOQUA_FIELD_MAP`, the mapped fields are `PUT` on the contact and the row says
-   `written`, with the previous value kept so any write can be undone. A value the contact
-   already holds is `unchanged` and never sent.
+2. The GUID resolves to a visitor on REST 2.0, the visitor to a contact, through the feed's own
+   `workers/feed/src/eloqua.js`, unchanged. Only the contact id is read.
+3. The CDO and its fields are found by name on REST 2.0.
+4. The first time, one record is created (`POST .../customObject/{id}/instance`) linked to the
+   contact; its id is kept in `feed_eloqua_cdo_records`. After that the same record is updated
+   (`PUT .../instance/{id}`). A value the record already holds is `unchanged` and never sent.
+5. Every planned row is logged to `feed_eloqua_writes` with the CDO id, the record id and the
+   previous value, so any write can be undone.
 
-`GET /dry-run` runs the plan by hand. `GET /fields?q=player` lists the contact fields Eloqua
-already has whose name matches, so the map can be named from what exists.
+It writes nothing until all of these hold: `WRITE_ENABLED` is `1` (it is), the CDO exists with
+the Favorite Player field, and the Worker's secrets are set. Missing any one, each fan's row says
+which in the log.
 
-What the log holds: the GUID, the contact id, the field, the two values. Never a name, never an
-email. The contact read asks only for the mapped fields.
+`GET /cdo` shows what the Worker sees: the CDO's id, its fields, and which signals land.
+`GET /dry-run` runs the whole plan without writing.
 
 ## Privacy, in one paragraph
 
@@ -88,7 +98,13 @@ own contact in our own system is first-party use of first-party data for the sta
 you"). It is recorded here as such. No third party sees it. The fan can change or clear the pick
 in the feed, and the nightly pass carries the change.
 
-## Needs from Adam before any write
+## Next, for knowing fans better
 
-See the questions at the end of the report that opened this branch. In short: the field names
-(or the word to create them), confirmation the API user may update contacts, the go.
+- **A watched player, labelled as inferred.** Zero recognised fans have saved a pick, but the feed
+  already knows what some of them watch. A `Watched Player` field, kept apart from the declared
+  pick, would give email a player for fans who never open the picker.
+- **Going as a ticket segment.** Once `Going` is live, `yes` and `maybe` are a declared ticket
+  intent list in Eloqua, joined to workstream 4's purchases.
+- **The feed has to earn the first save.** Every recognised fan so far has swiped past the picker.
+  The writeback has nothing to carry until the welcome card or the chip lands a save; that is the
+  feed session's lever.

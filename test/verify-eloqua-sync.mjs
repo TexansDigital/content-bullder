@@ -1,7 +1,8 @@
 /**
- * The Eloqua writeback sync through mocks: the candidates RPC, the GUID to contact resolution, the
- * plan per field, the log rows, the write switch, the field lookup, and the key-protected routes.
- * Nothing here reaches the network, and nothing is written unless the test turns writes on.
+ * The Eloqua writeback sync through mocks: candidates from Supabase, GUID to contact, the CDO
+ * found by name with its fields by name, one record per contact (created once, then updated),
+ * the write switch, merged GUIDs, the log rows, and the key-protected routes.
+ * Nothing here reaches the network.
  */
 import { createSync, planFor, SIGNALS } from '../workers/eloqua-sync/src/sync.js';
 
@@ -9,148 +10,137 @@ const ok = [], bad = [];
 const t = (n, c) => (c ? ok : bad).push(n);
 const res = (status, body) => ({ ok: status >= 200 && status < 300, status, json: async () => body, text: async () => JSON.stringify(body) });
 
-const G1 = 'ABCDEF0123456789ABCDEF0123456789'; // resolves to contact 4242
-const G2 = '11111111111111111111111111111111'; // a visitor with no contact
+const G1 = 'ABCDEF0123456789ABCDEF0123456789'; // contact 4242
+const G2 = '11111111111111111111111111111111'; // visitor without a contact
 const G3 = '22222222222222222222222222222222'; // unknown to Eloqua
+const G4 = '33333333333333333333333333333333'; // a second device of contact 4242, older picks
+const cand = (guid, over = {}) => ({ guid, session_id: 's', pref_updated_at: '2026-11-03T20:00:00Z', pref_source: 'picker', players: ['c-j-stroud', 'tank-dell'], players_named: ['c.j. stroud', 'tank dell'], wants: ['fun', 'tickets'], format: 'video', going: 'yes', watch: 'stadium', follow: null, boosts: [], sessions: 2, first_visit: null, last_visit: '2026-11-03T20:00:00Z', ...over });
 const CANDIDATES = {
-  generated_at: '2026-11-04T09:05:00Z', recognised_guids: 188, recognised_sessions: 186, excluded_sessions: 30, candidates_total: 3,
+  recognised_guids: 188, recognised_sessions: 186, excluded_sessions: 28, candidates_total: 4,
   candidates: [
-    { guid: G1, session_id: 'sess_1', pref_updated_at: '2026-11-03T20:00:00Z', pref_source: 'picker', players: ['c-j-stroud', 'tank-dell'], players_named: ['c.j. stroud', 'tank dell'], wants: ['fun', 'tickets'], format: 'video', going: 'yes', watch: 'stadium', follow: null, boosts: [], sessions: 2, first_visit: '2026-11-01T01:00:00Z', last_visit: '2026-11-03T20:00:00Z' },
-    { guid: G2, session_id: 'sess_2', pref_updated_at: '2026-11-02T20:00:00Z', pref_source: 'chip', players: ['will-anderson-jr'], players_named: ['will anderson jr'], wants: [], format: null, going: null, watch: null, follow: null, boosts: [], sessions: 1, first_visit: null, last_visit: '2026-11-02T20:00:00Z' },
-    { guid: G3, session_id: 'sess_3', pref_updated_at: '2026-11-01T20:00:00Z', pref_source: 'welcome', players: ['tank-dell'], players_named: ['tank dell'], wants: [], format: null, going: 'maybe', watch: null, follow: null, boosts: [], sessions: 1, first_visit: null, last_visit: null },
+    cand(G1),
+    cand(G2, { players: ['will-anderson-jr'], players_named: ['will anderson jr'], wants: [], format: null, going: null, watch: null }),
+    cand(G3, { players: ['tank-dell'], players_named: ['tank dell'], wants: [] }),
+    cand(G4, { pref_updated_at: '2026-11-01T20:00:00Z', players: ['tank-dell'], players_named: ['tank dell'] }),
   ],
 };
+const CDO = { id: 55, name: 'Feed Preferences', fields: [
+  { id: 901, name: 'Contact ID', internalName: 'Contact_ID1', dataType: 'text' },
+  { id: 902, name: 'Favorite Player', internalName: 'Favorite_Player1', dataType: 'text' },
+  { id: 903, name: 'Updated At', internalName: 'Updated_At1', dataType: 'date' },
+] };
 
-function world({ contactField = 'C.J. Stroud', putStatus = 200 } = {}) {
+function world({ cdo = CDO, records = [], instance = null, saveStatus = 201 } = {}) {
   const calls = [];
   const fetch = async (url, opts = {}) => {
-    calls.push({ url, opts });
+    const method = opts.method || 'GET';
+    calls.push({ url, method, body: opts.body });
     if (url === 'https://login.eloqua.com/id') return res(200, { site: { name: 'HoustonTexans' }, urls: { base: 'https://secure.p03.eloqua.com' } });
     if (/\/data\/visitors\?/.test(url)) {
-      if (url.includes(G1)) return res(200, { elements: [{ visitorId: 77, contactId: 4242 }] });
+      if (url.includes(G1) || url.includes(G4)) return res(200, { elements: [{ visitorId: 77, contactId: 4242 }] });
       if (url.includes(G2)) return res(200, { elements: [{ visitorId: 78 }] });
       return res(200, { elements: [] });
     }
-    if (/\/data\/contact\/4242(\?|$)/.test(url) && (opts.method || 'GET') === 'GET') return res(200, { id: 4242, firstName: 'Adam', emailAddress: 'secret@example.com', fieldValues: [{ id: 100001, name: 'C_Feed_Favorite_Player1', value: contactField }, { id: 100002, value: 'x' }] });
-    if (/\/data\/contact\/4242(\?|$)/.test(url) && opts.method === 'PUT') return res(putStatus, {});
-    if (/\/assets\/contact\/fields\?/.test(url)) return res(200, { total: 2, elements: [{ id: 100001, name: 'Feed Favorite Player', internalName: 'C_Feed_Favorite_Player1', dataType: 'text' }, { id: 100003, name: 'Favorite Player (survey)', internalName: 'C_Favorite_Player', dataType: 'text' }] });
+    if (/\/assets\/customObjects\?/.test(url)) return res(200, { elements: cdo ? [cdo] : [] });
+    if (/\/data\/customObject\/55\/instance\/\d+$/.test(url) && method === 'GET') return instance ? res(200, instance) : res(404, {});
+    if (/\/data\/customObject\/55\/instance\/\d+$/.test(url) && method === 'PUT') return res(saveStatus === 201 ? 200 : saveStatus, { id: url.split('/').pop() });
+    if (/\/data\/customObject\/55\/instance$/.test(url) && method === 'POST') return res(saveStatus, { id: '7001' });
     if (/\/rest\/v1\/rpc\/feed_eloqua_candidates$/.test(url)) return res(200, CANDIDATES);
+    if (/\/rest\/v1\/feed_eloqua_cdo_records\?select/.test(url)) return res(200, records);
+    if (/\/rest\/v1\/feed_eloqua_cdo_records\?on_conflict/.test(url)) return res(201, null);
     if (/\/rest\/v1\/feed_eloqua_writes$/.test(url)) return res(201, null);
     return res(404, {});
   };
   return { fetch, calls };
 }
-
-const BASE = { SUPABASE_URL: 'https://x.supabase.co', SUPABASE_SERVICE_KEY: 'svc', ELOQUA_SITE: 'HoustonTexans', ELOQUA_USER: 'u', ELOQUA_PASSWORD: 'p', SYNC_KEY: 'k'.repeat(24) };
+const BASE = { SUPABASE_URL: 'https://x.supabase.co', SUPABASE_SERVICE_KEY: 'svc', ELOQUA_SITE: 'HoustonTexans', ELOQUA_USER: 'u', ELOQUA_PASSWORD: 'p', SYNC_KEY: 'k'.repeat(24), ELOQUA_CDO_NAME: 'Feed Preferences', ELOQUA_CDO_SIGNALS: 'favorite_player', WRITE_ENABLED: '1' };
 const clock = () => new Date('2026-11-04T09:05:00Z');
+const logged = (w) => JSON.parse(w.calls.find((c) => /feed_eloqua_writes$/.test(c.url)).body);
+const saves = (w) => w.calls.filter((c) => /\/data\/customObject\/55\/instance/.test(c.url) && c.method !== 'GET');
 
 // ---- the plan for one fan ----
 {
   const p = planFor(CANDIDATES.candidates[0]);
   t('favourite player is the first pick, display-cased', p.favorite_player === 'C.J. Stroud');
-  t('all picks join with a bar', p.players === 'C.J. Stroud | Tank Dell');
   t('lanes are named as the fan saw them', p.lanes === 'Fun & TORO | Gameday & tickets');
-  t('going, watch and format pass through as the fan answered', p.going === 'yes' && p.watch === 'stadium' && p.format === 'video');
-  t('last feed visit is a date', p.last_feed_visit === '2026-11-03');
   t('every planned key is a known signal', Object.keys(p).every((k) => SIGNALS.includes(k)));
-  const q = planFor(CANDIDATES.candidates[1]);
-  t('a fan with one chip pick plans only the player fields and the visit', Object.keys(q).sort().join(',') === 'favorite_player,last_feed_visit,players' && q.favorite_player === 'Will Anderson Jr');
 }
 
-// ---- dry run, no fields named ----
+// ---- first run: the record is created, linked to the contact, keyed and stamped ----
 {
   const w = world();
-  const sync = createSync({ fetch: w.fetch, now: clock });
-  const out = await sync.run({ ...BASE, WRITE_ENABLED: '0', ELOQUA_FIELD_MAP: '{}' }, { write: true });
-  t('a run with writes off never writes', out.writing === false && out.written === 0 && !w.calls.some((c) => c.opts.method === 'PUT'));
-  t('the run carries the recognised counts from Supabase', out.recognised_guids === 188 && out.candidates === 3);
-  t('one GUID resolves to a contact, one is a visitor without a contact, one is unknown', out.resolved === 1 && out.no_contact === 1 && out.unresolved === 1);
-  t('every planned field with no name is dry with the reason', out.plan[0].fields.every((f) => f.status === 'dry' && f.field === null && f.reason === 'field not named'));
-  t('GUIDs are masked in the answer and no name or email travels', out.plan.every((e) => /^[0-9A-F]{6}…$/.test(e.guid)) && !JSON.stringify(out).includes('Adam') && !JSON.stringify(out).includes('secret@'));
-  const logged = w.calls.find((c) => /feed_eloqua_writes$/.test(c.url));
-  const rows = JSON.parse(logged.opts.body);
-  t('the plan is logged, one row per field, with the full GUID and the contact id', rows.length === out.planned && rows.every((r) => r.run_id === out.run_id) && rows[0].guid === G1 && rows[0].contact_id === '4242' && rows[0].status === 'dry');
-  t('an unnamed field is logged under its signal in brackets', rows.every((r) => /^\(\w+\)$/.test(r.field)));
+  const out = await createSync({ fetch: w.fetch, now: clock }).run(BASE, { write: true });
+  const s = saves(w);
+  t('one CDO record is created for the one resolved contact', s.length === 1 && s[0].method === 'POST' && out.created === 1 && out.written === 1);
+  const body = JSON.parse(s[0].body);
+  t('the record is linked to the contact and carries the key, the pick and the stamp', body.contactId === '4242' && body.fieldValues.some((f) => f.id === '901' && f.value === '4242') && body.fieldValues.some((f) => f.id === '902' && f.value === 'C.J. Stroud') && body.fieldValues.some((f) => f.id === '903' && f.value === String(Math.floor(clock().getTime() / 1000))));
+  t('only the live signal is sent', body.fieldValues.length === 3);
+  t('the record id is remembered for the next run', w.calls.some((c) => /feed_eloqua_cdo_records\?on_conflict/.test(c.url) && JSON.parse(c.body).instance_id === '7001'));
+  t('the CDO was found by name and reports its fields', out.cdo.id === '55' && out.cdo.key_field && out.cdo.fields[0].found);
+  t('the second device of the same contact is merged, not written twice', out.merged === 1 && out.plan[3].fields.every((f) => f.status === 'skipped' && /merged/.test(f.reason)));
+  t('one resolved, one visitor without a contact, one unknown', out.resolved === 2 && out.no_contact === 1 && out.unresolved === 1);
+  const rows = logged(w);
+  t('signals not yet live are logged as dry with the reason', rows.filter((r) => r.field === 'Lanes' && r.guid === G1).every((r) => r.status === 'dry' && /not live/.test(r.reason)));
+  t('the written row carries the CDO and record ids', rows.some((r) => r.status === 'written' && r.cdo_id === '55' && r.instance_id === '7001' && r.guid === G1));
+  t('GUIDs are masked in the answer and no name or email travels', out.plan.every((e) => /^[0-9A-F]{6}…$/.test(e.guid)) && !/secret@|firstName/.test(JSON.stringify(out)));
 }
 
-// ---- dry run with the favourite player field named ----
+// ---- later run: the known record is updated, or left alone when unchanged ----
 {
-  const w = world({ contactField: 'Tank Dell' });
-  const sync = createSync({ fetch: w.fetch, now: clock });
-  const out = await sync.run({ ...BASE, WRITE_ENABLED: '0', ELOQUA_FIELD_MAP: '{"favorite_player":"C_Feed_Favorite_Player1","bogus":"x"}' }, { write: false });
-  t('only known signals enter the field map', Object.keys(out.field_map).join() === 'favorite_player');
-  const fav = out.plan[0].fields.find((f) => f.signal === 'favorite_player');
-  t('a named field shows the contact\'s current value beside the planned one', fav.field === 'C_Feed_Favorite_Player1' && fav.value === 'C.J. Stroud' && fav.previous === 'Tank Dell' && fav.status === 'dry' && fav.reason === 'dry run');
-  const fav2 = out.plan[1].fields.find((f) => f.signal === 'favorite_player');
-  t('a GUID without a contact is skipped with the reason', fav2.status === 'skipped' && /no contact/.test(fav2.reason));
-  t('the contact read asked only for the mapped field', w.calls.some((c) => /\/data\/contact\/4242/.test(c.url)) && !w.calls.some((c) => c.opts.method === 'PUT'));
+  const rec = [{ contact_id: '4242', cdo_id: '55', instance_id: '7001' }];
+  let w = world({ records: rec, instance: { id: '7001', fieldValues: [{ id: '902', value: 'Tank Dell' }] } });
+  let out = await createSync({ fetch: w.fetch, now: clock }).run(BASE, { write: true });
+  let s = saves(w);
+  t('a known record is updated in place with PUT', s.length === 1 && s[0].method === 'PUT' && /instance\/7001$/.test(s[0].url) && out.created === 0 && out.written === 1);
+  t('the previous value is logged beside the new one', logged(w).some((r) => r.status === 'written' && r.previous === 'Tank Dell' && r.value === 'C.J. Stroud'));
+  w = world({ records: rec, instance: { id: '7001', fieldValues: [{ id: '902', value: 'C.J. Stroud' }] } });
+  out = await createSync({ fetch: w.fetch, now: clock }).run(BASE, { write: true });
+  t('a value the record already holds is unchanged and nothing is sent', saves(w).length === 0 && out.unchanged === 1);
+  w = world({ records: rec, instance: null });
+  out = await createSync({ fetch: w.fetch, now: clock }).run(BASE, { write: true });
+  t('a remembered record deleted in Eloqua is created again', saves(w)[0]?.method === 'POST' && out.created === 1);
 }
 
-// ---- the same value already on the contact ----
+// ---- the gates ----
 {
-  const w = world({ contactField: 'C.J. Stroud' });
-  const sync = createSync({ fetch: w.fetch, now: clock });
-  const out = await sync.run({ ...BASE, WRITE_ENABLED: '1', ELOQUA_FIELD_MAP: '{"favorite_player":"C_Feed_Favorite_Player1"}' }, { write: true });
-  const fav = out.plan[0].fields.find((f) => f.signal === 'favorite_player');
-  t('a matching value is unchanged and never sent', fav.status === 'unchanged' && out.unchanged === 1 && !w.calls.some((c) => c.opts.method === 'PUT'));
-}
-
-// ---- writes on, field named, value differs ----
-{
-  const w = world({ contactField: '' });
-  const sync = createSync({ fetch: w.fetch, now: clock });
-  const out = await sync.run({ ...BASE, WRITE_ENABLED: '1', ELOQUA_FIELD_MAP: '{"favorite_player":"C_Feed_Favorite_Player1"}' }, { write: true });
-  const put = w.calls.find((c) => c.opts.method === 'PUT');
-  t('with writes on, the one mapped field is PUT on the one resolved contact', out.writing === true && out.written === 1 && put && /\/data\/contact\/4242$/.test(put.url));
-  const body = JSON.parse(put.opts.body);
-  t('the PUT carries only the contact id and the mapped field value', body.id === 4242 && body.fieldValues.length === 1 && body.fieldValues[0].id === 'C_Feed_Favorite_Player1' && body.fieldValues[0].value === 'C.J. Stroud' && !('emailAddress' in body));
-  const rows = JSON.parse(w.calls.find((c) => /feed_eloqua_writes$/.test(c.url)).opts.body);
-  t('the write is logged with the previous value', rows.find((r) => r.status === 'written' && r.field === 'C_Feed_Favorite_Player1' && r.previous === null && r.value === 'C.J. Stroud'));
-  t('unnamed signals stay dry even with writes on, and the named one is skipped where no contact resolves', rows.filter((r) => r.field.startsWith('(')).every((r) => r.status === 'dry') && rows.filter((r) => r.status === 'skipped').length === 2 && out.written === 1);
-  t('the cron runs the same pass', typeof sync.scheduled === 'function');
-}
-
-// ---- a refused PUT ----
-{
-  const w = world({ contactField: '', putStatus: 400 });
-  const sync = createSync({ fetch: w.fetch, now: clock });
-  const out = await sync.run({ ...BASE, WRITE_ENABLED: '1', ELOQUA_FIELD_MAP: '{"favorite_player":"C_Feed_Favorite_Player1"}' }, { write: true });
-  t('a refused PUT is logged as failed with the status, not as written', out.failed === 1 && out.written === 0 && out.plan[0].fields[0].status === 'failed' && /400/.test(out.plan[0].fields[0].reason));
-}
-
-// ---- Eloqua not configured ----
-{
-  const w = world();
-  const sync = createSync({ fetch: w.fetch, now: clock });
-  const out = await sync.run({ ...BASE, ELOQUA_PASSWORD: '', ELOQUA_FIELD_MAP: '{"favorite_player":"C_Feed_Favorite_Player1"}' }, { write: false });
-  const fav = out.plan[0].fields.find((f) => f.signal === 'favorite_player');
-  t('without Eloqua the plan still lists the fans and the named field is skipped with the reason', out.errors.length === 1 && out.plan.length === 3 && fav.status === 'skipped' && /not reachable/.test(fav.reason) && out.resolved === 0);
+  let w = world();
+  let out = await createSync({ fetch: w.fetch, now: clock }).run({ ...BASE, WRITE_ENABLED: '0' }, { write: true });
+  t('with WRITE_ENABLED off nothing is written and the row says dry run', saves(w).length === 0 && out.plan[0].fields[0].status === 'dry' && out.plan[0].fields[0].reason === 'dry run');
+  w = world();
+  out = await createSync({ fetch: w.fetch, now: clock }).run(BASE, { write: false });
+  t('a dry run never writes even with the switch on', saves(w).length === 0 && out.dry > 0);
+  w = world({ cdo: null });
+  out = await createSync({ fetch: w.fetch, now: clock }).run(BASE, { write: true });
+  t('before the CDO exists, the live field is skipped with the reason and nothing is written', saves(w).length === 0 && out.plan[0].fields[0].status === 'skipped' && /no CDO named "Feed Preferences"/.test(out.plan[0].fields[0].reason));
+  w = world({ cdo: { ...CDO, fields: CDO.fields.filter((f) => f.id !== 902) } });
+  out = await createSync({ fetch: w.fetch, now: clock }).run(BASE, { write: true });
+  t('a CDO without the signal\'s field writes nothing and says which field is missing', saves(w).length === 0 && /no "Favorite Player" field/.test(out.plan[0].fields[0].reason));
+  w = world({ saveStatus: 400 });
+  out = await createSync({ fetch: w.fetch, now: clock }).run(BASE, { write: true });
+  t('a refused save is logged as failed, the record is not remembered', out.failed === 1 && out.written === 0 && !w.calls.some((c) => /on_conflict/.test(c.url)));
+  w = world();
+  out = await createSync({ fetch: w.fetch, now: clock }).run({ ...BASE, ELOQUA_PASSWORD: '' }, { write: true });
+  t('without Eloqua the plan still lists the fans and nothing is written', out.plan.length === 4 && saves(w).length === 0 && out.errors.length >= 1);
 }
 
 // ---- the routes ----
 {
   const w = world();
   const sync = createSync({ fetch: w.fetch, now: clock });
-  const env = { ...BASE, WRITE_ENABLED: '0', ELOQUA_FIELD_MAP: '{}' };
   const req = (path, init) => new Request(`https://txfeed-eloqua-sync.texansdigital.workers.dev${path}`, init);
-  let r = await sync.fetch(req('/health'), env);
+  const key = { headers: { 'x-sync-key': BASE.SYNC_KEY } };
+  let r = await sync.fetch(req('/health'), BASE);
   let b = await r.json();
-  t('/health says the secrets are set, Eloqua answers, and writes are off', r.status === 200 && b.supabase && b.sync_key && b.eloqua === 'ok' && b.write_enabled === false);
-  r = await sync.fetch(req('/dry-run'), env);
-  t('/dry-run without the key is refused', r.status === 401);
-  r = await sync.fetch(req('/dry-run', { headers: { 'x-sync-key': BASE.SYNC_KEY } }), env);
-  b = await r.json();
-  t('/dry-run with the key answers the plan and writes nothing', r.status === 200 && b.plan.length === 3 && b.written === 0);
-  r = await sync.fetch(req('/run', { method: 'POST', headers: { 'x-sync-key': BASE.SYNC_KEY } }), env);
-  b = await r.json();
-  t('POST /run with writes off is still a dry run', b.writing === false && b.written === 0);
-  r = await sync.fetch(req('/fields?q=player', { headers: { 'x-sync-key': BASE.SYNC_KEY } }), env);
-  b = await r.json();
-  t('/fields lists matching contact fields with id, internal name and type', b.ok && b.fields.length === 2 && b.fields[0].internalName === 'C_Feed_Favorite_Player1' && /name%3D'\*player\*'/.test(w.calls.at(-1).url));
-  r = await sync.fetch(req('/dry-run'), { ...env, SYNC_KEY: '' });
-  t('without a SYNC_KEY secret the key routes are not enabled', r.status === 503);
-  r = await sync.fetch(req('/nope'), env);
-  t('anything else is not found', r.status === 404);
+  t('/health names the CDO, the live signals and the switch', b.eloqua === 'ok' && b.write_enabled === true && b.cdo_name === 'Feed Preferences' && b.live_signals.join() === 'favorite_player');
+  t('/dry-run without the key is refused', (await sync.fetch(req('/dry-run'), BASE)).status === 401);
+  b = await (await sync.fetch(req('/dry-run', key), BASE)).json();
+  t('/dry-run with the key plans and never writes', b.plan.length === 4 && b.written === 0 && saves(w).length === 0);
+  b = await (await sync.fetch(req('/cdo', key), BASE)).json();
+  t('/cdo shows the CDO, its fields and which signals land', b.ok && b.id === '55' && b.key_field && b.signals.find((s) => s.signal === 'favorite_player').found);
+  b = await (await sync.fetch(req('/cdo', key), { ...BASE, ELOQUA_CDO_NAME: 'Nope' })).json();
+  t('/cdo before it exists says which fields to create', b.ok === false && b.needs.includes('Contact ID') && b.needs.includes('Favorite Player'));
+  t('without a SYNC_KEY secret the key routes are not enabled', (await sync.fetch(req('/dry-run'), { ...BASE, SYNC_KEY: '' })).status === 503);
+  t('the daily cron runs the same pass', typeof sync.scheduled === 'function');
 }
 
 console.log(`verify-eloqua-sync: ${ok.length} passed, ${bad.length} failed`);

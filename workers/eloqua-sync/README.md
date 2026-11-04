@@ -1,4 +1,4 @@
-# txfeed-eloqua-sync: the feed's picks onto the Eloqua contact
+# txfeed-eloqua-sync: the feed's picks into an Eloqua CDO
 
 Workstream 2 in [docs/workstreams.md](../../docs/workstreams.md). The record, the dry-run numbers
 and the open questions are in [docs/eloqua-writeback.md](../../docs/eloqua-writeback.md).
@@ -10,13 +10,13 @@ change here can never change what a fan sees. The Eloqua client is the feed's ow
 
 | Route | What |
 |---|---|
-| `GET /health` | Whether the secrets are set, whether Eloqua answers a login, the field map, and the write switch |
-| `GET /dry-run` | The plan: every recognised fan with saved picks, the contact the GUID resolves to, and the value for each field. Nothing written to Eloqua; the plan is logged to `feed_eloqua_writes` as `dry` |
-| `GET /fields?q=player` | Eloqua contact fields whose name matches, with id, internal name and type, so the map can be named |
-| `POST /run` | The nightly pass by hand. Writes only when `WRITE_ENABLED` is `1` and the field map names the field |
+| `GET /health` | Whether the secrets are set, whether Eloqua answers a login, the CDO name, the live signals and the write switch |
+| `GET /cdo` | The CDO as the Worker sees it: id, fields, and which signals land. Before it exists, the fields to create |
+| `GET /dry-run` | The whole plan, nothing written to Eloqua; logged to `feed_eloqua_writes` |
+| `POST /run` | The daily pass by hand |
 
 The three key routes want the `x-sync-key` header. The cron runs the same pass as `POST /run`
-nightly at 09:05 UTC.
+daily at 09:05 UTC.
 
 ## First deploy (Adam, once)
 
@@ -36,23 +36,24 @@ npx wrangler secret put SYNC_KEY
 The three Eloqua values are the ones already on the txfeed Worker; a Worker cannot read another
 Worker's secrets. `SYNC_KEY` is any long random string.
 
-Then the dry run, with the key in place of the placeholder:
+Once the Feed Preferences CDO exists in Eloqua, check what the Worker sees, with the key in
+place of the placeholder:
+
+```bash
+curl -s -H "x-sync-key: THE_KEY" https://txfeed-eloqua-sync.texansdigital.workers.dev/cdo
+```
+
+Then the plan, without writing:
 
 ```bash
 curl -s -H "x-sync-key: THE_KEY" https://txfeed-eloqua-sync.texansdigital.workers.dev/dry-run
 ```
 
-And the fields Eloqua already has that mention a player:
+## Widening
 
-```bash
-curl -s -H "x-sync-key: THE_KEY" "https://txfeed-eloqua-sync.texansdigital.workers.dev/fields?q=player"
-```
-
-## Turning writes on
-
-Only after the dry run has been read and the fields named. In `wrangler.toml`, set
-`ELOQUA_FIELD_MAP` to the named fields and `WRITE_ENABLED` to `"1"`, deploy, and the next cron
-writes. Every write lands in `feed_eloqua_writes` with the previous value, so it can be undone.
+Add a signal to `ELOQUA_CDO_SIGNALS` in `wrangler.toml` (for example
+`favorite_player,going`), create its field on the CDO, and push. Every write lands in
+`feed_eloqua_writes` with the previous value, so it can be undone.
 
 ## Tests
 
