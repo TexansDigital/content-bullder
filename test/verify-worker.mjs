@@ -359,7 +359,7 @@ t('an unknown format filter is ignored', badFormats.clips.length === withSite.cl
 {
   const posted = [];
   const a = createApp({ feedHtml: 'x', deps: { fetch: async (url, opts = {}) => { if (/feed_events/.test(url) && opts.method === 'POST') { posted.push(...JSON.parse(opts.body)); return { ok: true, status: 201 }; } return mock()(url, opts); }, cache: null } });
-  const t0 = Date.parse('2026-11-03T03:00:00.000Z');
+  const t0 = Date.now() - 120000; // within the day the route trusts a client clock
   const burst = Array.from({ length: 12 }, (_, i) => ({ event: 'rail_open', params: { card_id: `yt-card${i}`, card_position: i + 1, pocket_id: 'sess_1792089626000_bursty' }, at: new Date(t0 + i * 20).toISOString() }));
   await a.fetch(req('/api/events', { method: 'POST', body: JSON.stringify({ events: [{ event: 'feed_load', params: { pocket_id: 'sess_1792089626000_bursty' }, at: new Date(t0).toISOString() }, ...burst] }) }), ENV, ctx);
   await Promise.all(waits.splice(0));
