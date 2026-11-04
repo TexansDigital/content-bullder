@@ -58,3 +58,20 @@ values ('picker_pos', 'Offering the picker on card 1 raises saves without hurtin
 Every `feed_load` event carries `exp_<key>: <arm>` so results can be sliced by arm.
 | 090-feed-tagger-reach.sql | Applied 3 Nov 2026 | The tagger reaches every clip the feed serves (not only typed Shorts), aliases ending in a dot match, and a two-hourly pass covers the last week so new Shorts are tagged within two hours of ingest instead of a day. |
 | 100-feed-model-tags.sql | Applied 4 Nov 2026 | `feed_model_tag_runs` (service key only: every clip the model pass asked, its labels and cost), `feed_model_tag_candidates(lim, months, served)` (the served Shorts with no player, coach, staff or theme and no run row, plus the last day's spend) and `feed_model_tag_report()` for the review. The pass itself runs in the Worker cron (`workers/feed/src/tagger.js`). |
+
+## The fan knowledge dashboard (workstream 6)
+
+`dashboard-*.sql` are read-only `SELECT`s, not migrations: nothing to apply. The dashboard artifact
+(https://claude.ai/artifact/UKUfZtvJeCeWt45dB7SvD6) runs each one live through the Supabase
+connector, so the file here and the query a reader sees in Sources are the same text. Every file
+leaves out events with `params.qa` or `params.automated` true, Adam's own session and any session id
+containing smoketest, armcheck or test, and counts a fan once by Eloqua GUID where a session has one.
+
+| File | Feeds |
+|---|---|
+| `dashboard-daily.sql` | recognised fans, fans with a pick, answers: seven daily cumulative rows |
+| `dashboard-top-picks.sql` | the five most-picked players, now and seven days ago |
+| `dashboard-answers.sql` | fans per option of the going and watch questions |
+| `dashboard-placement.sql` | feed sessions and identified sessions per placement per day |
+| `dashboard-coverage.sql` | watched clips with a player, coach, staff or theme tag, alias or model |
+| `dashboard-model-tags.sql` | `feed_model_tag_report()` |
