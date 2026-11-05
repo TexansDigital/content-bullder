@@ -141,3 +141,11 @@ The 4 Nov review found 82% of card views on cards 1 to 3, the lead card naming n
 
 `welcome` and `capture_pitch` are paused as drafts until twenty fans have saved picks; neither
 could show a card while nobody had.
+
+## Knob added 5 Nov 2026: `chip_copy`
+
+`chip_copy` ('more' | 'next'): the chip reads "More Tank Dell" or "Next up: Tank Dell".
+Experiment `chip_copy`, more vs next, since 5 Nov 12:00 UTC, after `lead_tagged` was stopped by
+its rule (card 1 completion 18.6% against 45.9%: the lead card was a 22-second master in every
+lead session against a short site card in control, so card type drove it). The first real chip
+tap arrived 4 Nov 17:16 UTC on the news rail, in the hold arm, after the DeMeco card.
