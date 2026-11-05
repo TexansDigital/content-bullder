@@ -402,6 +402,8 @@ export const KNOB_DEFAULTS = {
   /** 1 keeps the pick chip on its card until the fan swipes instead of fading it after seven
    *  seconds. 0 off. */
   chip_hold: 0,
+  /** What the chip says: 'more' ("More Tank Dell") or 'next' ("Next up: Tank Dell"). */
+  chip_copy: 'more',
 };
 
 export function fnv1a(str) {
