@@ -1,6 +1,6 @@
 /**
  * The live first tile. Against a studio started with FEED_KNOBS='{"rail_preview":1}' (PREVIEW
- * below, default 4401) and, for the control, the plain studio on 4400. Seeds two playable cards:
+ * below, default 4401) and, for the control, the studio on 4400 started with FEED_KNOBS='{"rail_preview":0}' (the preview shipped as the default on 8 Nov). Seeds two playable cards:
  * a file-kind clip first, a YouTube Short second, then stills.
  */
 import { chromium } from 'playwright';

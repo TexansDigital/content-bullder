@@ -33,6 +33,8 @@ const ENTS = [
 const PROFILES = {
   'sess_1792089626000_k3j9xq2ab': { events: 9, entity_weights: { 'player:tank-dell': 1 }, content_type_weights: {} },
   'dev_thin00001': { events: 1, entity_weights: { 'player:tank-dell': 1 }, content_type_weights: {} },
+  // A fan the feed barely saw (one event) who read about Tank Dell on the site (handshake v5 page views).
+  'sess_1793900000000_reader01': { events: 1, entity_weights: {}, content_type_weights: {}, site_weights: { 'player:tank-dell': 1 } },
 };
 
 const ALIASES = [
@@ -163,6 +165,19 @@ t('the Tank fan sees the Tank card first in the catalogue tail', fan.clips.map((
 t('editorial cards stay on top regardless', fan.clips[0].id === 'promo-1' && fan.clips[1].id === 'yt-dwNx1tv_k24');
 t('a personal answer is never cacheable', /private, no-store/.test(fanRes.headers.get('cache-control')));
 const pr = calls.find((c) => /feed_profiles/.test(c.url));
+// ---- site_rank: what a fan read on the site ranks them when the feed has not watched them enough ----
+{
+  const SITE_EXP = [{ key: 'site_rank', arms: { site: 1 }, knobs: { site: { site_rank: 1 } }, traffic: 1 }];
+  const siteMock = () => rankMock({ feed_experiments: async () => ({ ok: true, status: 200, json: async () => SITE_EXP }) });
+  const reader = await (await app({ fetch: siteMock() }).fetch(req('/api/feed?sid=sess_1793900000000_reader01'), ENV, ctx)).json();
+  t('with site_rank on, a one-event fan with site weights is ranked on them and labelled site', reader.analytics.rank === 'site' && reader.clips.map((c) => c.id).slice(2).join(',') === 'yt-Tq3sz_Yf-Nk,yt-zz2ndcatalog');
+  const plainReader = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1793900000000_reader01'), ENV, ctx)).json();
+  t('with the knob off the same fan gets the shared order', plainReader.analytics.rank === 'shared');
+  const thin = await (await app({ fetch: siteMock() }).fetch(req('/api/feed?sid=dev_thin00001'), ENV, ctx)).json();
+  t('a thin fan with no site weights stays shared even with the knob on', thin.analytics.rank === 'shared');
+  const watched = await (await app({ fetch: siteMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
+  t('a fan the feed has watched enough keeps the implicit rank over the site', watched.analytics.rank === 'implicit');
+}
 t('the profile is read with the service key, never the publishable one', pr && pr.opts.headers.apikey === 'service-secret');
 const thin = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?did=dev_thin00001'), ENV, ctx)).json();
 t('a one-event profile is too thin: shared order, honestly labelled', thin.analytics.rank === 'shared');

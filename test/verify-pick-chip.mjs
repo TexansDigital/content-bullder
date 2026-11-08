@@ -1,7 +1,7 @@
 /**
  * The pick chip: one tap on the card after a completed clip, instead of the picker card. The
  * studio on CHIP_BASE (4401) runs with FEED_KNOBS='{"pick_prompt":"chip",...}'; the one on
- * CONTROL_BASE (4400) runs the picker card. Cards are stills that hold two seconds, so a
+ * CONTROL_BASE (4400) runs the picker card (FEED_KNOBS='{"pick_prompt":"card"}' since the chip shipped as the default on 8 Nov). Cards are stills that hold two seconds, so a
  * completion is two seconds of waiting.
  */
 import { chromium } from 'playwright';

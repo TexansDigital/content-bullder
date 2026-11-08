@@ -245,7 +245,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
     if (!who || !env.SUPABASE_SERVICE_KEY || !ID_SHAPE.test(who)) return null;
     try {
       const rows = await rest(env,
-        `feed_profiles?select=entity_weights,content_type_weights,events&session_id=eq.${encodeURIComponent(who)}&limit=1`,
+        `feed_profiles?select=entity_weights,content_type_weights,events,site_weights&session_id=eq.${encodeURIComponent(who)}&limit=1`,
         env.SUPABASE_SERVICE_KEY);
       return Array.isArray(rows) && rows[0] ? rows[0] : null;
     } catch (e) {
@@ -312,11 +312,17 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
     const focus = SLUG.test(wanted) && names[wanted] ? wanted : null;
     const [profile, prefRow, week] = await Promise.all([profileFor(env, who), prefsFor(env, who), weekFor(env, who, names)]);
     const prefs = prefRow ? makePrefs(prefRow) : null;
-    const ranked0 = rankFeed(live, profile, { prefs, presets, offers, names, focus, now: now().getTime() });
+    const assigned = resolveExperiments(experiments, who);
+    // site_rank: a fan the feed has not watched enough to rank, but who has read about players on the
+    // site (handshake v5 page views, rolled up nightly), is ranked on that reading instead of the shared
+    // order. The site weights use the same keys as the watch weights, so they stand in for them.
+    const siteWeights = profile?.site_weights && typeof profile.site_weights === 'object' ? profile.site_weights : null;
+    const siteRanked = Boolean(Number(assigned.knobs.site_rank) && !prefs?.explicit && (Number(profile?.events) || 0) < MIN_EVENTS && siteWeights && Object.keys(siteWeights).length);
+    const rankProfile = siteRanked ? { entity_weights: siteWeights, content_type_weights: {}, events: MIN_EVENTS } : profile;
+    const ranked0 = rankFeed(live, rankProfile, { prefs, presets, offers, names, focus, now: now().getTime() });
     const { ranked, focus: focused } = ranked0;
     // Stories and podcasts take at most one slot in every few, by the fan's answer.
     const items = dedupeTitles(mixFormats(ranked0.items, { every: mixEvery(prefs?.format) }));
-    const assigned = resolveExperiments(experiments, who);
     const only = url.searchParams.get('collection');
     // ?formats=video,listen keeps only those card formats: the news page lists its own stories.
     const fmts = new Set(String(url.searchParams.get('formats') || '').split(',').map((s) => s.trim()).filter((s) => ['video', 'read', 'listen'].includes(s)));
@@ -324,7 +330,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
     const body = JSON.stringify({
       generatedAt: now().toISOString(),
       analytics: { ga4: ga4(env), events: env.SUPABASE_SERVICE_KEY ? '/api/events' : null,
-        rank: !ranked ? 'shared' : prefs?.explicit ? 'personal' : profile && (Number(profile.events) || 0) >= MIN_EVENTS ? 'implicit' : 'focused' },
+        rank: !ranked ? 'shared' : prefs?.explicit ? 'personal' : siteRanked ? 'site' : profile && (Number(profile.events) || 0) >= MIN_EVENTS ? 'implicit' : 'focused' },
       ...(focused ? { focus: { slug: focused, name: displayName(focused, names) } } : {}),
       collections: liveCollections(shown),
       clips: only ? shown.filter((i) => i.collection === only) : shown,

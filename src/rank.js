@@ -388,14 +388,14 @@ export const KNOB_DEFAULTS = {
   ask_position: 7,
   /** Rail layout only: how many lead tiles play a muted preview instead of a still (0 to 3). The
    *  strip is seen and scrolled past; a moving first tile is the invitation to tap. 0 is off. */
-  rail_preview: 0,
+  rail_preview: 1,
   /** A fan the handshake recognised (Eloqua visitor GUID) opens on a "Welcome!" card carrying the
    *  picks they saved in any earlier session, or the player they watch most. 0 off, 1 on. */
   welcome_card: 0,
   /** How the first pick is asked for: 'card' (the picker card at picker_position) or 'chip' (one
    *  tap on the card after a completed clip: "More Tank Dell"; the picker card then only appears
    *  when the fan opens it from the Your feed chip). */
-  pick_prompt: 'card',
+  pick_prompt: 'chip',
   /** 1 moves the first player-tagged clip among the opening cards to card 1, so the first
    *  completed clip can earn a player chip ("More Tank Dell") rather than a lane. 0 off. */
   lead_tagged: 0,
@@ -404,6 +404,9 @@ export const KNOB_DEFAULTS = {
   chip_hold: 0,
   /** What the chip says: 'more' ("More Tank Dell") or 'next' ("Next up: Tank Dell"). */
   chip_copy: 'more',
+  /** 1 lets a fan with no feed history be ranked on what they read on the site (feed_profiles.site_weights,
+   *  written nightly by feed_rollup_site from handshake v5 page views). 0 off. */
+  site_rank: 0,
 };
 
 export function fnv1a(str) {

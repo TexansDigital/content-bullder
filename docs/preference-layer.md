@@ -149,3 +149,17 @@ Experiment `chip_copy`, more vs next, since 5 Nov 12:00 UTC, after `lead_tagged`
 its rule (card 1 completion 18.6% against 45.9%: the lead card was a 22-second master in every
 lead session against a short site card in control, so card type drove it). The first real chip
 tap arrived 4 Nov 17:16 UTC on the news rail, in the hold arm, after the DeMeco card.
+
+## Shipped 8 Nov 2026: the chip and the moving tile are the defaults; `site_rank` added
+
+- `pick_prompt` defaults to `chip`. After 7 days: 432 chips in the chip arm and 1 tap, 186 picker
+  views in the control arm and 0 saves with 197 swipes past it; completion 33.5% against 25.7%.
+  Neither ask earned picks, so the one that costs the fan nothing and interrupts nothing wins. The
+  picker card still opens from the Your feed chip.
+- `rail_preview` defaults to 1. After 7 days: the share of rail sessions opening a tile was flat
+  (12.4% against 12.7%), but the fans who opened watched more: 356 opens against 258, 132 card
+  views against 88, completion 37.9% against 25.0%, 21 plays against 0.
+- `site_rank` (0 | 1): a fan the feed has not watched enough to rank (under MIN_EVENTS) but who has
+  read about players on the site is ranked on `feed_profiles.site_weights` (the same keys as the
+  watch weights). `feed_rank` says `site`. Experiment `site_rank`, control vs site, since 8 Nov.
+  On 8 Nov 1,393 profiles carried a site player and 50 carried both site and feed history.
