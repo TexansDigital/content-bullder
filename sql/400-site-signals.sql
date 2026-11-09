@@ -8,7 +8,7 @@
 --                             the review can tell the site's signal from the feed's.
 --   feed_site_views           fan page views only: qa, automated, Adam's session and test ids out.
 --   feed_site_page_entities   a page's tags and title -> dictionary slugs (excluded names never).
---   feed_rollup_site(lookback)  nightly rebuild of the site_* columns, 08:20 UTC.
+--   feed_rollup_site(lookback)  rebuild of the site_* columns every two hours at :20 (nightly only until 9 Nov 2026).
 --   feed_site_report(days)    the numbers for the review.
 -- Idempotent. Project xisvulbabqsyxnlyuwcz.
 
@@ -168,7 +168,11 @@ $$;
 revoke execute on function public.feed_rollup_site(interval)  from anon, authenticated;
 revoke execute on function public.feed_site_report(integer)   from anon, authenticated;
 
--- Nightly, between the tagger (08:10) and the feed's profile rollup (08:25). They write
--- different columns, so the order is for tidiness, not correctness.
+-- Every two hours at :20 since 9 Nov 2026 (changed on the live job with cron.alter_job). With one run
+-- a day at 08:20 UTC, a fan who read the site and opened the feed the same day carried no
+-- site_weights yet, so site_rank could never fire for them: 4 of 4 eligible sessions on 8 Nov.
+-- The lookback is two days, so each run touches only recent readers. The job name is kept so
+-- the review's job table reads on. The nightly 08:20 run still falls between the tagger (08:10)
+-- and the feed's profile rollup (08:25); they write different columns.
 select cron.unschedule('feed_rollup_site_nightly') where exists (select 1 from cron.job where jobname = 'feed_rollup_site_nightly');
-select cron.schedule('feed_rollup_site_nightly', '20 8 * * *', $$select public.feed_rollup_site()$$);
+select cron.schedule('feed_rollup_site_nightly', '20 */2 * * *', $$select public.feed_rollup_site()$$);

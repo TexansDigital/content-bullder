@@ -163,3 +163,19 @@ tap arrived 4 Nov 17:16 UTC on the news rail, in the hold arm, after the DeMeco 
   read about players on the site is ranked on `feed_profiles.site_weights` (the same keys as the
   watch weights). `feed_rank` says `site`. Experiment `site_rank`, control vs site, since 8 Nov.
   On 8 Nov 1,393 profiles carried a site player and 50 carried both site and feed history.
+
+## 9 Nov 2026: two chip experiments stopped by rule; the site rollup runs every two hours
+
+- `chip_hold` stopped (started 4 Nov). 975 control chips and 887 hold chips, 0 taps each; the hold
+  arm watched less (3.5 cards and 35.7% completion against 4.0 and 39.2%). Default stays 0.
+- `chip_copy` stopped (started 5 Nov). 753 "More X" chips and 961 "Next up: X" chips, 0 taps each,
+  so nothing to ship on the metric. The next arm watched deeper (4.1 cards and 39.7% against 3.5 and
+  37.3%); that is a depth result, not an ask result, and is worth a retest with depth as the metric
+  once an ask that converts exists. Default stays `more`.
+- The chip has now shown 1,927 times for one tap. The chip is not the ask that will teach us a fan's
+  player; the candidates that need Adam's word are the My Texans page ("mine") and pick'em ("pickem").
+- `site_rank` measured nothing on 8 Nov: 4 feed sessions were eligible (site_weights, under
+  MIN_EVENTS), 2 in the site arm, and all 4 had read the site the same day, after the 08:20 UTC
+  rollup, so none carried site_weights at feed time. `feed_rollup_site()` now runs every two hours
+  at :20 (the cron job keeps its name); the lookback is two days so each run touches only recent
+  readers. Read site_rank from 9 Nov on.

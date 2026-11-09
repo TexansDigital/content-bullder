@@ -20,7 +20,7 @@ Workstream 3, branch `claude/site-signals`, migrations `sql/400-499`. Written 4 
 |---|---|---|
 | Handshake v5: v4 unchanged, plus one `page_view` per content page | `docs/txfeed-handshake.html` | ready for Adam to paste into `tx-feed-handshake-block` |
 | Browser test, 23 checks | `test/verify-site-signals.mjs` | 23 pass |
-| Rollup into `feed_profiles.site_*`, fan-only view, report, 08:20 UTC job | `sql/400-site-signals.sql` | written, **not applied**: needs Adam or the SQL editor |
+| Rollup into `feed_profiles.site_*`, fan-only view, report, job every two hours at :20 (nightly until 9 Nov) | `sql/400-site-signals.sql` | applied 4 Nov; schedule changed 9 Nov |
 
 ### The event
 
