@@ -210,7 +210,10 @@ export function explain(item, { profile, prefs, presets = {}, offers = {}, names
       if (w > (top?.w || 0)) top = { p, w };
     }
     const total = affinity(item, profile);
-    if (top && top.w >= 0.25) add(total, 'watch', top.p, `Because you watch ${displayName(top.p, names)}`);
+    // A profile built from what the fan read on the site (site_rank) says so: reading about a
+    // player on the club's own site is the fan's own act, so the pill shows by default.
+    const read = profile.source === 'site';
+    if (top && top.w >= 0.25) add(total, read ? 'read' : 'watch', top.p, `Because you ${read ? 'read about' : 'watch'} ${displayName(top.p, names)}`);
     else if (total > 0) add(total, 'affinity', null, null);
   }
 

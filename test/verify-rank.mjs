@@ -67,6 +67,11 @@ t('cards the pick did not touch carry no reason', !picked.items.find((i) => i.id
 
 const both = rankFeed(items, stroudFan, { now: NOW, prefs: makePrefs({ players: ['will-anderson-jr'] }), names });
 t('explicit beats implicit: the Anderson pick outranks the Stroud history', both.items[2].id === 'yt-anderson');
+{
+  const reader = rankFeed(items, { events: 6, entity_weights: { 'player:c-j-stroud': 1 }, content_type_weights: {}, source: 'site' }, { now: NOW, names });
+  const card = reader.items.find((i) => i.id === 'yt-stroud-1');
+  t('a site-sourced profile labels its cards "Because you read about", not "watch"', card?.why?.kind === 'read' && /Because you read about C\.J\. Stroud/.test(card.why.label));
+}
 t('implicit history still labels its own cards', both.items.find((i) => i.id === 'yt-stroud-1').why?.kind === 'watch' && /Because you watch C\.J\. Stroud/.test(both.items.find((i) => i.id === 'yt-stroud-1').why.label));
 
 const lane = rankFeed(items, null, { now: NOW, prefs: makePrefs({ wants: ['fun'] }), names });

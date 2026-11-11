@@ -179,3 +179,23 @@ tap arrived 4 Nov 17:16 UTC on the news rail, in the hold arm, after the DeMeco 
   rollup, so none carried site_weights at feed time. `feed_rollup_site()` now runs every two hours
   at :20 (the cron job keeps its name); the lookback is two days so each run touches only recent
   readers. Read site_rank from 9 Nov on.
+
+## 11 Nov 2026: live site weights, and the "Because you read about" pill
+
+The 10 Nov review found that fans who read the site and open the feed mostly do both in the same
+visit, minutes apart, so even the two-hourly rollup leaves them without site_weights at feed
+time: on 9 Nov the only site-ranked loads were on the news rail and every roster session in the
+site arm was ranked shared. Now, when `site_rank` is on, the fan has no picks, the feed has under
+MIN_EVENTS on them and the profile has no site_weights, the Worker asks
+`feed_site_weights_live(sid)` (sql/410) for weights scored from the fan's own page views of the
+last seven days, same scoring as the rollup. `analytics.site` says `rollup` or `live`, and the
+page sends it as `feed_site` on feed_load, so the review can read each. Reach on 10 Nov: 8 of 433
+roster feed sessions and 12 of 119 rail loads had read about a player before the load.
+
+A profile built from reading carries `source: 'site'`, and `explain()` then labels the moved
+card "Because you read about Tank Dell" (kind `read`) instead of "Because you watch". The page
+shows `read` pills under the default `reason_pills = explicit`, because reading about a player on
+the club's own site is the fan's own act and the pill is the first time a fan can see the feed
+listening without having picked anything. Tests: verify-worker (live weights asked with the
+service key, only when the knob is on and the rollup has nothing; rollup weights never re-scored)
+and verify-rank (the read label).

@@ -53,6 +53,9 @@ const PREFS = {
   'sess_1792089626000_prefsfan1': { players: ['c-j-stroud'], wants: ['fun'], format: 'video', follow: null, boosts: [], updated_at: '2026-11-01T00:00:00Z' },
   'sess_1792089626000_prefsfan2': { players: ['tank-dell'], wants: [], format: null, follow: null, boosts: [], updated_at: '2026-11-01T00:00:00Z' },
 };
+// Live site weights (feed_site_weights_live) for a fan the rollup has not reached: reader02 has no
+// profile row at all, only page views minutes old.
+const LIVE = { 'sess_1793900000000_reader02': { 'player:tank-dell': 1 } };
 const calls = [];
 const mock = (over = {}) => async (url, opts = {}) => {
   calls.push({ url, opts });
@@ -60,6 +63,10 @@ const mock = (over = {}) => async (url, opts = {}) => {
   const path = url.split('/rest/v1/')[1] || '';
   const table = path.split('?')[0];
   if (over[table]) return over[table](url, opts);
+  if (table === 'rpc/feed_site_weights_live') {
+    const sid = JSON.parse(opts.body || '{}').sid;
+    return { ok: true, status: 200, json: async () => (LIVE[sid] || {}) };
+  }
   if (table === 'rpc/feed_week') {
     const sid = JSON.parse(opts.body || '{}').sid;
     return { ok: true, status: 200, json: async () => (WEEKS[sid] || { views: 0, players: [], types: [] }) };
@@ -177,6 +184,17 @@ const pr = calls.find((c) => /feed_profiles/.test(c.url));
   t('a thin fan with no site weights stays shared even with the knob on', thin.analytics.rank === 'shared');
   const watched = await (await app({ fetch: siteMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
   t('a fan the feed has watched enough keeps the implicit rank over the site', watched.analytics.rank === 'implicit');
+  t('rolled-up weights say so and label the moved card "Because you read about"', reader.analytics.site === 'rollup'
+    && reader.clips.find((c) => c.id === 'yt-Tq3sz_Yf-Nk')?.why?.kind === 'read' && /Because you read about Tank Dell/.test(reader.clips.find((c) => c.id === 'yt-Tq3sz_Yf-Nk').why.label));
+  const before = calls.length;
+  const fresh = await (await app({ fetch: siteMock() }).fetch(req('/api/feed?sid=sess_1793900000000_reader02'), ENV, ctx)).json();
+  t('a fan with no profile row but page views minutes old is ranked on live site weights', fresh.analytics.rank === 'site' && fresh.analytics.site === 'live'
+    && fresh.clips.map((c) => c.id).slice(2).join(',') === 'yt-Tq3sz_Yf-Nk,yt-zz2ndcatalog');
+  t('the live weights are asked with the service key', calls.slice(before).some((c) => /rpc\/feed_site_weights_live/.test(c.url) && c.opts.headers.apikey === 'service-secret'));
+  t('the rollup\'s own weights are never re-scored live', !calls.filter((c) => /rpc\/feed_site_weights_live/.test(c.url)).some((c) => /reader01/.test(c.opts.body || '')));
+  const offBefore = calls.length;
+  await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1793900000000_reader02'), ENV, ctx)).json();
+  t('with the knob off the live weights are never asked', !calls.slice(offBefore).some((c) => /rpc\/feed_site_weights_live/.test(c.url)));
 }
 t('the profile is read with the service key, never the publishable one', pr && pr.opts.headers.apikey === 'service-secret');
 const thin = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?did=dev_thin00001'), ENV, ctx)).json();

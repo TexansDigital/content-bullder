@@ -1333,6 +1333,7 @@ const displayName = (slug) => String(slug || '').split('-').map((w) => w.charAt(
 
 const loadParams = (why) => ({
   feed_cards: ROWS.length, feed_collections: DATA.collections.length, feed_rank: DATA.analytics?.rank || 'shared',
+  ...(DATA.analytics?.site ? { feed_site: DATA.analytics.site } : {}),
   has_prefs: Boolean(DATA.prefs), ...(why ? { feed_reload: why } : {}),
   feed_layout: PAGE.layout, ...(PAGE.placement ? { feed_placement: PAGE.placement } : {}),
   ...(DATA.focus?.slug ? { feed_focus: DATA.focus.slug } : {}),

@@ -84,3 +84,9 @@ players, top sections.
   fan already read about. Needs ask 1 live.
 - **Toward a ticket:** a fan with three or more reads about one player in a week meets the
   `{{player}}` contest or the going-to-a-game question on the site, not only in the feed.
+
+## Live weights (11 Nov 2026)
+
+`feed_site_weights_live(sid)` in `sql/410-site-weights-live.sql` scores one fan's page views on
+demand. The feed Worker calls it when `site_rank` is on and the profile has no `site_weights`
+yet, so a fan who read about a player minutes ago is ranked on it. See docs/preference-layer.md.
