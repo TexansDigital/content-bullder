@@ -410,6 +410,8 @@ export const KNOB_DEFAULTS = {
   /** 1 lets a fan with no feed history be ranked on what they read on the site (feed_profiles.site_weights,
    *  written nightly by feed_rollup_site from handshake v5 page views). 0 off. */
   site_rank: 0,
+  /** Pick'em: where the one-tap game call sits before a kickoff; -1 hides it. */
+  pickem_position: -1,
 };
 
 export function fnv1a(str) {

@@ -126,7 +126,10 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
       .then((r) => r.status !== 404).catch(() => false);
     // Masters and studio cards from R2. No binding, or a failed read, means the embeds serve as before.
     const mediaP = env.MEDIA ? media.readIndex(env) : Promise.resolve({ items: [] });
-    const [cur, cat, aliases, presetRows, offerRows, expRows, ready, pocketRaw, bannedRes, mediaIdx] = await Promise.allSettled([
+    // The next kickoff, for pick'em: the one game from six hours before now on, so a game in
+    // progress still reads as "the game" and the window logic below decides what to show.
+    const gamesP = side(`texans_games?select=id,opponent,home,kickoff_ct,week&kickoff_ct=gte.${encodeURIComponent(new Date(now().getTime() - 6 * 3600e3).toISOString())}&order=kickoff_ct.asc&limit=1`, 'games');
+    const [cur, cat, aliases, presetRows, offerRows, expRows, ready, pocketRaw, bannedRes, mediaIdx, gameRows] = await Promise.allSettled([
       curP, catalogue.fetch({ months, max }, { fetch: get, env }),
       side('feed_entity_aliases?select=entity_slug,alias&entity_type=eq.player&tier=eq.1&limit=1000', 'aliases'),
       side('feed_presets?select=slug,name,blurb,entity_weights,content_type_weights&active=is.true&limit=50', 'presets'),
@@ -136,7 +139,9 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
       pocketP,
       banP,
       mediaP,
+      gamesP,
     ]);
+    const nextGame = gameRows.status === 'fulfilled' && Array.isArray(gameRows.value) && gameRows.value[0] ? gameRows.value[0] : null;
     const prefsReady = ready.status === 'fulfilled' && ready.value === true;
     if (!prefsReady) warnings.push('feed_preferences: table not found; the picker is withheld');
     if (cur.status === 'rejected') warnings.push(`feed_items: ${cur.reason.message}`);
@@ -211,7 +216,71 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
       max_players: MAX_PICKS,
     };
     return { live, counts: { curated: editorial.length, catalogue: shorts.length, pocket: pocket.length, masters: masters.replaced, studio: masters.added, served: live.length }, warnings,
-      names, presets, offers, offered, withheld, experiments, picker, prefsReady };
+      names, presets, offers, offered, withheld, experiments, picker, prefsReady, nextGame };
+  }
+
+  // ---- pick'em: one call per fan per game, from six days before kickoff until kickoff ----
+  const PICKS = new Set(['texans', 'opponent']);
+  const svcHeaders = (env) => ({ apikey: env.SUPABASE_SERVICE_KEY, authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`, 'content-type': 'application/json', accept: 'application/json' });
+  const shortOpponent = (name) => String(name || '').trim().split(/\s+/).pop() || 'Opponent';
+  /** The game fans can call right now, or null: picks open six days out and close at kickoff. */
+  function pickemGame(game, at) {
+    if (!game) return null;
+    const kick = Date.parse(game.kickoff_ct || '');
+    if (!Number.isFinite(kick) || kick <= at || kick - at > 6 * 86400e3) return null;
+    return { game_id: Number(game.id), opponent: shortOpponent(game.opponent), home: Boolean(game.home), kickoff: new Date(kick).toISOString(), week: String(game.week || '') };
+  }
+  /** How fans split on a game, from feed_pick_tally (service key; qa and test ids never count). */
+  async function pickTally(env, gameId) {
+    try {
+      const { base } = supa(env);
+      const r = await get(`${base}/rest/v1/rpc/feed_pick_tally`, { method: 'POST', headers: svcHeaders(env), body: JSON.stringify({ gid: gameId }) });
+      if (!r.ok) throw new Error(`rpc ${r.status}`);
+      const t = await r.json();
+      return { texans: Number(t?.texans) || 0, opponent: Number(t?.opponent) || 0 };
+    } catch (e) { console.error('feed_pick_tally', e?.message); return { texans: 0, opponent: 0 }; }
+  }
+  /** This fan's own call on the game, so the card is never asked twice. */
+  async function myPick(env, who, gameId) {
+    if (!who || !ID_SHAPE.test(who)) return null;
+    try {
+      const rows = await rest(env, `feed_picks?select=pick&session_id=eq.${encodeURIComponent(who)}&game_id=eq.${Number(gameId)}&limit=1`, env.SUPABASE_SERVICE_KEY);
+      return Array.isArray(rows) && rows[0] && PICKS.has(rows[0].pick) ? rows[0].pick : null;
+    } catch (e) { console.error('feed_picks read', e?.message); return null; }
+  }
+  /**
+   * POST /api/pick { pocket_id | device_id, game_id, pick: texans | opponent, placement?, qa? }
+   * -> { ok, game_id, pick, tally }. One row per fan per game, latest call wins. A qa load is
+   * answered with the tally but never stored, so verification never moves the split.
+   */
+  async function apiPick(request, env, ctx) {
+    if (!env.SUPABASE_SERVICE_KEY) return new Response(JSON.stringify({ error: 'picks are not enabled' }), { status: 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
+    const text = await request.text();
+    if (text.length > 2000) return new Response('too large', { status: 413 });
+    let body;
+    try { body = JSON.parse(text || '{}'); } catch { return new Response('bad json', { status: 400 }); }
+    const who = [body?.pocket_id, body?.device_id].map((v) => String(v ?? '')).find((v) => ID_SHAPE.test(v));
+    if (!who) return new Response(JSON.stringify({ error: 'no id' }), { status: 400, headers: jsonHeaders() });
+    const pick = String(body?.pick || '');
+    if (!PICKS.has(pick)) return new Response(JSON.stringify({ error: 'bad pick' }), { status: 400, headers: jsonHeaders() });
+    const { nextGame = null } = await shared(request, env, ctx);
+    const game = pickemGame(nextGame, now().getTime());
+    if (!game || Number(body?.game_id) !== game.game_id) return new Response(JSON.stringify({ error: 'no open game' }), { status: 409, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
+    if (body?.qa !== true) {
+      const { base } = supa(env);
+      const r = await get(`${base}/rest/v1/feed_picks?on_conflict=session_id,game_id`, {
+        method: 'POST', headers: { ...svcHeaders(env), prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify({ session_id: who, game_id: game.game_id, pick, placement: /^[a-z]{1,20}$/.test(String(body?.placement || '')) ? body.placement : null, picked_at: now().toISOString() }),
+      });
+      if (!r.ok) {
+        console.error('feed_picks write', r.status);
+        return new Response(JSON.stringify({ error: 'could not save' }), { status: 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
+      }
+    }
+    const tally = await pickTally(env, game.game_id);
+    return new Response(JSON.stringify({ ok: true, game_id: game.game_id, pick, tally }), {
+      status: 200, headers: jsonHeaders({ 'cache-control': 'private, no-store', 'access-control-allow-origin': '*' }),
+    });
   }
 
   const ga4 = (env) => (/^G-[A-Z0-9]{4,20}$/i.test(env.GA_MEASUREMENT_ID || '') ? env.GA_MEASUREMENT_ID : null);
@@ -325,7 +394,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
   async function apiFeed(request, env, ctx) {
     const url = new URL(request.url);
     const built = await shared(request, env, ctx);
-    const { live, counts, warnings, names = {}, presets = {}, offers = {}, experiments = [], picker = null, prefsReady = false } = built;
+    const { live, counts, warnings, names = {}, presets = {}, offers = {}, experiments = [], picker = null, prefsReady = false, nextGame = null } = built;
     // Who is watching: the host's pocket id if the handshake answered, else the feed's own
     // device id. Either ranks; neither is required.
     const who = url.searchParams.get('sid') || url.searchParams.get('did') || '';
@@ -346,6 +415,11 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
     const siteWeights = siteEligible ? (rolled || await siteWeightsLive(env, who)) : null;
     const siteRanked = Boolean(siteWeights);
     const rankProfile = siteRanked ? { entity_weights: siteWeights, content_type_weights: {}, events: MIN_EVENTS, source: 'site' } : profile;
+    // pick'em: only when the knob shows the card to this fan and a kickoff is within six days;
+    // the tally and the fan's own call are read then, never for a fan who will not see the card.
+    const game = Number(assigned.knobs.pickem_position) >= 0 && env.SUPABASE_SERVICE_KEY && who ? pickemGame(nextGame, now().getTime()) : null;
+    const [tally, mine] = game ? await Promise.all([pickTally(env, game.game_id), myPick(env, who, game.game_id)]) : [null, null];
+    const pickem = game ? { ...game, tally, mine } : null;
     const ranked0 = rankFeed(live, rankProfile, { prefs, presets, offers, names, focus, now: now().getTime() });
     const { ranked, focus: focused } = ranked0;
     // Stories and podcasts take at most one slot in every few, by the fan's answer.
@@ -367,6 +441,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
       // The picker needs an id to save against; with none it is not offered.
       picker: who && env.SUPABASE_SERVICE_KEY && prefsReady ? picker : null,
       week: week && week.views > 0 ? week : null,
+      pickem,
       experiments: assigned.experiments,
       knobs: assigned.knobs,
       ...(warnings.length ? { warnings } : {}),
@@ -648,6 +723,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
         if (method === 'POST' && p === '/api/events') return apiEvents(request, env, ctx);
         if (method === 'POST' && p === '/api/prefs') return apiPrefs(request, env, ctx);
         if (method === 'POST' && p === '/api/who') return apiWho(request, env, ctx);
+        if (method === 'POST' && p === '/api/pick') return apiPick(request, env, ctx);
         if (method === 'GET' && p === '/enter') return enter(request, env);
         if (method === 'GET' && p.startsWith('/media/')) return media.serve(request, env, p.slice('/media/'.length));
         if (method === 'POST' && p === '/api/media') return media.upload(request, env);
@@ -671,13 +747,13 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
         if (p === '/studio/tags' || p === '/api/tags') { const r = await tags.handle(request, env, method, p); if (r) return r; }
         if (method === 'GET' && p === '/health') {
           const [built, elq] = await Promise.all([shared(request, env, ctx), eloqua.login(env)]);
-          const { counts, warnings, experiments = [], offered = {}, withheld = [], presets = {} } = built;
+          const { counts, warnings, experiments = [], offered = {}, withheld = [], presets = {}, nextGame = null } = built;
           return new Response(JSON.stringify({ ok: counts.served > 0, worker: 'txfeed', counts, warnings,
             media: Boolean(env.MEDIA), uploads: Boolean(env.MEDIA) && Boolean(env.MEDIA_UPLOAD_KEY),
             // Eloqua: not configured, ok (a login worked), or the reason it did not. Never the site or user.
             eloqua: !elq.configured ? 'not configured' : elq.ok ? 'ok' : (elq.error || 'login failed'),
             events: Boolean(env.SUPABASE_SERVICE_KEY), prefs: Boolean(env.SUPABASE_SERVICE_KEY) && built.prefsReady === true, ga4: Boolean(ga4(env)),
-            model_tags: tagger.configured(env),
+            model_tags: tagger.configured(env), pickem: pickemGame(nextGame, now().getTime())?.opponent || null,
             experiments: experiments.map((x) => x.key), offers: Object.keys(offered), offers_withheld: withheld, presets: Object.keys(presets) }),
             { status: counts.served > 0 ? 200 : 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
         }

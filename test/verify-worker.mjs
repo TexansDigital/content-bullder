@@ -56,6 +56,9 @@ const PREFS = {
 // Live site weights (feed_site_weights_live) for a fan the rollup has not reached: reader02 has no
 // profile row at all, only page views minutes old.
 const LIVE = { 'sess_1793900000000_reader02': { 'player:tank-dell': 1 } };
+// Pick'em: the next game is tomorrow; one fan has already called it.
+const GAMES = [{ id: 57, opponent: 'Cleveland Browns', home: false, kickoff_ct: new Date(Date.now() + 86400e3).toISOString(), week: '10' }];
+const PICKED = { 'sess_1792089626000_prefsfan2': 'texans' };
 const calls = [];
 const mock = (over = {}) => async (url, opts = {}) => {
   calls.push({ url, opts });
@@ -63,6 +66,12 @@ const mock = (over = {}) => async (url, opts = {}) => {
   const path = url.split('/rest/v1/')[1] || '';
   const table = path.split('?')[0];
   if (over[table]) return over[table](url, opts);
+  if (table === 'rpc/feed_pick_tally') return { ok: true, status: 200, json: async () => ({ texans: 3, opponent: 1 }) };
+  if (table === 'feed_picks') {
+    if (opts.method === 'POST') return { ok: true, status: 201, json: async () => [] };
+    const m = /session_id=eq\.([^&]+)/.exec(url); const w = m ? decodeURIComponent(m[1]) : '';
+    return { ok: true, status: 200, json: async () => (PICKED[w] ? [{ pick: PICKED[w] }] : []) };
+  }
   if (table === 'rpc/feed_site_weights_live') {
     const sid = JSON.parse(opts.body || '{}').sid;
     return { ok: true, status: 200, json: async () => (LIVE[sid] || {}) };
@@ -82,6 +91,7 @@ const mock = (over = {}) => async (url, opts = {}) => {
     : table === 'feed_presets' ? PRESETS
     : table === 'feed_boost_offers' ? OFFERS
     : table === 'feed_experiments' ? EXPERIMENTS
+    : table === 'texans_games' ? GAMES
     : table === 'feed_preferences' ? (opts.method === 'POST' ? [] : (() => { const m = /session_id=eq\.([^&]+)/.exec(url); const w = m ? decodeURIComponent(m[1]) : ''; return PREFS[w] ? [PREFS[w]] : []; })())
     : null;
   if (opts.method === 'POST' && table === 'feed_preferences') return { ok: true, status: 201, json: async () => [] };
@@ -195,6 +205,35 @@ const pr = calls.find((c) => /feed_profiles/.test(c.url));
   const offBefore = calls.length;
   await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1793900000000_reader02'), ENV, ctx)).json();
   t('with the knob off the live weights are never asked', !calls.slice(offBefore).some((c) => /rpc\/feed_site_weights_live/.test(c.url)));
+}
+// ---- pick'em: one call per fan per game, behind the pickem_position knob ----
+{
+  const PICK_EXP = [{ key: 'pickem', arms: { pickem: 1 }, knobs: { pickem: { pickem_position: 2 } }, traffic: 1 }];
+  const pickMock = () => rankMock({ feed_experiments: async () => ({ ok: true, status: 200, json: async () => PICK_EXP }) });
+  const on = await (await app({ fetch: pickMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
+  t('with the knob on and a kickoff within six days the feed carries the game, the split and no pick yet',
+    on.pickem && on.pickem.game_id === 57 && on.pickem.opponent === 'Browns' && on.pickem.home === false && on.pickem.week === '10' && on.pickem.tally.texans === 3 && on.pickem.tally.opponent === 1 && on.pickem.mine === null);
+  const before = calls.length;
+  const off = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
+  t('with the knob off there is no pick and the picks tables are never asked', off.pickem === null && !calls.slice(before).some((c) => /feed_picks|feed_pick_tally/.test(c.url)));
+  const anon = await (await app({ fetch: pickMock() }).fetch(req('/api/feed'), ENV, ctx)).json();
+  t('a load with no id gets no pick card', anon.pickem === null);
+  const picked = await (await app({ fetch: pickMock() }).fetch(req('/api/feed?sid=sess_1792089626000_prefsfan2'), ENV, ctx)).json();
+  t('a fan who already called the game sees their own call', picked.pickem && picked.pickem.mine === 'texans');
+  const post = (body) => app({ fetch: pickMock() }).fetch(req('/api/pick', { method: 'POST', body: JSON.stringify(body), headers: { 'content-type': 'application/json' } }), ENV, ctx);
+  const w0 = calls.length;
+  const r1 = await post({ pocket_id: 'sess_1792089626000_k3j9xq2ab', game_id: 57, pick: 'texans', placement: 'roster' });
+  const j1 = await r1.json();
+  const wrote = calls.slice(w0).find((c) => /feed_picks\?on_conflict=session_id,game_id/.test(c.url));
+  t('a pick is upserted with the service key and answered with the split', r1.status === 200 && j1.ok === true && j1.tally.texans === 3 && wrote && wrote.opts.headers.apikey === 'service-secret' && /"pick":"texans"/.test(wrote.opts.body) && /"placement":"roster"/.test(wrote.opts.body));
+  const q0 = calls.length;
+  const rq = await post({ pocket_id: 'sess_1792089626000_k3j9xq2ab', game_id: 57, pick: 'opponent', qa: true });
+  t('a qa pick is answered but never stored', rq.status === 200 && !calls.slice(q0).some((c) => /feed_picks\?on_conflict/.test(c.url)));
+  t('a pick for a game that is not open is refused', (await post({ pocket_id: 'sess_1792089626000_k3j9xq2ab', game_id: 58, pick: 'texans' })).status === 409);
+  t('a pick that is neither side is refused', (await post({ pocket_id: 'sess_1792089626000_k3j9xq2ab', game_id: 57, pick: 'ravens' })).status === 400);
+  t('a pick with no id is refused', (await post({ game_id: 57, pick: 'texans' })).status === 400);
+  const h = await (await app({ fetch: pickMock() }).fetch(req('/health'), ENV, ctx)).json();
+  t('health names the game fans can call', h.pickem === 'Browns');
 }
 t('the profile is read with the service key, never the publishable one', pr && pr.opts.headers.apikey === 'service-secret');
 const thin = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?did=dev_thin00001'), ENV, ctx)).json();

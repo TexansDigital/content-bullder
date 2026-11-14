@@ -250,6 +250,11 @@ async function serveFile(req, res, rel, base = ROOT) {
   res.end(await readFile(path));
 }
 
+// Pick'em fixture for the local studio: a game two days out, picks kept in memory.
+const LOCAL_GAME = { game_id: 57, opponent: 'Browns', home: false, kickoff: new Date(Date.now() + 2 * 86400e3).toISOString(), week: '10' };
+const localPicks = {};
+const localTally = () => Object.values(localPicks).reduce((a, p) => ((a[p] = (a[p] || 0) + 1), a), { texans: 0, opponent: 0 });
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const p = url.pathname;
@@ -293,6 +298,17 @@ const server = createServer(async (req, res) => {
       all[who] = { players: pr.players, wants: pr.wants, format: pr.format, follow: pr.follow, boosts: pr.boosts, going: pr.going, watch: pr.watch, updated_at: new Date().toISOString() };
       await writeFile(prefsPath(), JSON.stringify(all, null, 2));
       return json(res, 200, { ok: true, prefs: all[who] });
+    }
+
+    if (p === '/api/pick' && req.method === 'POST') {
+      // Local twin of the Worker's pick'em save, in memory, for the browser suites.
+      const body = await readBody(req);
+      const who = [body?.pocket_id, body?.device_id].map((v) => String(v ?? '')).find((v) => /^[A-Za-z0-9._:-]{6,128}$/.test(v));
+      if (!who) return json(res, 400, { error: 'no id' });
+      if (!['texans', 'opponent'].includes(body?.pick)) return json(res, 400, { error: 'bad pick' });
+      if (Number(body?.game_id) !== LOCAL_GAME.game_id) return json(res, 409, { error: 'no open game' });
+      if (body?.qa !== true) localPicks[who] = body.pick;
+      return json(res, 200, { ok: true, game_id: LOCAL_GAME.game_id, pick: body.pick, tally: localTally() });
     }
 
     if (p === '/api/who' && req.method === 'POST') {
@@ -477,6 +493,7 @@ const server = createServer(async (req, res) => {
         clips: only ? live.filter((i) => i.collection === only) : live,
         prefs: prefRow ? { ...prefRow } : null,
         picker, week: null, experiments: {}, knobs,
+        pickem: who && Number(knobs.pickem_position) >= 0 ? { ...LOCAL_GAME, tally: localTally(), mine: localPicks[who] || null } : null,
       }, { public: !who });
     }
 

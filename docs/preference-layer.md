@@ -199,3 +199,32 @@ the club's own site is the fan's own act and the pill is the first time a fan ca
 listening without having picked anything. Tests: verify-worker (live weights asked with the
 service key, only when the knob is on and the rollup has nothing; rollup weights never re-scored)
 and verify-rank (the read label).
+
+## 14 Nov 2026: pick'em, the first ask after the chip
+
+Adam, 14 Nov: "my texans page approved pick em approved. tickets rail approved". Pick'em ships
+first because the Browns game is on 15 Nov; My Texans follows once pick'em has had its day.
+
+The card (`sys-pickem`, knob `pickem_position`, default -1, the `pickem` experiment arm sets 2)
+asks "Who wins Sunday?" with two buttons, Texans and the opponent by name, from six days before
+kickoff until kickoff. One tap posts to `POST /api/pick` (pocket or device id, game id, side;
+`feed_picks`, one row per fan per game, latest call wins), and the card answers on the spot:
+"You and 78% of fans say Texans. Your pick is saved." Not now hides it for that game. A fan who
+has called the game never sees the card again for it (`pickem.mine` from the Worker). The feed
+JSON carries `pickem` only when the knob shows the card to that fan, so control loads never
+touch the picks tables; /health names the game fans can call. qa loads are answered with the
+split and never stored. Events: `pick_made` (game_id, pick, pick_share, picks_n), `pick_skip`.
+The next game comes from `texans_games` (next kickoff from six hours before now), so the colts
+card opens itself on 16 Nov with no row to create.
+
+Why this is the ask after the chip: the chip asks for taste and offers more of the same, and
+fans tapped it twice in 4,236 shows. Pick'em asks for an opinion every fan has and pays it back
+with the room's answer in the same second. What it teaches us: which fans call games (a ticket
+and gameday signal), how confident the base is, and, once the result card lands, a reason to
+come back on Monday. Smallest widening next: "You called it" after the final, then the pick
+feeding the gameday lane.
+
+Tests: verify-worker (knob off never reads the picks tables; the fan's own call; upsert with the
+service key; qa never stored; wrong game 409; wrong side 400; health), verify-pickem.mjs (browser,
+PICK_BASE 4404 with pickem_position 2: card third, both sides, tap pays off, pick_made and
+pick_skip reported, card gone on the next load, qa flagged, control shows nothing).

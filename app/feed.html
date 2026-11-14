@@ -402,7 +402,7 @@ function visitParams() {
  * The dials an experiment may turn, with their defaults. /api/feed hands back the values for
  * this visitor's arms; anything it names that is not here is ignored. */
 const KNOB_DEFAULTS = { picker_position: 2, picker_reoffer_days: 7, reason_pills: 'explicit', sound_hint: false, capture_card: null,
-  offer_position: 2, expiry_position: 1, week_position: 4, ask_position: 7, lead_tagged: 0, chip_hold: 0, chip_copy: 'more', site_rank: 0 };
+  offer_position: 2, expiry_position: 1, week_position: 4, ask_position: 7, lead_tagged: 0, chip_hold: 0, chip_copy: 'more', site_rank: 0, pickem_position: -1 };
 /** One follow-up question per load, so a fan is never asked twice in one sitting. */
 let askedThisLoad = false;
 /** Fewer views than this in a week and there is no "your week" to show. Mirrors WEEK_MIN_VIEWS in src/rank.js. */
@@ -1061,6 +1061,9 @@ function mediaFor(c) {
  */
 const whoAmI = () => pocketId || (measuring ? mintDevice() : null);
 const fmtDay = (iso) => { const d = new Date(iso); return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''; };
+const kickDay = (iso) => { const d = new Date(iso); return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'America/Chicago' }) : 'this week'; };
+const kickWhen = (iso) => { const d = new Date(iso); return Number.isFinite(d.getTime()) ? `${d.toLocaleString('en-US', { weekday: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' })} CT` : ''; };
+const matchup = (x) => (x.home ? `${x.opponent} at Texans` : `Texans at ${x.opponent}`);
 
 const whyFor = (c) => {
   const w = c.why;
@@ -1136,6 +1139,12 @@ function withSystemCards(base) {
       const head = { lanes: 'More of?', going: 'Going to a game this season?', watch: 'How do you watch?' }[q];
       rows.splice(pos(knobs.ask_position, rows.length), 0, systemCard('sys-ask', head, 'ask', { q }));
     }
+  }
+  // Pick'em: one tap before each game, for every fan with an id, once per game. The payoff is
+  // the split, on the spot, and the pick is saved against the same id as everything else.
+  const pk = DATA.pickem;
+  if (pk && me && Number(knobs.pickem_position) >= 0 && !pk.mine && !seen('pickem', pk.game_id)) {
+    rows.splice(pos(knobs.pickem_position, rows.length), 0, systemCard('sys-pickem', `Who wins ${kickDay(pk.kickoff)}?`, 'pickem', pk));
   }
   // The fan's week, once a week, when there is enough of one to show.
   const w = DATA.week;
@@ -1238,6 +1247,11 @@ function systemMarkup(c, i, total) {
     const line = { lanes: 'One tap. The feed moves and says why.', going: 'Yes lifts gameday. Not this year spares you the ticket pushes.', watch: 'Shapes the pacing. Short clips first on the go.' }[x.q];
     return open + `<div class="pk enter ask"><div class="stamp"><i></i><span>Your feed // one more</span></div><h2>${esc(c.headline)}</h2><p>${esc(line)}</p>
       <div class="opts answers">${opts.map(([k, n]) => `<button class="opt" type="button" data-k="${esc(k)}">${esc(n)}</button>`).join('')}</div>
+      <div class="acts"><button class="skip" type="button">Not now</button></div></div><p class="flash" hidden></p></article>`;
+  }
+  if (c.system === 'pickem') {
+    return open + `<div class="pk enter ask pickem"><div class="stamp"><i></i><span>Pick'em // Week ${esc(x.week)}</span></div><h2>${esc(c.headline)}</h2><p class="lead">${esc(matchup(x))}, ${esc(kickWhen(x.kickoff))}. One tap. Your pick is saved and you see how fans split.</p>
+      <div class="opts answers"><button class="opt" type="button" data-k="texans">Texans</button><button class="opt" type="button" data-k="opponent">${esc(x.opponent)}</button></div>
       <div class="acts"><button class="skip" type="button">Not now</button></div></div><p class="flash" hidden></p></article>`;
   }
   if (c.system === 'week') {
@@ -1426,6 +1440,33 @@ function wireSystem(s, card, at) {
       } catch { s.querySelectorAll('.answers .opt').forEach((o) => (o.disabled = false)); flashOn(s, 'Could not save. Try again.'); }
     }));
     s.querySelector('.skip').onclick = () => { markSeen('ask', x.q); track('ask_skip', { ...cardParams(card, at), ask_q: x.q }); render(); };
+    return;
+  }
+  if (card.system === 'pickem') {
+    s.querySelectorAll('.answers .opt').forEach((b) => (b.onclick = async () => {
+      s.querySelectorAll('.answers .opt').forEach((o) => (o.disabled = true));
+      const k = b.dataset.k;
+      try {
+        const r = await fetch('/api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+          game_id: x.game_id, pick: k, ...(PAGE.placement ? { placement: PAGE.placement } : {}), ...(PAGE.qa ? { qa: true } : {}),
+          ...(pocketId ? { pocket_id: pocketId } : {}), ...(mintDevice() ? { device_id: deviceId } : {}) }) });
+        if (!r.ok) throw new Error(String(r.status));
+        const res = await r.json();
+        const tl = res.tally || {};
+        const total = (Number(tl.texans) || 0) + (Number(tl.opponent) || 0);
+        const share = total ? Math.round(100 * (Number(tl[k]) || 0) / total) : 100;
+        markSeen('pickem', x.game_id);
+        DATA.pickem = { ...x, mine: k, tally: tl };
+        track('pick_made', { ...cardParams(card, at), game_id: x.game_id, pick: k, pick_share: share, picks_n: total });
+        b.classList.add('on');
+        // The split takes the place of the ask line, and Not now goes: the question is answered.
+        const lead = s.querySelector('.lead');
+        lead.textContent = `You and ${share}% of fans say ${k === 'texans' ? 'Texans' : x.opponent}. Your pick is saved.`;
+        lead.classList.add('result');
+        s.querySelector('.acts').style.display = 'none';
+      } catch { s.querySelectorAll('.answers .opt').forEach((o) => (o.disabled = false)); flashOn(s, 'Could not save. Try again.'); }
+    }));
+    s.querySelector('.skip').onclick = () => { markSeen('pickem', x.game_id); track('pick_skip', { ...cardParams(card, at), game_id: x.game_id }); render(); };
     return;
   }
   if (card.system === 'week') {
@@ -1655,6 +1696,7 @@ function systemTile(c, i) {
     : c.system === 'week' ? { stamp: 'Your week', stat: String(x.views), line: `clips this week. ${weekSentence(x).replace(/\.$/, '')}` }
     : c.system === 'offer' ? { stamp: `Offer // until ${fmtDay(x.ends_at)}`, line: `${Number(x.cards) > 0 ? `${x.cards} clips ready. ` : ''}${x.blurb || 'One tap. Back to normal after.'}` }
     : c.system === 'expiry' ? { stamp: 'Your feed // update', line: 'Back to your picks.' }
+    : c.system === 'pickem' ? { stamp: `Pick'em // Week ${x.week}`, line: `${matchup(x)}. One tap, then the split.` }
     : { stamp: 'Enter // Houston Texans', line: x.blurb || '' };
   return `<button class="tile sys" type="button" data-index="${i}" data-id="${esc(c.id)}" aria-label="${esc(c.headline)}"><div class="tsb"></div>
     <div class="tb"><div class="stamp"><i></i><span>${esc(face.stamp)}</span></div>${face.stat ? `<b class="stat">${esc(face.stat)}</b>` : ''}<h3>${esc(c.headline)}</h3>${face.line ? `<p>${esc(face.line)}</p>` : ''}</div></button>`;

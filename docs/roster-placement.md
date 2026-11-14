@@ -112,3 +112,18 @@ Three layers answer "have we seen this fan before", from strongest to weakest:
 
 A fan who clears storage, changes browser or device is new to all three until they identify
 themselves through the entry form, which carries the pocket id so the join can be made later.
+
+## The ticket pages (approved 14 Nov 2026)
+
+The same rail as the news page, with its own placement name so the review can read ticket
+sessions on their own and join them to the ticket clicks in D1. Paste where the page has a
+full-width band, above the fold if the page allows it:
+
+```html
+<iframe src="https://feed.htow.nz/?layout=rail&placement=tickets" title="Texans clips" width="100%" height="420" style="border:0;display:block;background:#021018" loading="lazy" allow="autoplay; fullscreen; clipboard-write"></iframe>
+```
+
+Nothing else changes: the handshake on the page hands the rail the pocket id as on every other
+page, and every event from it carries `feed_placement: tickets`. The review reports it as its
+own row from the first load, and the D1 join (click sessions that also opened the feed) is the
+number to watch.
