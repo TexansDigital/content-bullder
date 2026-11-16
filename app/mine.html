@@ -1,0 +1,178 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>My Texans</title>
+<style>
+/* Same faces and plate as the feed: one brand, two pages. */
+@font-face{font-family:"HelveticaNeueLT Ex";font-weight:900;font-style:normal;font-display:swap;
+ src:url(/app/assets/fonts/HelveticaNeueLTStd-BlkEx.otf) format("opentype")}
+@font-face{font-family:"HelveticaNeueLT Ex";font-weight:500;font-style:normal;font-display:swap;
+ src:url(/app/assets/fonts/HelveticaNeueLTStd-MdEx.otf) format("opentype")}
+:root{--steel:#021118;--s2:#0a1d27;--red:#eb0028;--red2:#ff123a;--blue:#0080c6;--w:#fff;
+ --body:rgba(255,255,255,.84);--mute:rgba(255,255,255,.55);--line:rgba(255,255,255,.16);
+ --mono:ui-monospace,SFMono-Regular,Menlo,monospace;--sans:"Helvetica Neue",Helvetica,Arial,sans-serif;
+ --display:"HelveticaNeueLT Ex","Helvetica Neue",Helvetica,Arial,sans-serif}
+*{box-sizing:border-box}
+html{background:var(--steel)}
+body{margin:0;min-height:100%;background:var(--steel) url(/app/assets/steel-916.jpg) center top/cover no-repeat fixed;color:var(--w);font:15px/1.5 var(--sans)}
+body::before{content:"";position:fixed;inset:0;background:linear-gradient(180deg,rgba(2,17,24,.55),rgba(2,17,24,.92) 55%,#021118);pointer-events:none}
+.wrap{position:relative;max-width:520px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top,0px)) 16px calc(28px + env(safe-area-inset-bottom,0px))}
+.stamp{display:flex;align-items:center;gap:8px;font:500 10px/1.5 var(--mono);letter-spacing:.18em;text-transform:uppercase;
+ color:rgba(255,255,255,.72);border-top:3px solid var(--red);padding-top:10px}
+.stamp i{flex:none;width:18px;height:18px;border:1px solid rgba(255,255,255,.6);display:inline-flex;align-items:center;justify-content:center}
+.stamp i::before{content:"";width:10px;height:10px;background:currentColor;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+h1{font:900 30px/.92 var(--display);text-transform:uppercase;letter-spacing:-.01em;margin:14px 0 8px;text-wrap:balance}
+.lead{margin:0 0 18px;color:var(--body);font-size:14px}
+h2{font:500 10px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.18em;color:rgba(255,255,255,.62);margin:22px 0 2px}
+.row{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line);padding:11px 0;min-height:56px}
+.row:last-child{border-bottom:1px solid var(--line)}
+.row .who{flex:1;min-width:0}
+.row b{display:block;font:900 15px/1.15 var(--display);text-transform:uppercase;letter-spacing:-.005em}
+.row small{display:block;color:var(--mute);font-size:12px;margin-top:2px}
+.row .acts{display:flex;gap:6px;flex:none}
+button{font:900 10px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;border-radius:0;cursor:pointer;padding:11px 12px}
+.keep{background:var(--red);color:#fff;border:0}
+.keep:hover{background:var(--red2)}
+.no{background:none;color:#fff;border:1px solid var(--line)}
+.no:hover{border-color:var(--red)}
+button:disabled{opacity:.4;cursor:default}
+.pill{font:500 10px/1.5 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#fff;border:1px solid var(--blue);padding:4px 8px;white-space:nowrap}
+.pill.right{border-color:var(--red);color:#fff}
+.pill.muted{border-color:var(--line);color:var(--mute)}
+.ask{margin-top:26px;border-top:3px solid var(--blue);padding-top:12px}
+.ask h3{font:900 20px/.95 var(--display);text-transform:uppercase;margin:4px 0 8px}
+.ask p{margin:0 0 12px;color:var(--body);font-size:14px}
+.ask .go{width:100%;background:var(--red);color:#fff;border:0;padding:15px 14px;font-size:12px}
+.note{font:500 9px/1.5 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.5);margin:8px 0 0}
+.empty{border:1px dashed var(--line);padding:16px;color:var(--body);margin-top:14px}
+.foot{margin:30px 0 0;text-align:center}
+.foot a{color:#fff;font:900 11px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;border-bottom:2px solid var(--red);padding-bottom:3px}
+</style></head><body><div class="wrap">
+<div class="stamp"><i></i><span>My Texans // Houston Texans</span></div>
+<h1>What your feed knows</h1>
+<p class="lead">What you watch here and what you read on houstontexans.com shape your feed. Keep what's right. Fix what isn't.</p>
+<div id="body"><p class="note">Loading</p></div>
+<div id="ask" class="ask" hidden>
+  <h3>Take your picks with you</h3>
+  <p>Tell us who you are and the club can recognise you on the site, in the app and at Reliant Stadium, and keep your picks and your calls with you.</p>
+  <button class="go" type="button">Tell us who you are</button>
+  <p class="note">Opens the entry form. Your details go to the Houston Texans under their privacy policy.</p>
+</div>
+<p class="foot"><a id="back" href="/">Back to your feed</a></p>
+</div>
+<script>
+const ID_SHAPE = /^[A-Za-z0-9._:-]{6,128}$/;
+const PAGE = (() => {
+  const q = new URLSearchParams(location.search);
+  const id = (k) => (ID_SHAPE.test(String(q.get(k) ?? '')) ? q.get(k) : null);
+  return { pid: id('pid'), did: id('did'), placement: /^[a-z0-9_-]{1,40}$/.test(String(q.get('placement') ?? '')) ? q.get('placement') : null,
+    qa: q.get('qa') === '1' || /txfeed-qa/.test(navigator.userAgent) };
+})();
+const who = PAGE.pid || PAGE.did;
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const backQ = new URLSearchParams({ ...(PAGE.pid ? { pid: PAGE.pid } : {}), ...(PAGE.placement ? { placement: PAGE.placement } : {}), ...(PAGE.qa ? { qa: '1' } : {}) });
+$('#back').href = `/?${backQ}`;
+
+/** Events go where the feed's go, with the same ids and the same qa mark, so the review reads both as one fan. */
+function track(event, params = {}) {
+  const p = { card_id: 'sys-mine', ...(PAGE.placement ? { feed_placement: PAGE.placement } : {}), ...(PAGE.qa ? { qa: true } : {}),
+    ...(PAGE.pid ? { pocket_id: PAGE.pid } : {}), ...(PAGE.did ? { device_id: PAGE.did } : {}), ...params };
+  fetch('/api/events', { method: 'POST', keepalive: true, headers: { 'content-type': 'text/plain;charset=UTF-8' },
+    body: JSON.stringify({ events: [{ event, params: p, at: new Date().toISOString() }] }) }).catch(() => {});
+}
+
+let DATA = null;
+let asked = false;
+const idBody = () => ({ ...(PAGE.pid ? { pocket_id: PAGE.pid } : {}), ...(PAGE.did ? { device_id: PAGE.did } : {}) });
+
+const when = (iso) => {
+  const d = new Date(iso);
+  return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Chicago' }) : '';
+};
+function callLine(c) {
+  const side = c.pick === 'texans' ? `Texans over the ${c.opponent}` : `${c.opponent} over the Texans`;
+  if (!c.result) return { title: side, sub: `${when(c.kickoff)} · ${c.home ? 'at Reliant Stadium' : 'away'} · still to play`, pill: 'Open', cls: 'muted' };
+  const final = c.home ? `Texans ${c.texans_score}, ${c.opponent} ${c.opp_score}` : `${c.opponent} ${c.opp_score}, Texans ${c.texans_score}`;
+  if (c.right === null) return { title: side, sub: `Final ${final}`, pill: 'Tie', cls: 'muted' };
+  return { title: side, sub: `Final ${final}`, pill: c.right ? 'You called it' : 'Not this time', cls: c.right ? 'right' : 'muted' };
+}
+
+function render() {
+  const d = DATA;
+  const rows = [];
+  const player = (x, src) => `<div class="row" data-slug="${esc(x.slug)}" data-src="${src}"><div class="who"><b>${esc(x.name)}</b><small>${src === 'picks' ? 'Your pick' : src === 'watched' ? 'Watched most in your feed' : 'Read about on houstontexans.com'}</small></div>
+    <div class="acts">${src === 'picks' ? '' : '<button class="keep" type="button">Keep</button>'}<button class="no" type="button">${src === 'picks' ? 'Remove' : 'Not me'}</button></div></div>`;
+  if (d.picks.length) rows.push(`<h2>Your picks</h2>${d.picks.map((x) => player(x, 'picks')).join('')}`);
+  if (d.watched.length) rows.push(`<h2>Players you watch</h2>${d.watched.map((x) => player(x, 'watched')).join('')}`);
+  if (d.read.length) rows.push(`<h2>Players you read about</h2>${d.read.map((x) => player(x, 'read')).join('')}`);
+  if (d.calls.length) rows.push(`<h2>Your calls</h2>${d.calls.map((c) => { const l = callLine(c); return `<div class="row"><div class="who"><b>${esc(l.title)}</b><small>${esc(l.sub)}</small></div><span class="pill ${l.cls}">${esc(l.pill)}</span></div>`; }).join('')}`);
+  if (!rows.length) rows.push(`<div class="empty">Nothing yet. Watch a few clips, call a game, and come back.</div>`);
+  $('#body').innerHTML = rows.join('');
+  $('#body').querySelectorAll('.row[data-slug]').forEach((row) => {
+    const slug = row.dataset.slug, src = row.dataset.src;
+    const keep = row.querySelector('.keep'), no = row.querySelector('.no');
+    if (keep) keep.onclick = () => keepIt(row, slug, src);
+    no.onclick = () => notMe(row, slug, src);
+  });
+}
+
+async function savePrefs(players) {
+  const p = DATA.prefs || {};
+  const body = { ...idBody(), players, wants: p.wants || [], format: p.format || null, follow: p.follow || null, boosts: p.boosts || [], going: p.going || null, watch: p.watch || null, source: 'mine' };
+  const r = await fetch('/api/prefs', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(String(r.status));
+  const j = await r.json();
+  DATA.prefs = j.prefs || { ...p, players };
+  return DATA.prefs.players || players;
+}
+const settle = (row, text, cls = '') => { row.querySelector('.acts').replaceChildren(Object.assign(document.createElement('span'), { className: `pill ${cls}`, textContent: text })); };
+
+async function keepIt(row, slug, src) {
+  const have = (DATA.prefs?.players || []);
+  if (have.includes(slug)) { settle(row, 'In your picks'); return; }
+  if (have.length >= DATA.max_picks) { settle(row, `Picks full (${DATA.max_picks})`, 'muted'); return; }
+  row.querySelectorAll('button').forEach((b) => (b.disabled = true));
+  try {
+    await savePrefs([...have, slug]);
+    settle(row, 'Saved to your picks');
+    track('mine_keep', { pref_player: slug, mine_source: src });
+  } catch {
+    row.querySelectorAll('button').forEach((b) => (b.disabled = false));
+  }
+}
+async function notMe(row, slug, src) {
+  row.querySelectorAll('button').forEach((b) => (b.disabled = true));
+  try {
+    const have = (DATA.prefs?.players || []);
+    if (have.includes(slug)) await savePrefs(have.filter((s) => s !== slug));
+    settle(row, src === 'picks' ? 'Removed' : 'Noted', 'muted');
+    track('mine_correct', { pref_player: slug, mine_source: src });
+    // The first correction is the moment the club has earned the ask: this fan is telling us
+    // who they are not; an account lets what they are follow them. Once per visit.
+    if (!asked) { asked = true; $('#ask').hidden = false; track('mine_ask_shown', { mine_source: src }); }
+  } catch {
+    row.querySelectorAll('button').forEach((b) => (b.disabled = false));
+  }
+}
+$('#ask .go').onclick = () => {
+  const first = DATA?.prefs?.players?.[0];
+  const q = new URLSearchParams({ pid: who || '', card: 'sys-mine', title: 'My Texans', ...(first ? { term: first } : {}) });
+  track('mine_enter_open', { ...(first ? { pref_player: first } : {}) });
+  location.href = `/enter?${q}`;
+};
+$('#back').onclick = () => track('mine_back');
+
+(async () => {
+  if (!who) { $('#body').innerHTML = '<div class="empty">Open My Texans from your feed so it knows which feed is yours.</div>'; return; }
+  try {
+    const r = await fetch(`/api/mine?${PAGE.pid ? 'sid' : 'did'}=${encodeURIComponent(who)}`, { headers: { accept: 'application/json' } });
+    if (!r.ok) throw new Error(String(r.status));
+    DATA = await r.json();
+    DATA.picks ||= []; DATA.watched ||= []; DATA.read ||= []; DATA.calls ||= []; DATA.max_picks ||= 3;
+    render();
+    track('mine_view', { mine_picks: DATA.picks.length, mine_watched: DATA.watched.length, mine_read: DATA.read.length, mine_calls: DATA.calls.length });
+  } catch {
+    $('#body').innerHTML = '<div class="empty">Could not load your feed right now. Try again in a moment.</div>';
+  }
+})();
+</script></body></html>

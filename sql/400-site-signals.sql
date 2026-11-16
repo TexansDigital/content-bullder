@@ -69,12 +69,14 @@ language sql stable as $$
   group by 1, 2;
 $$;
 
--- Rebuilds site_* for every pocket id with a fan page view inside lookback, from all of that
+-- Rebuilds site_* for every pocket id with a fan page view inside lookback (3 hours: the job runs
+-- every 2, and 2 days of views timed out at 2 minutes on 15 Nov 2026 once the site sent 14k views
+-- a day, because every title is matched against every tier-1 alias), from all of that
 -- fan's page views still held (90 days, the same prune as every feed event). Each view is worth
 -- 1.0 x confidence, halved every 30 days, normalised so the fan's top entity is 1, like
 -- entity_weights. Only the site_* columns are written; a fan with no feed profile yet gets a row
 -- with events = 0, which the ranker already treats as "not enough to rank on".
-create or replace function public.feed_rollup_site(lookback interval default '2 days'::interval)
+create or replace function public.feed_rollup_site(lookback interval default '3 hours'::interval)
 returns integer
 language plpgsql
 as $function$

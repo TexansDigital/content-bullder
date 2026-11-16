@@ -364,6 +364,14 @@ const PAGE = (() => {
   };
 })();
 if (PAGE.layout === 'rail') document.body.classList.add('rail-mode');
+/** The My Texans page for the person watching, carrying the page they came from so it can send them back. */
+function mineUrl() {
+  const q = new URLSearchParams();
+  if (pocketId) q.set('pid', pocketId); else if (mintDevice()) q.set('did', deviceId);
+  if (PAGE.placement) q.set('placement', PAGE.placement);
+  if (PAGE.qa) q.set('qa', '1');
+  return `/mine?${q}`;
+}
 /** /api/feed for the person watching, on the page they are on. */
 const feedUrl = (who) => {
   const q = new URLSearchParams();
@@ -402,7 +410,7 @@ function visitParams() {
  * The dials an experiment may turn, with their defaults. /api/feed hands back the values for
  * this visitor's arms; anything it names that is not here is ignored. */
 const KNOB_DEFAULTS = { picker_position: 2, picker_reoffer_days: 7, reason_pills: 'explicit', sound_hint: false, capture_card: null,
-  offer_position: 2, expiry_position: 1, week_position: 4, ask_position: 7, lead_tagged: 0, chip_hold: 0, chip_copy: 'more', site_rank: 0, pickem_position: -1 };
+  offer_position: 2, expiry_position: 1, week_position: 4, ask_position: 7, lead_tagged: 0, chip_hold: 0, chip_copy: 'more', site_rank: 0, pickem_position: -1, mine_link: 0 };
 /** One follow-up question per load, so a fan is never asked twice in one sitting. */
 let askedThisLoad = false;
 /** Fewer views than this in a week and there is no "your week" to show. Mirrors WEEK_MIN_VIEWS in src/rank.js. */
@@ -1914,12 +1922,20 @@ function chips() {
   const all = [{ key: 'all', name: 'All' }, ...DATA.collections];
   // A fan who has set their feed gets a way back to it: one chip, always first.
   const mine = DATA.prefs && DATA.picker ? `<button class="chip mine" data-k="__mine" aria-pressed="false">Your feed ✎</button>` : '';
-  $('#bar').innerHTML = mine + all.map((c) =>
+  // My Texans (knob mine_link): the page that shows a fan what the feed inferred, to keep or
+  // correct. Only for a fan the feed can name, in the full feed layout.
+  const myTexans = Number(knobs.mine_link) && whoAmI() && PAGE.layout === 'feed' ? `<button class="chip mine" data-k="__mytexans" aria-pressed="false">My Texans</button>` : '';
+  $('#bar').innerHTML = mine + myTexans + all.map((c) =>
     `<button class="chip" aria-pressed="${c.key === active}" data-k="${esc(c.key)}">${esc(c.name)}</button>`).join('');
   $('#bar').querySelectorAll('.chip').forEach((b) => (b.onclick = () => {
     if (b.dataset.k === '__mine') {
       forcePicker = true; active = 'all'; chips(); render(); $('#feed').scrollTop = 0;
       track('prefs_open', { feed_cards: ROWS.length });
+      return;
+    }
+    if (b.dataset.k === '__mytexans') {
+      track('mine_open', { feed_cards: ROWS.length });
+      location.href = mineUrl();
       return;
     }
     active = b.dataset.k; chips(); render(); $('#feed').scrollTop = 0;

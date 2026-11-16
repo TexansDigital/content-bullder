@@ -300,6 +300,22 @@ const server = createServer(async (req, res) => {
       return json(res, 200, { ok: true, prefs: all[who] });
     }
 
+    if (p === '/api/mine' && req.method === 'GET') {
+      // Local twin of the Worker's My Texans read: saved picks from prefs.json, one watched and
+      // one read player as fixtures, and this fan's local call on the fixture game.
+      const who = [url.searchParams.get('sid'), url.searchParams.get('did')].map((v) => String(v ?? '')).find((v) => /^[A-Za-z0-9._:-]{6,128}$/.test(v));
+      if (!who) return json(res, 400, { error: 'no id' });
+      const NAMES = { 'tank-dell': 'Tank Dell', 'c-j-stroud': 'C.J. Stroud', 'nico-collins': 'Nico Collins', 'will-anderson-jr': 'Will Anderson Jr.', 'demeco-ryans': 'DeMeco Ryans' };
+      const prefs = (await loadPrefs())[who] || null;
+      const picked = new Set(prefs?.players || []);
+      const pick = localPicks[who] || null;
+      return json(res, 200, { who, prefs, picks: [...picked].map((s) => ({ slug: s, name: NAMES[s] || s })),
+        watched: ['tank-dell', 'will-anderson-jr'].filter((s) => !picked.has(s)).map((s) => ({ slug: s, name: NAMES[s], kind: 'player', weight: 1 })),
+        read: ['c-j-stroud'].filter((s) => !picked.has(s)).map((s) => ({ slug: s, name: NAMES[s], kind: 'player', weight: 1 })),
+        calls: pick ? [{ game_id: LOCAL_GAME.game_id, opponent: LOCAL_GAME.opponent, home: LOCAL_GAME.home, kickoff: LOCAL_GAME.kickoff, week: LOCAL_GAME.week, pick, picked_at: new Date().toISOString(), result: null, texans_score: null, opp_score: null, right: null }] : [],
+        events: 12, max_picks: 3 });
+    }
+
     if (p === '/api/pick' && req.method === 'POST') {
       // Local twin of the Worker's pick'em save, in memory, for the browser suites.
       const body = await readBody(req);
@@ -607,6 +623,7 @@ const server = createServer(async (req, res) => {
     // ---- static ----------------------------------------------------------
     if (p === '/' || p === '/studio') return await serveFile(req, res, 'app/studio.html');
     if (p === '/feed') return await serveFile(req, res, 'app/feed.html');
+    if (p === '/mine') return await serveFile(req, res, 'app/mine.html');
     // Deliberately uploads only. `content/` also holds the store and the manifest, and
     // serving the whole directory published every unreleased card to anyone who asked.
     if (p.startsWith('/app/')) return await serveFile(req, res, p.slice(1));

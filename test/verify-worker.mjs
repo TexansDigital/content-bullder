@@ -3,6 +3,7 @@
  * that returns the PostgREST shapes the real tables return, and what is asserted is the
  * merge, the ordering, the exclusion, the event write and the headers.
  */
+import { MAX_PICKS } from '../src/rank.js';
 import { createApp } from '../workers/feed/src/app.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -70,7 +71,7 @@ const mock = (over = {}) => async (url, opts = {}) => {
   if (table === 'feed_picks') {
     if (opts.method === 'POST') return { ok: true, status: 201, json: async () => [] };
     const m = /session_id=eq\.([^&]+)/.exec(url); const w = m ? decodeURIComponent(m[1]) : '';
-    return { ok: true, status: 200, json: async () => (PICKED[w] ? [{ pick: PICKED[w] }] : []) };
+    return { ok: true, status: 200, json: async () => (PICKED[w] ? [{ game_id: 57, pick: PICKED[w], picked_at: '2026-11-14T22:00:00Z' }] : []) };
   }
   if (table === 'rpc/feed_site_weights_live') {
     const sid = JSON.parse(opts.body || '{}').sid;
@@ -234,6 +235,38 @@ const pr = calls.find((c) => /feed_profiles/.test(c.url));
   t('a pick with no id is refused', (await post({ game_id: 57, pick: 'texans' })).status === 400);
   const h = await (await app({ fetch: pickMock() }).fetch(req('/health'), ENV, ctx)).json();
   t('health names the game fans can call', h.pickem === 'Browns');
+}
+// ---- My Texans: what the feed inferred, for the fan to keep or correct ----
+{
+  const MINE_EXP = [{ key: 'mine', arms: { mine: 1 }, knobs: { mine: { mine_link: 1 } }, traffic: 1 }];
+  const mineMock = (over = {}) => rankMock({ feed_experiments: async () => ({ ok: true, status: 200, json: async () => MINE_EXP }), ...over });
+  const mineApp = (deps = {}) => createApp({ feedHtml: 'x', mineHtml: '<!doctype html><title>My Texans</title>', deps: { fetch: mock(), cache: null, ...deps } });
+  const pg = await mineApp().fetch(req('/mine'), ENV, ctx);
+  t('/mine serves the page, framed only by the club', pg.status === 200 && /text\/html/.test(pg.headers.get('content-type')) && /frame-ancestors 'self'/.test(pg.headers.get('content-security-policy')));
+  t('without the page bundled /mine is a 404, not the feed', (await app().fetch(req('/mine'), ENV, ctx)).status === 404);
+  const m0 = calls.length;
+  const fan = await (await app().fetch(req('/api/mine?sid=sess_1792089626000_prefsfan2'), ENV, ctx)).json();
+  t('a fan with a saved pick and a called game gets both, each by name', fan.picks.length === 1 && fan.picks[0].slug === 'tank-dell' && fan.picks[0].name === 'Tank Dell' && fan.calls.length === 1 && fan.calls[0].opponent === 'Browns' && fan.calls[0].pick === 'texans' && fan.calls[0].result === null && fan.calls[0].right === null && fan.max_picks === MAX_PICKS);
+  t('every fan read on the way used the service key', calls.slice(m0).filter((c) => /session_id=eq\.|texans_games.*id=in/.test(c.url)).every((c) => c.opts.headers.apikey === 'service-secret'));
+  const watcher = await (await app().fetch(req('/api/mine?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
+  t('a fan the feed watched gets the player they watch most, nothing saved and no calls', watcher.picks.length === 0 && watcher.watched.length === 1 && watcher.watched[0].slug === 'tank-dell' && watcher.read.length === 0 && watcher.calls.length === 0 && watcher.events === 9);
+  const reader = await (await app().fetch(req('/api/mine?sid=sess_1793900000000_reader01'), ENV, ctx)).json();
+  t('a fan who only read the site gets the player they read about', reader.watched.length === 0 && reader.read.length === 1 && reader.read[0].slug === 'tank-dell');
+  t('a player already in the picks is not offered again as watched', fan.watched.length === 0);
+  t('no id is a 400 and nothing is read', (await app().fetch(req('/api/mine'), ENV, ctx)).status === 400);
+  const j0 = calls.length;
+  t('a malformed id never reaches Supabase', (await app().fetch(req('/api/mine?sid=x%20or%201'), ENV, ctx)).status === 400 && !calls.slice(j0).some((c) => /feed_profiles|feed_picks/.test(c.url)));
+  t('without the service key the page has nothing to show', (await app().fetch(req('/api/mine?sid=sess_1792089626000_prefsfan2'), { POCKET_FEEDS: '' }, ctx)).status === 503);
+  const wonGame = { ...GAMES[0], result: 'W', texans_score: 27, opp_score: 24 };
+  const won = await (await app({ fetch: mock({ texans_games: async () => ({ ok: true, status: 200, json: async () => [wonGame] }) }) }).fetch(req('/api/mine?sid=sess_1792089626000_prefsfan2'), ENV, ctx)).json();
+  t('after a final the call says whether the fan was right', won.calls[0].result === 'W' && won.calls[0].right === true && won.calls[0].texans_score === 27);
+  const linkOn = await (await app({ fetch: mineMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
+  t('the mine arm turns the My Texans chip on through the knob', Number(linkOn.knobs.mine_link) === 1);
+  const linkOff = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
+  t('and the default keeps it off', Number(linkOff.knobs.mine_link) === 0);
+  const saved = await app().fetch(req('/api/prefs', { method: 'POST', body: JSON.stringify({ pocket_id: 'sess_1792089626000_k3j9xq2ab', players: ['tank-dell'], source: 'mine' }) }), ENV, ctx);
+  const srow = JSON.parse(calls.filter((c) => /feed_preferences/.test(c.url) && c.opts.method === 'POST').pop().opts.body);
+  t('a keep from the page is saved with its own source', saved.status === 200 && srow.source === 'mine');
 }
 t('the profile is read with the service key, never the publishable one', pr && pr.opts.headers.apikey === 'service-secret');
 const thin = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?did=dev_thin00001'), ENV, ctx)).json();

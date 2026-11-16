@@ -228,3 +228,44 @@ Tests: verify-worker (knob off never reads the picks tables; the fan's own call;
 service key; qa never stored; wrong game 409; wrong side 400; health), verify-pickem.mjs (browser,
 PICK_BASE 4404 with pickem_position 2: card third, both sides, tap pays off, pick_made and
 pick_skip reported, card gone on the next load, qa flagged, control shows nothing).
+
+## 16 Nov 2026: My Texans, the page that shows a fan what the feed inferred
+
+Approved by Adam 14 Nov ("my texans page approved"), promised for 15 Nov, built 16 Nov.
+
+`/mine?pid=` (the feed navigates to it; `?did=` for a fan with only a device id) lists what the
+feed has inferred about one fan and asks them to keep or correct each line: the picks they saved
+(Remove), the three players they watch most (`feed_profiles.entity_weights`, Keep / Not me), the
+three players they read about on houstontexans.com (`site_weights`, Keep / Not me), and every game
+they called with the final where there is one ("Texans over the Browns. Final Browns 27, Texans
+24. Not this time."). Keep saves the player as a pick through `POST /api/prefs` with source
+`mine`, so the ranker honours it from the next load. Not me is recorded (`mine_correct`) and the
+row says Noted; for a saved pick it is removed. A negative weight for a corrected player is the
+next step once there are corrections to learn from, not before.
+
+The account ask comes only after the first correction, once per visit: "Take your picks with
+you", recognition on the site, the app and Reliant Stadium, never a newsletter, and it opens
+the club's Eloqua form at `/enter` (the NFL privacy block is on the form) with the same id and
+`card=sys-mine`. Nothing is asked of a fan who only keeps.
+
+Entry point: one chip, "My Texans", first in the chip bar, for a fan the feed can name, in the
+full feed layout, behind knob `mine_link` (default 0; the `mine` experiment arm sets 1, 50% of
+traffic from 16 Nov). The week card link waits until the chip has had its day.
+
+`GET /api/mine?sid=|did=` (service key; a missing or malformed id is a 400) returns `prefs`,
+`picks`, `watched`, `read`, `calls`, `events`, `max_picks`; names come from the same alias
+dictionary as the feed, and a player already in the picks is not offered again as watched or read.
+
+Events, all with `card_id` sys-mine and the feed's `feed_placement`: `mine_open` (the chip, from
+the feed), `mine_view` (mine_picks, mine_watched, mine_read, mine_calls), `mine_keep` and
+`mine_correct` (pref_player, mine_source picks|watched|read), `mine_ask_shown`, `mine_enter_open`,
+`mine_back`. Measures for the review: visitors per 1,000 named sessions, keeps and corrections per
+visitor, entry opens after a correction, and whether a visitor's next session goes deeper.
+
+Tests: verify-worker (page framed only by the club; 404 when not bundled; a fan's picks and calls
+by name; watched and read; nothing offered twice; 400 on no or malformed id; 503 without the
+service key; right/wrong after a final; the knob through the arm; the mine source on a save),
+verify-mine.mjs (browser, MINE_BASE 4405 with mine_link 1: the chip, the navigation with the id
+and the placement, the rows, Keep saves and says so, Not me is noted and shows the ask, the events,
+the ask opens /enter with the id, the kept player is a pick on the next visit; control has no chip;
+no id explains itself).

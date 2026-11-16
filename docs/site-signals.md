@@ -55,8 +55,10 @@ the fan's taste.
 ### The rollup
 
 `feed_rollup_site()` rebuilds `site_weights` (entity -> 0..1, 30-day half-life, top = 1),
-`site_sections`, `site_views`, `site_last_seen` for every pocket id with a fan page view in two
-days. Separate columns so `feed_rollup_profiles` never overwrites them and the review can tell
+`site_sections`, `site_views`, `site_last_seen` for every pocket id with a fan page view in the
+last three hours (two days until 16 Nov 2026: at 14k page views a day the two-day pass timed out at
+the two-minute statement limit from 20:20 UTC on 15 Nov; three hours covers the two-hourly job
+with overlap and runs in about four seconds). Separate columns so `feed_rollup_profiles` never overwrites them and the review can tell
 the site's signal from the feed's. Exclusions, all in `feed_site_views`: `params.qa`,
 `params.automated`, Adam's session, ids containing smoketest, armcheck or test.
 

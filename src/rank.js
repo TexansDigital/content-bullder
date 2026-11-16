@@ -412,6 +412,8 @@ export const KNOB_DEFAULTS = {
   site_rank: 0,
   /** Pick'em: where the one-tap game call sits before a kickoff; -1 hides it. */
   pickem_position: -1,
+  /** Show the My Texans chip (the /mine page: what the feed inferred, to keep or correct); 0 hides it. */
+  mine_link: 0,
 };
 
 export function fnv1a(str) {

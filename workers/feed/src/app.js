@@ -64,7 +64,7 @@ const jsonHeaders = (extra = {}) => ({
 
 const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = {}, deps = {} } = {}) {
+export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, mineHtml, assets = {}, deps = {} } = {}) {
   /** A bundled brand asset at /app/assets/<name>: bytes, a type, and a year of cache. */
   function asset(name) {
     const a = assets[name];
@@ -545,7 +545,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
         : { key: b.key, until: b.until, label: b.label })),
       going: p.going,
       watch: p.watch,
-      source: ['edit', 'offer', 'week', 'welcome', 'chip', 'like'].includes(body?.source) ? body.source : 'picker',
+      source: ['edit', 'offer', 'week', 'welcome', 'chip', 'like', 'mine'].includes(body?.source) ? body.source : 'picker',
       updated_at: now().toISOString(),
     };
     const { base } = supa(env);
@@ -563,6 +563,70 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
     }
     return new Response(JSON.stringify({ ok: true, prefs: publicPrefs(row) }), {
       status: 200, headers: jsonHeaders({ 'cache-control': 'private, no-store', 'access-control-allow-origin': '*' }),
+    });
+  }
+
+  /**
+   * GET /api/mine?sid=|did= -> what the feed has inferred about one fan, for the My Texans page:
+   * the picks they saved, the players they watch most (feed_profiles.entity_weights), the players
+   * they read about on the site (site_weights, handshake v5) and every game they called, with the
+   * final where there is one. Service key only; a missing or malformed id is a 400, never a guess.
+   * Each list is short (three names) because the page asks the fan to keep or correct each one.
+   */
+  const MINE_TOP = 3;
+  const MINE_MIN_WEIGHT = 0.2;
+  function topEntities(weights, names, skip = new Set()) {
+    return Object.entries(weights && typeof weights === 'object' ? weights : {})
+      .map(([k, w]) => { const [type, slug] = String(k).split(':'); return { type, slug, w: Number(w) || 0 }; })
+      .filter((e) => (e.type === 'player' || e.type === 'coach') && SLUG.test(e.slug) && e.w >= MINE_MIN_WEIGHT && !skip.has(e.slug) && names[e.slug])
+      .sort((a, b) => b.w - a.w)
+      .slice(0, MINE_TOP)
+      .map((e) => ({ slug: e.slug, name: displayName(e.slug, names), kind: e.type, weight: Math.round(e.w * 100) / 100 }));
+  }
+  async function callsFor(env, who) {
+    if (!who || !env.SUPABASE_SERVICE_KEY || !ID_SHAPE.test(who)) return [];
+    try {
+      const picks = await rest(env, `feed_picks?select=game_id,pick,picked_at&session_id=eq.${encodeURIComponent(who)}&order=picked_at.desc&limit=10`, env.SUPABASE_SERVICE_KEY);
+      if (!Array.isArray(picks) || !picks.length) return [];
+      const ids = picks.map((p) => Number(p.game_id)).filter(Number.isFinite);
+      const games = await rest(env, `texans_games?select=id,opponent,home,kickoff_ct,week,result,texans_score,opp_score&id=in.(${ids.join(',')})`, env.SUPABASE_SERVICE_KEY);
+      const byId = new Map((Array.isArray(games) ? games : []).map((g) => [Number(g.id), g]));
+      return picks.map((p) => {
+        const g = byId.get(Number(p.game_id));
+        if (!g || !PICKS.has(p.pick)) return null;
+        const result = g.result === 'W' || g.result === 'L' || g.result === 'T' ? g.result : null;
+        const right = !result ? null : result === 'T' ? null : (result === 'W') === (p.pick === 'texans');
+        return { game_id: Number(g.id), opponent: shortOpponent(g.opponent), home: Boolean(g.home), kickoff: g.kickoff_ct, week: String(g.week || ''),
+          pick: p.pick, picked_at: p.picked_at, result, texans_score: result ? Number(g.texans_score) : null, opp_score: result ? Number(g.opp_score) : null, right };
+      }).filter(Boolean);
+    } catch (e) { console.error('feed_picks list', e?.message); return []; }
+  }
+  async function apiMine(request, env, ctx) {
+    if (!env.SUPABASE_SERVICE_KEY) return new Response(JSON.stringify({ error: 'not enabled' }), { status: 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
+    const url = new URL(request.url);
+    const who = url.searchParams.get('sid') || url.searchParams.get('did') || '';
+    if (!ID_SHAPE.test(who)) return new Response(JSON.stringify({ error: 'no id' }), { status: 400, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
+    const built = await shared(request, env, ctx);
+    const names = built.names || {};
+    const [prefs, profile, calls] = await Promise.all([prefsFor(env, who), profileFor(env, who), callsFor(env, who)]);
+    const p = publicPrefs(prefs);
+    const picked = new Set(p?.players || []);
+    const watched = topEntities(profile?.entity_weights, names, picked);
+    const read = topEntities(profile?.site_weights, names, new Set([...picked, ...watched.map((w) => w.slug)]));
+    return new Response(JSON.stringify({
+      who, prefs: p, picks: (p?.players || []).filter((s) => names[s]).map((s) => ({ slug: s, name: displayName(s, names) })),
+      watched, read, calls, events: Number(profile?.events) || 0, max_picks: MAX_PICKS,
+    }), { status: 200, headers: jsonHeaders({ 'cache-control': 'private, no-store', 'access-control-allow-origin': '*' }) });
+  }
+  /** The My Texans page at /mine, framed by the club's site like the feed (the feed navigates to it). */
+  function minePage(env) {
+    if (!mineHtml) return new Response('not found', { status: 404 });
+    return new Response(mineHtml, {
+      headers: {
+        'content-type': 'text/html; charset=utf-8', 'cache-control': 'public, max-age=300', 'x-content-type-options': 'nosniff',
+        'referrer-policy': 'strict-origin-when-cross-origin',
+        'content-security-policy': `frame-ancestors 'self' ${env.FRAME_ANCESTORS || FRAME_ANCESTORS_DEFAULT}`,
+      },
     });
   }
 
@@ -725,6 +789,8 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets = 
         if (method === 'POST' && p === '/api/who') return apiWho(request, env, ctx);
         if (method === 'POST' && p === '/api/pick') return apiPick(request, env, ctx);
         if (method === 'GET' && p === '/enter') return enter(request, env);
+        if (method === 'GET' && p === '/mine') return minePage(env);
+        if (method === 'GET' && p === '/api/mine') return apiMine(request, env, ctx);
         if (method === 'GET' && p.startsWith('/media/')) return media.serve(request, env, p.slice('/media/'.length));
         if (method === 'POST' && p === '/api/media') return media.upload(request, env);
         if (method === 'GET' && p === '/api/media') return media.list(request, env);

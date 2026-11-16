@@ -8,6 +8,8 @@ import enterHtml from '../../../docs/eloqua-enter.html';
 import uploadHtml from '../../../app/upload.html';
 // The tag review page for Juan, served at /studio/tags.
 import tagsHtml from '../../../app/tags.html';
+// My Texans: what the feed has inferred about a fan, to keep or correct, served at /mine.
+import mineHtml from '../../../app/mine.html';
 // Brand assets, bundled as bytes (the Data rule in wrangler.toml) and served at /app/assets/*.
 import plate from '../../../app/assets/steel-916.jpg';
 import star from '../../../app/assets/texans-star.png';
@@ -15,7 +17,7 @@ import fontBlack from '../../../app/assets/fonts/HelveticaNeueLTStd-BlkEx.otf';
 import fontMedium from '../../../app/assets/fonts/HelveticaNeueLTStd-MdEx.otf';
 import { createApp } from './app.js';
 
-export default createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, assets: {
+export default createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, mineHtml, assets: {
   'steel-916.jpg': { body: plate, type: 'image/jpeg' },
   'texans-star.png': { body: star, type: 'image/png' },
   'fonts/HelveticaNeueLTStd-BlkEx.otf': { body: fontBlack, type: 'font/otf' },
