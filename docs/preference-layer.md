@@ -253,8 +253,15 @@ full feed layout, behind knob `mine_link` (default 0; the `mine` experiment arm 
 traffic from 16 Nov). The week card link waits until the chip has had its day.
 
 `GET /api/mine?sid=|did=` (service key; a missing or malformed id is a 400) returns `prefs`,
-`picks`, `watched`, `read`, `calls`, `events`, `max_picks`; names come from the same alias
+`picks`, `watched`, `read`, `calls`, `events`, `max_picks`, `live`; names come from the same alias
 dictionary as the feed, and a player already in the picks is not offered again as watched or read.
+
+Fixed 17 Nov: the first four fans to open the page (all first visits) saw it empty, because the
+profile is nightly and `feed_week` cannot see site cards (no video_id), and 90% of what they had
+watched was site cards. When the profile has no weights, `watched` is now scored live from the
+fan's own card_view events of the last seven days against the cards served now, site cards
+included (`watchedLive`), and `read` falls back to `feed_site_weights_live` the way the feed does.
+`live.watched` and `live.read` say which happened.
 
 Events, all with `card_id` sys-mine and the feed's `feed_placement`: `mine_open` (the chip, from
 the feed), `mine_view` (mine_picks, mine_watched, mine_read, mine_calls), `mine_keep` and

@@ -260,6 +260,13 @@ const pr = calls.find((c) => /feed_profiles/.test(c.url));
   const wonGame = { ...GAMES[0], result: 'W', texans_score: 27, opp_score: 24 };
   const won = await (await app({ fetch: mock({ texans_games: async () => ({ ok: true, status: 200, json: async () => [wonGame] }) }) }).fetch(req('/api/mine?sid=sess_1792089626000_prefsfan2'), ENV, ctx)).json();
   t('after a final the call says whether the fan was right', won.calls[0].result === 'W' && won.calls[0].right === true && won.calls[0].texans_score === 27);
+  const VIEWS = [{ card_id: 'yt-Tq3sz_Yf-Nk' }, { card_id: 'yt-Tq3sz_Yf-Nk' }, { card_id: 'yt-dwNx1tv_k24' }, { card_id: 'yt-nolongerserved' }];
+  const firstVisit = await (await app({ fetch: mock({ feed_events: async (u, o) => (o.method === 'POST' ? { ok: true, status: 201, json: async () => [] } : { ok: true, status: 200, json: async () => (/sess_1794800000000_firstvis1/.test(u) ? VIEWS : []) }) }) }).fetch(req('/api/mine?sid=sess_1794800000000_firstvis1'), ENV, ctx)).json();
+  t('a first-visit fan with no profile yet gets what they watched today, scored live from their own views, most-watched first',
+    firstVisit.watched.length === 2 && firstVisit.watched[0].slug === 'tank-dell' && firstVisit.watched[0].weight === 1 && firstVisit.watched[1].slug === 'c-j-stroud' && firstVisit.watched[1].weight === 0.5 && firstVisit.live.watched === true && firstVisit.events === 0);
+  const liveReader = await (await app().fetch(req('/api/mine?sid=sess_1793900000000_reader02'), ENV, ctx)).json();
+  t('a fan the site rollup has not reached gets what they read, scored live', liveReader.read.length === 1 && liveReader.read[0].slug === 'tank-dell' && liveReader.live.read === true);
+  t('a fan with a rolled-up profile is not re-scored from events', watcher.live.watched === false && !calls.some((c) => /feed_events\?select=card_id.*k3j9xq2ab/.test(c.url)));
   const linkOn = await (await app({ fetch: mineMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
   t('the mine arm turns the My Texans chip on through the knob', Number(linkOn.knobs.mine_link) === 1);
   const linkOff = await (await app({ fetch: rankMock() }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();

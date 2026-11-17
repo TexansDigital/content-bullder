@@ -601,6 +601,27 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, mineHtml,
       }).filter(Boolean);
     } catch (e) { console.error('feed_picks list', e?.message); return []; }
   }
+  /**
+   * What a fan watched when the nightly profile has not reached them yet (every first visit):
+   * their own card_view events of the last seven days, scored against the cards served now, site
+   * cards included (feed_week cannot see those: they carry no video_id). Views per player,
+   * normalised to the top, the same shape as entity_weights.
+   */
+  async function watchedLive(env, who, live) {
+    if (!who || !env.SUPABASE_SERVICE_KEY || !ID_SHAPE.test(who)) return {};
+    try {
+      const since = new Date(now().getTime() - 7 * 86400e3).toISOString();
+      const rows = await rest(env, `feed_events?select=card_id&session_id=eq.${encodeURIComponent(who)}&event=eq.card_view&at=gte.${encodeURIComponent(since)}&order=at.desc&limit=200`, env.SUPABASE_SERVICE_KEY);
+      const byId = new Map((live || []).map((i) => [i.id, i]));
+      const n = {};
+      for (const r of Array.isArray(rows) ? rows : []) {
+        const card = byId.get(r.card_id);
+        for (const slug of card?.entities?.players || []) if (SLUG.test(slug)) n[`player:${slug}`] = (n[`player:${slug}`] || 0) + 1;
+      }
+      const max = Math.max(0, ...Object.values(n));
+      return max ? Object.fromEntries(Object.entries(n).map(([k, v]) => [k, Math.round((v / max) * 1000) / 1000])) : {};
+    } catch (e) { console.error('feed_events watched read', e?.message); return {}; }
+  }
   async function apiMine(request, env, ctx) {
     if (!env.SUPABASE_SERVICE_KEY) return new Response(JSON.stringify({ error: 'not enabled' }), { status: 503, headers: jsonHeaders({ 'cache-control': 'no-store' }) });
     const url = new URL(request.url);
@@ -611,11 +632,16 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, mineHtml,
     const [prefs, profile, calls] = await Promise.all([prefsFor(env, who), profileFor(env, who), callsFor(env, who)]);
     const p = publicPrefs(prefs);
     const picked = new Set(p?.players || []);
-    const watched = topEntities(profile?.entity_weights, names, picked);
-    const read = topEntities(profile?.site_weights, names, new Set([...picked, ...watched.map((w) => w.slug)]));
+    // The profile is nightly; a fan on their first visit has none, so what they watched today
+    // and what they read minutes ago are scored live, the way the feed itself ranks them.
+    const rolledWatch = topEntities(profile?.entity_weights, names, picked);
+    const watched = rolledWatch.length ? rolledWatch : topEntities(await watchedLive(env, who, built.live), names, picked);
+    const skipRead = new Set([...picked, ...watched.map((w) => w.slug)]);
+    const rolledRead = topEntities(profile?.site_weights, names, skipRead);
+    const read = rolledRead.length ? rolledRead : topEntities(await siteWeightsLive(env, who), names, skipRead);
     return new Response(JSON.stringify({
       who, prefs: p, picks: (p?.players || []).filter((s) => names[s]).map((s) => ({ slug: s, name: displayName(s, names) })),
-      watched, read, calls, events: Number(profile?.events) || 0, max_picks: MAX_PICKS,
+      watched, read, calls, events: Number(profile?.events) || 0, max_picks: MAX_PICKS, live: { watched: Boolean(watched.length && !rolledWatch.length), read: Boolean(read.length && !rolledRead.length) },
     }), { status: 200, headers: jsonHeaders({ 'cache-control': 'private, no-store', 'access-control-allow-origin': '*' }) });
   }
   /** The My Texans page at /mine, framed by the club's site like the feed (the feed navigates to it). */
