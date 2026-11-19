@@ -194,6 +194,14 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .pickchip.in{opacity:1;transform:translate(-50%,0)}
 .pickchip.done{background:#fff;color:#021018}
 .pickchip:disabled{cursor:default}
+.pickchip.game{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 7px 7px 14px;background:rgba(2,17,24,.94);border:1px solid rgba(255,255,255,.28);white-space:normal;
+  left:12px;right:84px;max-width:none;transform:translateY(10px)}
+.pickchip.game.in{transform:translateY(0)}
+.pickchip.game span{font:900 12px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
+.pickchip.game button{background:var(--red);color:#fff;border:0;padding:11px 12px;font:900 12px/1 var(--display);text-transform:uppercase;cursor:pointer;white-space:nowrap}
+.pickchip.game button:hover{background:var(--red2)}
+.pickchip.game button:disabled{opacity:.5;cursor:default}
+.pickchip.game.done{background:#fff;color:#021018;border-color:#fff;padding:12px 16px}
 .chip.mine{border-color:#0080C6;color:#fff}
 /* System cards: the picker and data capture. */
 /* System cards sit on the brand's steel flag plate (fabric weave, red speckle, the star), never
@@ -410,7 +418,7 @@ function visitParams() {
  * The dials an experiment may turn, with their defaults. /api/feed hands back the values for
  * this visitor's arms; anything it names that is not here is ignored. */
 const KNOB_DEFAULTS = { picker_position: 2, picker_reoffer_days: 7, reason_pills: 'explicit', sound_hint: false, capture_card: null,
-  offer_position: 2, expiry_position: 1, week_position: 4, ask_position: 7, lead_tagged: 0, chip_hold: 0, chip_copy: 'more', site_rank: 0, pickem_position: -1, mine_link: 0 };
+  offer_position: 2, expiry_position: 1, week_position: 4, ask_position: 7, lead_tagged: 0, chip_hold: 0, chip_copy: 'more', site_rank: 0, pickem_position: -1, mine_link: 0, pick_chip_game: 0 };
 /** One follow-up question per load, so a fan is never asked twice in one sitting. */
 let askedThisLoad = false;
 /** Fewer views than this in a week and there is no "your week" to show. Mirrors WEEK_MIN_VIEWS in src/rank.js. */
@@ -422,6 +430,8 @@ let welcomeInfo = null;
 let welcomeAsked = false;
 /** The pick to offer on the next card, earned by a completed clip; null when nothing is owed. */
 let pendingChip = null;
+/** The pick'em chip asks once per visit, whatever the fan does with it. */
+let pickChipAsked = false;
 const CHIP_MS = 7000;
 const swipedKey = 'txfeed.prefs.swiped';
 let soundHinted = false;
@@ -746,6 +756,14 @@ function cardClosed(slide, c, i, complete) {
     try { localStorage.setItem(swipedKey, String(Date.now())); } catch {}
     track('prefs_swipe', { ...cardParams(c, i), card_dwell_ms: dwell });
   }
+  // pick_chip_game: the pick'em ask as one line on the next card, after a completed clip, once per
+  // visit, for a fan with an id who has not called the game. The full-screen card walled the feed at
+  // every position it was tried (18 and 19 Nov 2026); this asks without taking the card.
+  if (complete && Number(knobs.pick_chip_game) && !c.system && whoAmI() && DATA.pickem && !DATA.pickem.mine && !pickChipAsked && !seen('pickem', DATA.pickem.game_id)) {
+    pickChipAsked = true;
+    pendingChip = { game: DATA.pickem, from: c.id };
+    return;
+  }
   // A completed clip about a player earns one tap on the next card: "More Tank Dell".
   if (complete && knobs.pick_prompt === 'chip' && !c.system && whoAmI() && DATA.picker) {
     const player = (c.entities?.players || [])[0];
@@ -770,6 +788,7 @@ const playerName = (player) => DATA.picker?.players?.find((p) => p.slug === play
 /** One tap, on the card, after the clip that earned it. Fades on its own; a swipe removes it. */
 function showChip(slide, c, i, chip) {
   if (slide.querySelector('.pickchip')) return;
+  if (chip.game) return showGameChip(slide, c, i, chip);
   const btn = document.createElement('button');
   btn.type = 'button'; btn.className = 'pickchip';
   const next = knobs.chip_copy === 'next';
@@ -782,6 +801,45 @@ function showChip(slide, c, i, chip) {
   track('pick_chip_shown', { ...cardParams(c, i), ...(chip.lane ? { pref_lane: chip.lane } : { pref_player: chip.player }), chip_from: chip.from });
   // chip_hold: the chip stays until the fan swipes; otherwise it fades after CHIP_MS.
   if (!Number(knobs.chip_hold)) setTimeout(() => { if (!btn.classList.contains('done') && !btn.disabled) { btn.classList.remove('in'); setTimeout(() => btn.remove(), 300); } }, CHIP_MS);
+}
+
+/** The pick'em ask as one line over the card: the question, both sides as buttons, the split on the spot. */
+function showGameChip(slide, c, i, chip) {
+  const g = chip.game;
+  const el = document.createElement('div');
+  el.className = 'pickchip game'; el.setAttribute('role', 'group'); el.setAttribute('aria-label', `Who wins ${kickDay(g.kickoff)}?`);
+  el.innerHTML = `<span>Who wins ${esc(kickDay(g.kickoff))}?</span><button type="button" data-k="texans">Texans</button><button type="button" data-k="opponent">${esc(g.opponent)}</button>`;
+  el.querySelectorAll('button').forEach((b) => (b.onclick = () => pickFromGameChip(slide, c, i, chip, b.dataset.k)));
+  slide.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('in'));
+  track('pick_chip_shown', { ...cardParams(c, i), chip_kind: 'game', game_id: g.game_id, chip_from: chip.from });
+  // Two buttons need a moment longer than one word; then it fades like the player chip.
+  setTimeout(() => { if (!el.classList.contains('done') && !el.dataset.busy) { el.classList.remove('in'); setTimeout(() => el.remove(), 300); } }, CHIP_MS + 3000);
+}
+async function pickFromGameChip(slide, c, i, chip, k) {
+  const el = slide.querySelector('.pickchip.game');
+  if (!el || el.dataset.busy) return;
+  el.dataset.busy = '1'; el.querySelectorAll('button').forEach((b) => (b.disabled = true));
+  const g = chip.game;
+  try {
+    const r = await fetch('/api/pick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+      game_id: g.game_id, pick: k, ...(PAGE.placement ? { placement: PAGE.placement } : {}), ...(PAGE.qa ? { qa: true } : {}),
+      ...(pocketId ? { pocket_id: pocketId } : {}), ...(mintDevice() ? { device_id: deviceId } : {}) }) });
+    if (!r.ok) throw new Error(String(r.status));
+    const res = await r.json();
+    const tl = res.tally || {};
+    const total = (Number(tl.texans) || 0) + (Number(tl.opponent) || 0);
+    const share = total ? Math.round(100 * (Number(tl[k]) || 0) / total) : 100;
+    markSeen('pickem', g.game_id);
+    DATA.pickem = { ...g, mine: k, tally: tl };
+    track('pick_made', { ...cardParams(c, i), game_id: g.game_id, pick: k, pick_share: share, picks_n: total, pick_from: 'chip' });
+    el.classList.add('done');
+    el.innerHTML = `<span>You and ${share}% say ${esc(k === 'texans' ? 'Texans' : g.opponent)}. Your pick is saved.</span>`;
+    setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 300); }, 3600);
+  } catch {
+    delete el.dataset.busy; el.querySelectorAll('button').forEach((b) => (b.disabled = false));
+    flashOn(slide, 'Could not save. Try again.');
+  }
 }
 
 /** The tap: save the pick without leaving the card, lift that player's clips to come next, and say so on the chip. */

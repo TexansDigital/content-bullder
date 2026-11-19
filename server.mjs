@@ -509,7 +509,7 @@ const server = createServer(async (req, res) => {
         clips: only ? live.filter((i) => i.collection === only) : live,
         prefs: prefRow ? { ...prefRow } : null,
         picker, week: null, experiments: {}, knobs,
-        pickem: who && Number(knobs.pickem_position) >= 0 ? { ...LOCAL_GAME, tally: localTally(), mine: localPicks[who] || null } : null,
+        pickem: who && (Number(knobs.pickem_position) >= 0 || Number(knobs.pick_chip_game)) ? { ...LOCAL_GAME, tally: localTally(), mine: localPicks[who] || null } : null,
       }, { public: !who });
     }
 

@@ -276,3 +276,26 @@ verify-mine.mjs (browser, MINE_BASE 4405 with mine_link 1: the chip, the navigat
 and the placement, the rows, Keep saves and says so, Not me is noted and shows the ask, the events,
 the ask opens /enter with the id, the kept player is a pick on the next visit; control has no chip;
 no id explains itself).
+
+## 19 Nov 2026: the pick'em card walls the feed; the ask becomes a chip
+
+The position-3 card (experiment pickem, 14 to 18 Nov) converted 40 times the player chip (5 calls
+from 268 exposed fans, 1.9%) and stopped 81% of the fans who met it: 19.4% went on to card 4,
+against 72% of control fans who reached card 3; completion after card 3 was 23.9% against 60.9%.
+The same card at position 7 (pickem_late, 18 to 19 Nov) walled the same way: 24.2% of the 33 fans
+who met it went on, against 76.6% of control fans continuing from card 7. A full-screen ask card
+is a wall wherever it sits. Both rows stopped with their result jsonb.
+
+Shipped 19 Nov: knob `pick_chip_game` (default 0; the `pickchip` experiment arm sets 1, 50% of
+traffic). After the first completed clip, once per visit, for a fan with an id who has not called
+the open game, the next card carries one line over the clip: "Who wins Thursday?" with Texans and
+the opponent as buttons (`.pickchip.game`, left of the action rail). A tap posts to `POST /api/pick`
+and the chip answers "You and 67% say Texans. Your pick is saved." and fades; an ignored chip fades
+in ten seconds and leaves no skip behind. Events: `pick_chip_shown` with `chip_kind` game and
+`game_id`; `pick_made` with `pick_from` chip. The Worker and the local studio carry `pickem` in the
+feed JSON when either the card knob or the chip knob is on. Nothing takes a card.
+
+Tests: verify-worker (the chip knob carries the game without the card knob), verify-pickchip.mjs
+(browser, PICKCHIP_BASE 4406 with pick_chip_game 1: no card and no chip before a completion, the
+chip on the next card with both sides, the tap answers with the split, the post, pick_made from
+the chip, no chip once called, an ignored chip fades with no skip, control shows nothing).

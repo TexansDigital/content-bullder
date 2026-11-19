@@ -417,7 +417,7 @@ export function createApp({ feedHtml, enterHtml, uploadHtml, tagsHtml, mineHtml,
     const rankProfile = siteRanked ? { entity_weights: siteWeights, content_type_weights: {}, events: MIN_EVENTS, source: 'site' } : profile;
     // pick'em: only when the knob shows the card to this fan and a kickoff is within six days;
     // the tally and the fan's own call are read then, never for a fan who will not see the card.
-    const game = Number(assigned.knobs.pickem_position) >= 0 && env.SUPABASE_SERVICE_KEY && who ? pickemGame(nextGame, now().getTime()) : null;
+    const game = (Number(assigned.knobs.pickem_position) >= 0 || Number(assigned.knobs.pick_chip_game)) && env.SUPABASE_SERVICE_KEY && who ? pickemGame(nextGame, now().getTime()) : null;
     const [tally, mine] = game ? await Promise.all([pickTally(env, game.game_id), myPick(env, who, game.game_id)]) : [null, null];
     const pickem = game ? { ...game, tally, mine } : null;
     const ranked0 = rankFeed(live, rankProfile, { prefs, presets, offers, names, focus, now: now().getTime() });

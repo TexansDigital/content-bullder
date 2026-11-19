@@ -235,6 +235,9 @@ const pr = calls.find((c) => /feed_profiles/.test(c.url));
   t('a pick with no id is refused', (await post({ game_id: 57, pick: 'texans' })).status === 400);
   const h = await (await app({ fetch: pickMock() }).fetch(req('/health'), ENV, ctx)).json();
   t('health names the game fans can call', h.pickem === 'Browns');
+  const CHIP_EXP = [{ key: 'pickchip', arms: { chip: 1 }, knobs: { chip: { pick_chip_game: 1 } }, traffic: 1 }];
+  const chipOn = await (await app({ fetch: rankMock({ feed_experiments: async () => ({ ok: true, status: 200, json: async () => CHIP_EXP }) }) }).fetch(req('/api/feed?sid=sess_1792089626000_k3j9xq2ab'), ENV, ctx)).json();
+  t('the pick chip knob carries the game and the split without the card knob', Number(chipOn.knobs.pick_chip_game) === 1 && Number(chipOn.knobs.pickem_position) === -1 && chipOn.pickem && chipOn.pickem.opponent === 'Browns' && chipOn.pickem.tally.texans === 3);
 }
 // ---- My Texans: what the feed inferred, for the fan to keep or correct ----
 {
