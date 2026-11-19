@@ -195,7 +195,7 @@ a.ov:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .pickchip.done{background:#fff;color:#021018}
 .pickchip:disabled{cursor:default}
 .pickchip.game{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px;background:rgba(2,17,24,.94);border:1px solid rgba(255,255,255,.28);white-space:normal;overflow:visible;
-  left:12px;right:84px;max-width:none;transform:translateY(10px)}
+  left:12px;right:84px;bottom:calc(200px + env(safe-area-inset-bottom,0px));max-width:none;transform:translateY(10px)}
 .pickchip.game.in{transform:translateY(0)}
 .pickchip.game span{flex:1 1 100%;font:900 12px/1.1 var(--display);text-transform:uppercase;letter-spacing:.02em}
 .pickchip.game button{flex:1 1 0;min-width:0;background:var(--red);color:#fff;border:0;padding:11px 8px;font:900 12px/1 var(--display);text-transform:uppercase;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
