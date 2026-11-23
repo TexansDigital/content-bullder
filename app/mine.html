@@ -38,6 +38,10 @@ button:disabled{opacity:.4;cursor:default}
 .pill{font:500 10px/1.5 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:#fff;border:1px solid var(--blue);padding:4px 8px;white-space:nowrap}
 .pill.right{border-color:var(--red);color:#fff}
 .pill.muted{border-color:var(--line);color:var(--mute)}
+.tap{margin:14px 0 6px;border-top:3px solid var(--red);padding-top:12px}
+.tap h3{font:900 20px/.95 var(--display);text-transform:uppercase;margin:4px 0 8px}
+.tap p{margin:0 0 12px;color:var(--body);font-size:14px}
+.tap .yes{width:100%;background:var(--red);color:#fff;border:0;padding:15px 14px;font-size:12px}
 .ask{margin-top:26px;border-top:3px solid var(--blue);padding-top:12px}
 .ask h3{font:900 20px/.95 var(--display);text-transform:uppercase;margin:4px 0 8px}
 .ask p{margin:0 0 12px;color:var(--body);font-size:14px}
@@ -65,7 +69,7 @@ const PAGE = (() => {
   const q = new URLSearchParams(location.search);
   const id = (k) => (ID_SHAPE.test(String(q.get(k) ?? '')) ? q.get(k) : null);
   return { pid: id('pid'), did: id('did'), placement: /^[a-z0-9_-]{1,40}$/.test(String(q.get('placement') ?? '')) ? q.get('placement') : null,
-    qa: q.get('qa') === '1' || /txfeed-qa/.test(navigator.userAgent) };
+    qa: q.get('qa') === '1' || /txfeed-qa/.test(navigator.userAgent), tap: q.get('tap') === '1' };
 })();
 const who = PAGE.pid || PAGE.did;
 const $ = (s, r = document) => r.querySelector(s);
@@ -107,7 +111,18 @@ function render() {
   if (d.read.length) rows.push(`<h2>Players you read about</h2>${d.read.map((x) => player(x, 'read')).join('')}`);
   if (d.calls.length) rows.push(`<h2>Your calls</h2>${d.calls.map((c) => { const l = callLine(c); return `<div class="row"><div class="who"><b>${esc(l.title)}</b><small>${esc(l.sub)}</small></div><span class="pill ${l.cls}">${esc(l.pill)}</span></div>`; }).join('')}`);
   if (!rows.length) rows.push(`<div class="empty">Nothing yet. Watch a few clips, call a game, and come back.</div>`);
+  // mine_tap: one tap saves what the feed inferred as picks, watched first, as many as the picks
+  // allow; the rows stay beneath so a wrong name can still be corrected.
+  const room = Math.max(0, DATA.max_picks - d.picks.length);
+  const guess = PAGE.tap ? [...d.watched, ...d.read].filter((x, i, a) => a.findIndex((y) => y.slug === x.slug) === i).slice(0, room) : [];
+  if (guess.length) {
+    const names = guess.map((x) => x.name);
+    const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
+    rows.unshift(`<div class="tap" id="tap"><h3>Sound like you?</h3><p>One tap saves ${esc(list)} as your picks.</p><button class="yes" type="button">That's me</button></div>`);
+  }
   $('#body').innerHTML = rows.join('');
+  const yes = $('#tap .yes');
+  if (yes) yes.onclick = () => tapAll(guess);
   $('#body').querySelectorAll('.row[data-slug]').forEach((row) => {
     const slug = row.dataset.slug, src = row.dataset.src;
     const keep = row.querySelector('.keep'), no = row.querySelector('.no');
@@ -138,6 +153,27 @@ async function keepIt(row, slug, src) {
     track('mine_keep', { pref_player: slug, mine_source: src });
   } catch {
     row.querySelectorAll('button').forEach((b) => (b.disabled = false));
+  }
+}
+async function tapAll(guess) {
+  const box = $('#tap');
+  box.querySelector('.yes').disabled = true;
+  try {
+    const have = (DATA.prefs?.players || []);
+    const add = guess.map((x) => x.slug).filter((s) => !have.includes(s));
+    await savePrefs([...have, ...add]);
+    // Each row keeps its Not me, so a wrong name can still come out of the picks.
+    guess.forEach((x) => {
+      const row = $(`#body .row[data-slug="${CSS.escape(x.slug)}"]`); if (!row) return;
+      const no = Object.assign(document.createElement('button'), { className: 'no', type: 'button', textContent: 'Not me' });
+      no.onclick = () => notMe(row, x.slug, 'picks');
+      row.querySelector('.acts').replaceChildren(Object.assign(document.createElement('span'), { className: 'pill', textContent: 'Saved to your picks' }), no);
+    });
+    box.innerHTML = `<p class="note">Saved to your picks. Tap Not me on any name that is wrong.</p>`;
+    track('mine_tap', { mine_players: add.length, pref_player: add[0] || null });
+    guess.forEach((x) => track('mine_keep', { pref_player: x.slug, mine_source: 'tap' }));
+  } catch {
+    box.querySelector('.yes').disabled = false;
   }
 }
 async function notMe(row, slug, src) {

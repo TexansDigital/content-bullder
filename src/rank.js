@@ -419,6 +419,9 @@ export const KNOB_DEFAULTS = {
   pickem_position: -1,
   /** Show the My Texans chip (the /mine page: what the feed inferred, to keep or correct); 0 hides it. */
   mine_link: 0,
+  /** 1 opens My Texans with one tap, "That's me", that saves the listed players as picks in one go
+   *  (the page gets ?tap=1); 0 keeps the Keep / Not me rows alone. Needs mine_link. */
+  mine_tap: 0,
   /** The pick'em ask as one line over a card after a completed clip (both sides as buttons), once per visit; 0 off. */
   pick_chip_game: 0,
 };

@@ -320,3 +320,26 @@ the same day, only card 1 differs.
 Tests: verify-lead-site.mjs (browser, PREVIEW_BASE 4401 with lead_site 1: the studio keeps source
 and format on a patch, the first site video leads, the Short that opened the shared order follows
 at card 2, a site story stays put, control keeps the shared order).
+
+## 23 Nov 2026: My Texans at seven days; the one-tap "That's me" (knob `mine_tap`)
+
+The mine experiment (16 to 23 Nov) stopped by its rule: 2.0% of named sessions in the arm opened
+the page (76 of 3,765; the bar was 2%), but visitors kept or corrected almost nothing (5 keeps in
+90 views, from 2 of 76 visitors; the bar was one per visit). Openers watched twice the cards of
+the arm's other fans (7.84 against 3.89); depth by arm sat inside the stop rule (3.97 clips at
+53.3% against 4.34 at 55.5%). The list of Keep / Not me rows is looked at and left.
+
+Knob `mine_tap` (default 0; experiment mine_tap, arms control / tap, the tap arm sets mine_link 1
+and mine_tap 1, 50% of traffic): the feed's My Texans link carries `tap=1`, and the page opens on
+one block above the rows, "Sound like you? One tap saves Tank Dell, Will Anderson Jr. and C.J.
+Stroud as your picks", with one button, "That's me". The tap saves the inferred players (watched
+first, then read, as many as the picks allow) through the same `POST /api/prefs` with source mine,
+settles each row as saved, and leaves the rows beneath so a wrong name can still be corrected. No
+block when the picks are full or nothing was inferred. Events: `mine_tap` (mine_players, the
+first pref_player) and one `mine_keep` per player with `mine_source` tap, so keeps by source still
+read as one table.
+
+Tests: verify-mine.mjs (MINE_BASE 4405 now runs mine_link 1 and mine_tap 1: the link carries
+tap=1; the block names the three; one tap settles every row, posts all three with the mine source,
+reports mine_tap with the count and three keeps from the tap; the next visit offers no tap with
+the picks full; without tap=1 the rows stand alone).

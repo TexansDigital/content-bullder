@@ -49,6 +49,7 @@ const rows = (pg) => pg.evaluate(() => Array.from(document.querySelectorAll('#bo
   const [nav] = await Promise.all([on.pg.waitForNavigation({ waitUntil: 'networkidle' }), on.pg.click('#bar .chip[data-k="__mytexans"]')]);
   const url = new URL(nav.url());
   t('the chip opens /mine with the pocket id and the placement', url.pathname === '/mine' && url.searchParams.get('pid') === pid && url.searchParams.get('placement') === 'roster');
+  t('with mine_tap on the link carries tap=1', url.searchParams.get('tap') === '1');
   await on.pg.waitForTimeout(900);
   const r0 = await rows(on.pg);
   t(`the page lists what the feed inferred, with Keep and Not me (${r0.map((r) => r.name).join(', ')})`, r0.length === 3 && r0.every((r) => r.src !== 'picks' && r.acts.join('|') === 'Keep|Not me'));
@@ -79,6 +80,37 @@ const rows = (pg) => pg.evaluate(() => Array.from(document.querySelectorAll('#bo
   const r3 = await rows(again.pg);
   t('on the next visit the kept player is listed under Your picks with Remove', r3.find((r) => r.name === 'Tank Dell')?.src === 'picks' && r3.find((r) => r.name === 'Tank Dell')?.acts.join('|') === 'Remove');
   await again.ctx.close();
+}
+// mine_tap: one tap saves what the feed inferred, as picks, with its own event.
+{
+  const pid = `sess_${RUN}_minetap01`;
+  const pg1 = await open(MINE, `/mine?pid=${pid}&tap=1&placement=roster`);
+  const tapText = await pg1.pg.evaluate(() => document.querySelector('#tap')?.textContent || '');
+  t(`with tap=1 the page opens on one tap naming the inferred players (${tapText.trim().slice(0, 60)})`, /Tank Dell, Will Anderson Jr\. and C\.J\. Stroud/.test(tapText) && /That's me/.test(tapText));
+  t('the rows still sit beneath for a correction', (await rows(pg1.pg)).length === 3);
+  await pg1.pg.click('#tap .yes');
+  await pg1.pg.waitForFunction(() => /Saved to your picks/.test(document.querySelector('#tap')?.textContent || ''), null, { timeout: 4000 }).catch(() => {});
+  const r1 = await rows(pg1.pg);
+  t('one tap settles every listed row as saved and keeps Not me on each', r1.length === 3 && r1.every((r) => r.pill === 'Saved to your picks' && r.acts.join('|') === 'Not me'));
+  const post = pg1.posts.find((p) => /\/api\/prefs$/.test(p.url));
+  t('the save carries all three as picks with the mine source', post && /"players":\["tank-dell","will-anderson-jr","c-j-stroud"\]/.test(post.body) && /"source":"mine"/.test(post.body));
+  await pg1.pg.click('#body .row[data-slug="c-j-stroud"] .no');
+  await pg1.pg.waitForFunction(() => /Removed/.test(document.querySelector('#body .row[data-slug="c-j-stroud"]')?.textContent || ''), null, { timeout: 4000 }).catch(() => {});
+  const r1b = await rows(pg1.pg);
+  const post2 = pg1.posts.filter((p) => /\/api\/prefs$/.test(p.url)).pop();
+  t('Not me after the tap takes that name back out of the picks', r1b.find((r) => r.name === 'C.J. Stroud')?.pill === 'Removed' && post2 && /"players":\["tank-dell","will-anderson-jr"\]/.test(post2.body));
+  await pg1.pg.waitForTimeout(1200);
+  const ev1 = pg1.posts.filter((p) => /\/api\/events/.test(p.url)).map((p) => p.body).join('\n');
+  t('mine_tap reports the count and each player is a keep from the tap', /mine_tap/.test(ev1) && /"mine_players":3/.test(ev1) && (ev1.match(/"mine_source":"tap"/g) || []).length === 3);
+  t('no page errors', pg1.errs.length === 0);
+  await pg1.ctx.close();
+  const pg2 = await open(MINE, `/mine?pid=${pid}&tap=1`);
+  const r2 = await rows(pg2.pg);
+  t('on the next visit the two kept are picks and the tap offers only the one with room', r2.filter((r) => r.src === 'picks').length === 2 && /One tap saves C\.J\. Stroud as your picks/.test(await pg2.pg.evaluate(() => document.querySelector('#tap')?.textContent || '')));
+  await pg2.ctx.close();
+  const pg3 = await open(MINE, `/mine?pid=sess_${RUN}_minetap02`);
+  t('without tap=1 the page shows the rows alone', (await pg3.pg.evaluate(() => Boolean(document.querySelector('#tap')))) === false);
+  await pg3.ctx.close();
 }
 // Control: no chip.
 {
