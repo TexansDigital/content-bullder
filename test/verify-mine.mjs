@@ -106,7 +106,7 @@ const rows = (pg) => pg.evaluate(() => Array.from(document.querySelectorAll('#bo
   await pg1.ctx.close();
   const pg2 = await open(MINE, `/mine?pid=${pid}&tap=1`);
   const r2 = await rows(pg2.pg);
-  t('on the next visit the two kept are picks and the tap offers only the one with room', r2.filter((r) => r.src === 'picks').length === 2 && /One tap saves C\.J\. Stroud as your picks/.test(await pg2.pg.evaluate(() => document.querySelector('#tap')?.textContent || '')));
+  t('on the next visit the two kept are picks and the tap offers only the one with room', r2.filter((r) => r.src === 'picks').length === 2 && /One tap saves C\.J\. Stroud as your pick\./.test(await pg2.pg.evaluate(() => document.querySelector('#tap')?.textContent || '')));
   await pg2.ctx.close();
   const pg3 = await open(MINE, `/mine?pid=sess_${RUN}_minetap02`);
   t('without tap=1 the page shows the rows alone', (await pg3.pg.evaluate(() => Boolean(document.querySelector('#tap')))) === false);
