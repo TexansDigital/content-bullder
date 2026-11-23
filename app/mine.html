@@ -118,7 +118,7 @@ function render() {
   if (guess.length) {
     const names = guess.map((x) => x.name);
     const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
-    rows.unshift(`<div class="tap" id="tap"><h3>Sound like you?</h3><p>One tap saves ${esc(list)} as your picks.</p><button class="yes" type="button">That's me</button></div>`);
+    rows.unshift(`<div class="tap" id="tap"><h3>Sound like you?</h3><p>One tap saves ${esc(list)} as your ${names.length > 1 ? 'picks' : 'pick'}.</p><button class="yes" type="button">That's me</button></div>`);
   }
   $('#body').innerHTML = rows.join('');
   const yes = $('#tap .yes');
