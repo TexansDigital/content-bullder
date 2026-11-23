@@ -402,6 +402,11 @@ export const KNOB_DEFAULTS = {
   /** 1 moves the first player-tagged clip among the opening cards to card 1, so the first
    *  completed clip can earn a player chip ("More Tank Dell") rather than a lane. 0 off. */
   lead_tagged: 0,
+  /** 1 moves the first site video (a houstontexans.com card, source pocket, format video) among the
+   *  opening 24 cards to card 1. For six days to 21 Nov 2026 a site video led the roster feed at 5.2
+   *  to 6.5 cards a session and 39% to 51% completion; when a Short took card 1 on 22 Nov the day
+   *  ran 2.9 cards at 24%. 0 off. */
+  lead_site: 0,
   /** 1 keeps the pick chip on its card until the fan swipes instead of fading it after seven
    *  seconds. 0 off. */
   chip_hold: 0,

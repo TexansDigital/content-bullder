@@ -299,3 +299,24 @@ Tests: verify-worker (the chip knob carries the game without the card knob), ver
 (browser, PICKCHIP_BASE 4406 with pick_chip_game 1: no card and no chip before a completion, the
 chip on the next card with both sides, the tap answers with the split, the post, pick_made from
 the chip, no chip once called, an ignored chip fades with no skip, control shows nothing).
+
+## 23 Nov 2026: the lead card decides the day; knob `lead_site`
+
+Seven days of roster sessions on the shared order, grouped by the card at position 1: from 16 to
+21 Nov a site video (a houstontexans.com card, source pocket, format video: Nico Collins' catches,
+the DeMeco presser, the Colts preview, Marlin Klein's touchdown, David Montgomery's best plays) led
+every day, at 5.2 to 6.5 cards a session and 38.7% to 51.0% completion. On 22 Nov the shared order
+put a Short at card 1 ("Never Satisfied", DeMeco's message) and the day ran 2.85 cards at 24.0%
+over 505 sessions; the 55 sessions that still met the site video first ran 4.96 cards at 57.9%.
+The rule set on 19 Nov (build it only if a Short leads again on a non-game day and depth falls
+with it) was met, so the knob exists.
+
+Knob `lead_site` (default 0; the `lead_site` experiment arm sets 1, 50% of traffic): in the page,
+the first site video among the opening 24 cards moves to card 1 (`leadSite`, before `leadTagged`
+and the system cards). Stories and podcasts (format read or listen) never lead; nothing else moves.
+The experiment settles whether the site video or the news cycle held those fans: both arms see
+the same day, only card 1 differs.
+
+Tests: verify-lead-site.mjs (browser, PREVIEW_BASE 4401 with lead_site 1: the studio keeps source
+and format on a patch, the first site video leads, the Short that opened the shared order follows
+at card 2, a site story stays put, control keeps the shared order).
