@@ -343,3 +343,13 @@ Tests: verify-mine.mjs (MINE_BASE 4405 now runs mine_link 1 and mine_tap 1: the 
 tap=1; the block names the three; one tap settles every row, posts all three with the mine source,
 reports mine_tap with the count and three keeps from the tap; the next visit offers no tap with
 the picks full; without tap=1 the rows stand alone).
+
+## 25 Nov 2026: site cards name their players
+
+The site's keywords rarely name the players a video is about: on 24 Nov the two cards that led
+the roster feed all day ("Nick Caley on C.J. Stroud's Elite Play", "DeMeco Ryans on Will Anderson
+Jr., C.J. Stroud & Ravens") carried `players: []`, so no chip could follow them, the implicit
+profile learned nothing from 712 views, and three of the four fans who opened My Texans that day
+saw an empty page. `pocketItems` now also reads the headline and dek for whole dictionary names
+(the aliases the Worker already holds for Shorts), never a surname alone. Excluded names still
+drop the card before it exists. Tests in verify-pocket.mjs.

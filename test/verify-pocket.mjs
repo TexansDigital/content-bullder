@@ -54,6 +54,11 @@ t('a story card: Read action, format read, letterboxed image, chrome on, timely'
 t('the image is resized through the same Cloudinary id', cards.every((c) => !c.media.url || /\/w_1080,c_limit,q_auto,f_auto\/texans\//.test(c.media.url)) && cardImage('https://static.clubs.nfl.com/image/upload/t_editorial_landscape_12_desktop/texans/abc.jpg') === 'https://static.clubs.nfl.com/image/upload/w_1080,c_limit,q_auto,f_auto/texans/abc.jpg');
 t('a tag that names a dictionary player becomes that player', cards.some((c) => c.entities.players.includes('c-j-stroud')));
 t('a tag that is not a player is not a player', !cards.some((c) => c.entities.players.includes('nick-caserio-not-a-player')));
+const caserio = cards.find((c) => /Caserio on C\.J\. Stroud/.test(c.headline));
+t('a headline that names a dictionary player tags him although the keywords do not', caserio && caserio.entities.players.includes('c-j-stroud') && !caserio.flags.tags.includes('c-j-stroud'));
+const bare = (title, summary = '') => pocketItems([{ feed: 'videos', guid: '0123456789abcdef0123456789abcdef0123', title, summary, labels: [], tags: [], url: 'https://www.houstontexans.com/video/x', published: '2026-11-24T00:00:00Z', image: '' }], { names })[0].entities.players;
+t('a surname alone in a headline is not a tag', bare('Stroud and the Ravens').length === 0);
+t('the dek counts too, as a whole name', bare('Ravens week', 'Inside C.J. Stroud\'s week').includes('c-j-stroud'));
 t('the opponent rides on the game-tagged cards', cards.some((c) => c.entities.opponent === 'giants'));
 t('the podcast card says Listen and is a listen', cards.filter((c) => c.format === 'listen').every((c) => c.action.label === 'Listen' && c.collection === 'radio') && cards.some((c) => c.format === 'listen'));
 t('published dates are ISO', cards.every((c) => /^\d{4}-\d{2}-\d{2}T/.test(c.publishedAt || '')));

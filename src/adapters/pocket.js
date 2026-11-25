@@ -102,6 +102,11 @@ export function classify(entry) {
 export function pocketItems(entries, { names = {}, banned = [], max = 40 } = {}) {
   const bySlug = new Map();
   for (const [slug, alias] of Object.entries(names || {})) { bySlug.set(slug, slug); bySlug.set(slugify(alias), slug); }
+  // The site's keywords rarely name the players a video is about ("Nick Caley on C.J. Stroud's
+  // Elite Play" carried none), so the headline and dek are read for whole dictionary names too,
+  // the way the alias tagger reads a Short's title. Whole names only, never a surname alone.
+  const inText = Object.entries(names || {}).filter(([, alias]) => String(alias || '').trim().length >= 5)
+    .map(([slug, alias]) => [slug, new RegExp(`(^|[^a-z0-9])${String(alias).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^a-z0-9])`, 'i')]);
   const perFeed = {};
   const out = [];
   for (const e of entries) {
@@ -112,7 +117,8 @@ export function pocketItems(entries, { names = {}, banned = [], max = 40 } = {})
     if (banned.some((rx) => rx.test(text))) continue;
     const link = safeHref(e.url);
     if (!link) continue;
-    const players = [...new Set(e.tags.map((s) => bySlug.get(s)).filter(Boolean))];
+    const named = `${e.title}\n${e.summary || ''}`;
+    const players = [...new Set([...e.tags.map((s) => bySlug.get(s)), ...inText.filter(([, rx]) => rx.test(named)).map(([slug]) => slug)].filter(Boolean))];
     const { collection, contentType } = classify(e);
     const when = Date.parse(e.published);
     out.push(makeItem({
